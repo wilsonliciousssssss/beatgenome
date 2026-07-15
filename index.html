@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Alpha Omega Collective — BeatGenome</title>
+<meta name="description" content="Explore the DNA of electronic music. From genres and sounds to DJ settings, producer tips, and club culture, BeatGenome is a fun way to understand the rhythm behind the scene.">
+<meta name="author" content="DJ7 - Wilsonlicioussss">
+<meta property="og:title" content="Alpha Omega Collective — BeatGenome">
+<meta property="og:description" content="Explore the DNA of electronic music. From genres and sounds to DJ settings, producer tips, and club culture, BeatGenome is a fun way to understand the rhythm behind the scene.">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+
+<!-- loading state -->
+<div class="loading" id="loading">
+  <canvas id="loadScope" width="440" height="240" aria-hidden="true"></canvas>
+  <div class="lab">DECODING THE <b>BEATGENOME</b></div>
+  <div class="cred">DJ7 · Wilsonlicioussss</div>
+</div>
+
+<!-- error state -->
+<div class="err" id="err">
+  <div class="box">
+    <h2>BeatGenome didn't load</h2>
+    <p>The data file <code>assets/data.js</code> is missing or empty. Re-run <code>python build_data.py</code> to regenerate it from the CSV, then reload.</p>
+  </div>
+</div>
+
+<!-- top bar -->
+<header class="topbar" role="banner">
+  <div class="brand">
+    <div class="badge" title="Alpha Omega Collective">ΑΩ</div>
+    <div class="title">
+      <h1>BeatGenome</h1>
+      <span class="sub" id="metaLine">Alpha Omega Collective</span>
+    </div>
+  </div>
+  <div class="spacer"></div>
+  <div class="search" role="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+    <input id="search" type="text" placeholder="search genre…  (/)" autocomplete="off" aria-label="Search genres" aria-expanded="false" aria-controls="results">
+    <div class="results" id="results" role="listbox"></div>
+  </div>
+  <div class="channels" id="channels" role="group" aria-label="Colour channel"></div>
+  <button class="iconbtn wide" id="guidesBtn" aria-haspopup="dialog">GUIDES</button>
+  <button class="iconbtn" id="colourBtn" title="Node colour: family or Camelot key" aria-pressed="false">◐ FAMILY</button>
+  <button class="iconbtn" id="shuffleBtn" title="Jump to a random genre">◎</button>
+</header>
+
+<canvas id="scope" aria-hidden="true"></canvas>
+<canvas id="graph" role="img" aria-label="Force-directed graph of electronic music genres. Use the search box to open any genre."></canvas>
+
+<div class="hint"><b>drag</b> to pan · <b>scroll</b> to zoom · <b>click</b> a node · <b>/</b> to search</div>
+<a class="credit" href="https://harbingermsc.blogspot.com/" target="_blank" rel="noopener">◈ DJ7 · Wilsonlicioussss ↗</a>
+
+<!-- family legend -->
+<aside class="legend" id="legend" aria-label="Genre families">
+  <h4 class="tog">Families <span class="cnt" id="famCnt"></span></h4>
+  <div class="grid" id="legendGrid"></div>
+</aside>
+
+<!-- detail panel -->
+<section class="panel" id="panel" aria-hidden="true" aria-label="Genre detail">
+  <div class="head">
+    <button class="close" id="panelClose" aria-label="Close">✕</button>
+    <div class="ring"></div>
+    <div class="fam" id="pFam"></div>
+    <h2 id="pName"></h2>
+    <div class="lvl" id="pLvl"></div>
+    <canvas class="panelScope" id="pScope" aria-hidden="true"></canvas>
+    <div class="metrics" id="pMetrics"></div>
+  </div>
+  <div class="body" id="pBody"></div>
+</section>
+
+<!-- guides / overlay -->
+<div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-label="Guides">
+  <div class="sheet">
+    <div class="tabs" id="guideTabs"></div>
+    <div class="md" id="guideBody"></div>
+  </div>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>
