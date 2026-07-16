@@ -139,22 +139,24 @@
     var Tw = (performance.now() - t0) / 1000;
     for (i = 0; i < nodes.length; i++) {
       n = nodes[i];
-      n.vx += -n.x * 0.0016; n.vy += -n.y * 0.0016;
-      n.vx += Math.cos(Tw * 0.5 + n.wa) * 0.06 + Math.cos(Tw * 0.19 + n.wb) * 0.04;
-      n.vy += Math.sin(Tw * 0.42 + n.wb) * 0.06 + Math.sin(Tw * 0.23 + n.wa) * 0.04;
+      n.vx += -n.x * 0.0015; n.vy += -n.y * 0.0015;
+      n.vx += Math.cos(Tw * 0.28 + n.wa) * 0.12 + Math.cos(Tw * 0.11 + n.wb) * 0.08;
+      n.vy += Math.sin(Tw * 0.24 + n.wb) * 0.12 + Math.sin(Tw * 0.13 + n.wa) * 0.08;
       if (n === dragNode) continue;
-      n.x += n.vx * (a + 0.05); n.y += n.vy * (a + 0.05);
-      n.vx *= 0.9; n.vy *= 0.9;
+      n.x += n.vx * (a + 0.09); n.y += n.vy * (a + 0.09);
+      n.vx *= 0.93; n.vy *= 0.93;
     }
-    if (alpha > 0.05) alpha *= 0.99; else alpha = 0.05; // low temperature keeps the field floating
+    if (alpha > 0.06) alpha *= 0.99; else alpha = 0.06; // gentle "on water" drift, forever
   }
   function reheat(v) { alpha = Math.max(alpha, v || 0.5); }
   function splash(x, y, c) { waves.push({ x: x, y: y, t: (performance.now() - t0) / 1000, c: c }); if (waves.length > 8) waves.shift(); reheat(0.8); }
 
   // ---- render ----
-  var hover = null, selected = null, query = "", matchSet = null, selectAnim = -1e9, waves = [];
+  var hover = null, selected = null, query = "", matchSet = null, selectAnim = -1e9, waves = [], reduceMotion = false;
+  try { reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) {}
   function draw() {
     gx.clearRect(0, 0, W, H);
+    var RS = (window.BeatGenomeAudio && window.BeatGenomeAudio.getReactiveState) ? window.BeatGenomeAudio.getReactiveState() : null;
     gx.save();
     gx.translate(W / 2, H / 2); gx.scale(cam.scale, cam.scale); gx.translate(-cam.x, -cam.y);
 
@@ -207,6 +209,7 @@
       var r = r0 * (1 + 0.16 * thump);                // body pulses on the beat
       var col = colourOf(nd);
       if (nd === selected) { var se = nowS - selectAnim; if (se >= 0 && se < 0.85) r *= 1 + 0.55 * Math.exp(-7 * se) * Math.cos(16 * se); }
+      if (RS && RS.playing && nd === selected && !reduceMotion) r *= 1 + RS.kick * 0.28 + RS.bass * 0.05;
       var baseA = dim ? 0.12 : (focus && !isFocus ? 0.28 : 1);
       // ripple ring on hubs (genre-level) — expands once per beat, fades as it grows
       if (nd.level === "Genre" && !dim) {
@@ -219,7 +222,7 @@
       gx.globalAlpha = baseA;
       gx.beginPath(); gx.arc(nd.x, nd.y, r, 0, 6.2832);
       gx.fillStyle = col;
-      gx.shadowColor = col; gx.shadowBlur = (nd === focus ? 26 : 10) + 8 * thump;
+      gx.shadowColor = col; gx.shadowBlur = (nd === focus ? 26 : 10) + 8 * thump + (RS && nd === selected ? RS.chord * 14 : 0);
       gx.fill();
       gx.shadowBlur = 0;
       if (nd === selected) { gx.lineWidth = 2 / cam.scale; gx.strokeStyle = "#fff"; gx.stroke(); }
@@ -300,6 +303,7 @@
   function frame() {
     tick();
     draw();
+    if (window.BeatGenomeAudio && window.BeatGenomeAudio.getReactiveState) { var _rs = window.BeatGenomeAudio.getReactiveState(); _rs.kick *= 0.86; _rs.snare *= 0.82; _rs.hat *= 0.75; _rs.bass *= 0.9; _rs.chord *= 0.93; _rs.master *= 0.9; }
     drawScope(sx, W, 40, focusParams(), false);
     if (pScopeOn && panel.classList.contains("open")) {
       drawScope(psx, pScope.clientWidth || 380, 46, currentPanelParams(), true);
@@ -450,9 +454,32 @@
     return null;
   }
 
+  // ---- signature tracks bar (bottom-centre, separate container) ----
+  var tracksBar = document.getElementById("tracksBar"),
+      tbGenre = document.getElementById("tbGenre"),
+      tbList = document.getElementById("tbList"),
+      tbClose = document.getElementById("tbClose");
+  function updateDock() {
+    var h = 0, pl = document.getElementById("bgaudio"), tb = document.getElementById("tracksBar");
+    if (pl) h += pl.offsetHeight || 56;
+    if (tb && !tb.hidden) h += (tb.offsetHeight || 0) + 6;
+    document.documentElement.style.setProperty("--dockh", (h + 8) + "px");
+  }
+  if (tbClose) tbClose.addEventListener("click", function () { tracksBar.hidden = true; updateDock(); });
+  function renderTracks(n) {
+    if (!tracksBar || !n || !n.d) return;
+    var d = n.d, html = "";
+    for (var k = 1; k <= 5; k++) { var tt = d["Top Track " + k]; if (tt && tt.trim()) html += '<button class="tb-t" data-track="' + esc(tt) + '"><span class="tp">\u25B6</span>' + esc(tt) + "</button>"; }
+    if (!html) { tracksBar.hidden = true; updateDock(); return; }
+    tbGenre.textContent = n.name; tbList.innerHTML = html; tracksBar.hidden = false;
+    Array.prototype.forEach.call(tbList.querySelectorAll(".tb-t"), function (b) { b.addEventListener("click", function () { openPreview(b.dataset.track); }); });
+    updateDock();
+  }
+
   function openPanel(n) {
     panelNode = n;
     panel.style.setProperty("--nodeC", colourOf(n));
+    panel.style.setProperty("--spin", (240 / (n.bpm || 124)).toFixed(2) + "s");  // ring spins once per bar at the genre BPM
     document.getElementById("pFam").textContent = n.family;
     document.getElementById("pName").textContent = n.name;
     document.getElementById("pLvl").textContent = n.level + (n.d["Drum Feel"] ? " · " + n.d["Drum Feel"] : "");
@@ -486,20 +513,15 @@
       });
       if (inner) body += '<div class="sec"><h3>' + esc(sec[0]) + "</h3>" + inner + "</div>";
     });
-    // top tracks (tap to preview)
-    var tr = "";
-    for (var k = 1; k <= 5; k++) { var tt = d["Top Track " + k]; if (tt && tt.trim()) tr += '<button class="t" data-track="' + esc(tt) + '"><span class="tp">\u25B6</span><span>' + esc(tt) + '</span></button>'; }
-    if (tr) body += '<div class="sec"><h3>Signature tracks <span class="thint">tap to preview</span></h3><div class="tracks">' + tr + "</div></div>";
+    // signature tracks now live in the bottom-centre tracks bar (renderTracks)
 
     document.getElementById("pBody").innerHTML = body;
     // wire chips
     Array.prototype.forEach.call(document.querySelectorAll("#pBody .chip"), function (c) {
       if (c.dataset.id) c.addEventListener("click", function () { select(byId[c.dataset.id]); });
     });
-    Array.prototype.forEach.call(document.querySelectorAll("#pBody .tracks .t"), function (b) {
-      b.addEventListener("click", function () { openPreview(b.dataset.track); });
-    });
-    panel.classList.add("open"); panel.setAttribute("aria-hidden", "false");
+    renderTracks(n);
+    panel.classList.add("open"); panel.setAttribute("aria-hidden", "false"); document.body.classList.add("panel-open");
     pScopeOn = true; sizePanelScope();
   }
   function metric(k, v) { return '<div class="metric"><div class="k">' + esc(k) + '</div><div class="v">' + esc(v) + "</div></div>"; }
@@ -521,11 +543,11 @@
     }
     return null;
   }
-  function closePanel() { panel.classList.remove("open"); panel.setAttribute("aria-hidden", "true"); pScopeOn = false; selected = null; }
+  function closePanel() { panel.classList.remove("open"); panel.setAttribute("aria-hidden", "true"); document.body.classList.remove("panel-open"); pScopeOn = false; selected = null; }
   document.getElementById("panelClose").addEventListener("click", closePanel);
 
   // ---- song preview popup (Spotify embed when a track id is known; else a keyless 30s preview) ----
-  var previewEl = null, previewAudio = null;
+  var previewEl = null, previewAudio = null, audioWasPlaying = false;
   function ensurePreview() {
     if (previewEl) return;
     previewEl = document.createElement("div");
@@ -538,6 +560,8 @@
   function closePreview() {
     if (previewAudio) { try { previewAudio.pause(); } catch (e) {} previewAudio = null; }
     if (previewEl) previewEl.classList.remove("show");
+    if (audioWasPlaying && window.BeatGenomeAudio && window.BeatGenomeAudio.resume) { window.BeatGenomeAudio.resume(); }
+    audioWasPlaying = false;
   }
   function parseTrack(text) {
     var noYear = text.replace(/\s*\((?:19|20)\d\d\)\s*$/, "").trim();
@@ -548,6 +572,7 @@
   }
   function openPreview(text) {
     ensurePreview();
+    if (window.BeatGenomeAudio && window.BeatGenomeAudio.playing) { audioWasPlaying = true; window.BeatGenomeAudio.pause(); } else { audioWasPlaying = false; }
     var t = parseTrack(text), body = previewEl.querySelector(".pvbody");
     previewEl.style.setProperty("--nodeC", panelNode ? colourOf(panelNode) : "#1DB954");
     var spUrl = "https://open.spotify.com/search/" + encodeURIComponent(t.query);
@@ -580,7 +605,7 @@
       .catch(function () { player.innerHTML = '<div class="pvnote">Preview unavailable \u2014 try Open in Spotify.</div>'; });
   }
 
-  function select(n) { if (!n) return; selected = n; selectAnim = (performance.now() - t0) / 1000; splash(n.x, n.y, colourOf(n)); openPanel(n); centerOn(n); }
+  function select(n) { if (!n) return; selected = n; selectAnim = (performance.now() - t0) / 1000; splash(n.x, n.y, colourOf(n)); openPanel(n); centerOn(n); if (window.BeatGenomeOnSelect) { try { window.BeatGenomeOnSelect(n); } catch (e) {} } }
 
   // ---- search ----
   var resIdx = -1, resList = [];
@@ -759,7 +784,8 @@
     requestAnimationFrame(loadAnim);
   })();
 
-  window.addEventListener("resize", function () { resize(); sizePanelScope(); });
+  window.addEventListener("resize", function () { resize(); sizePanelScope(); updateDock(); });
+  setTimeout(updateDock, 600);
   resize();
   // warm the simulation before revealing
   for (var w = 0; w < 220; w++) tick();
@@ -768,5 +794,5 @@
   setTimeout(function () { document.getElementById("loading").classList.add("done"); }, Math.max(300, 900 - (performance.now() - loadStart)));
 
   // expose for quick console poking / tests
-  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, version: "V07" };
+  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, version: "V10" };
 })();

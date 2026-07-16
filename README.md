@@ -13,6 +13,7 @@ Built as a fun, open toy in the visual language of **Alpha Omega Collective** �
 - **Graph view** — every genre is a node, coloured by family; links show parent→subgenre, "fuses into", and DJ "mixes well with".
 - **Oscilloscope + spectrum bars** — a live waveform whose tempo and amplitude follow the genre you're hovering (frequency ∝ BPM, height ∝ energy). *Synthesized from the data — there is no audio playback.*
 - **DNA structure strand** — each genre's arrangement (Intro → Build → Drop → Breakdown → Outro) as a helix of bar-counts and section "feel".
+- **Interactive audio** — opt-in "Enable Sound" plays a short procedural loop that reflects each genre's BPM, energy, patterns and mood (Tone.js, no samples); the graph pulses to the beat. Fully optional.
 - **Channels** — six Collective colour channels (Plasma, Ion, Flux, Solar, Nova, Mint) recolour the whole page live.
 - **Guides** — five DJ/producer how-to guides (harmonic mixing, set building, FX & loops, live playbook, sources) built in.
 

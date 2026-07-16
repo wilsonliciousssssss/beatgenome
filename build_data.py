@@ -77,6 +77,19 @@ def main():
         hue = round(i * 360 / n)
         fam_colour[fam] = f"hsl({hue}, 85%, 62%)"
 
+    # --- inherit top tracks: subgenres with no songs borrow their parent genre's ---
+    def _n(x): return re.sub(r"[^a-z0-9]", "", (x or "").lower())
+    main_top = {}
+    for r in rows:
+        if r.get("Level") == "Genre" and (r.get("Top Track 1") or "").strip():
+            main_top[_n(r.get("Parent Genre"))] = [r.get("Top Track %d" % i, "") for i in range(1, 6)]
+    for r in rows:
+        if not (r.get("Top Track 1") or "").strip():
+            src = main_top.get(_n(r.get("Parent Genre")))
+            if src:
+                for i in range(1, 6):
+                    r["Top Track %d" % i] = src[i - 1]
+
     # --- nodes ---
     nodes = []
     for r in rows:
