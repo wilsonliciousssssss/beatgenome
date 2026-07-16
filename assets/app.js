@@ -32,12 +32,12 @@
       for (var k = 0; k < olds.length; k++) { if (olds[k].parentNode) olds[k].parentNode.removeChild(olds[k]); }
       var link = document.createElement("link");
       link.rel = "icon"; link.type = "image/png"; link.setAttribute("sizes", "48x48");
-      link.href = "assets/icons/favicon-" + col + "-48.png?v=35";
+      link.href = "assets/icons/favicon-" + col + "-48.png?v=47";
       document.head.appendChild(link);
     } catch (e) {}
     try {
       var badge = document.querySelector(".badge");
-      if (badge) badge.style.backgroundImage = 'url("assets/icons/product-' + col + '-216.png?v=35")';
+      if (badge) badge.style.backgroundImage = 'url("assets/icons/product-' + col + '-216.png?v=47")';
     } catch (e) {}
   }
   function applyChannel(i) {
@@ -49,6 +49,7 @@
     Array.prototype.forEach.call(chWrap.children, function (b, j) {
       b.setAttribute("aria-pressed", j === i ? "true" : "false");
     });
+    if (window.__syncMenuChannels) window.__syncMenuChannels();
   }
 
   // ---- element refs ----
@@ -350,6 +351,7 @@
 
   // ================= V20: DNA timeline view + bpm/bar glitch =================
   var viewMode = (store("edm_view") === "dna") ? "dna" : "graph";
+  var trans = null;
   var dnaPending = null;
   var DNA = { width: 2600, minY: 1970, maxY: 2025, genres: [] };
   var DNA_R = 118;
@@ -393,6 +395,42 @@
     DNA.subs = subs;
   }
   function fitDNA() { cam.x = 0; cam.y = 0; var sw = (W * 0.92) / DNA.width, sh = (H * 0.88) / (2 * (DNA_R + 190)); cam.scale = Math.max(0.24, Math.min(1.1, Math.min(sw, sh))); }
+  function startViewTransition(toMode) {
+    var from = { x: cam.x, y: cam.y, scale: cam.scale }, to, toDNA = (toMode === "dna");
+    if (toDNA) { var sw = (W * 0.92) / DNA.width, sh = (H * 0.88) / (2 * (DNA_R + 190)); to = { x: 0, y: 0, scale: Math.max(0.24, Math.min(1.1, Math.min(sw, sh))) }; }
+    else { to = { x: 0, y: 0, scale: 0.9 }; }
+    for (var i = 0; i < nodes.length; i++) { var n = nodes[i]; if (toDNA) { n._mx0 = n.x; n._my0 = n.y; } else { n._mx0 = (n._dx != null ? n._dx : n.x); n._my0 = (n._dy != null ? n._dy : n.y); } }
+    trans = { t0: (performance.now() - t0) / 1000, dur: reduceMotion ? 0.5 : 1.1, from: from, to: to, toMode: toMode, toDNA: toDNA };
+  }
+  function drawMorph(e, toDNA) {
+    gx.clearRect(0, 0, W, H);
+    gx.save();
+    gx.translate(W / 2, H / 2); gx.scale(cam.scale, cam.scale); gx.translate(-cam.x, -cam.y);
+    var t = (performance.now() - t0) / 1000, cbpm = focusParams().bpm || 124, turn = t * (cbpm / 120) * 0.85, R = DNA_R;
+    var pres = toDNA ? e : (1 - e), gj = reduceMotion ? 0 : (1 - pres) * 22;
+    if (pres > 0.02) {
+      var x0 = mapX(DNA.minY) - 30, x1 = mapX(DNA.maxY) + 30, strand, xx, ph, yy;
+      for (strand = 0; strand < 2; strand++) {
+        gx.beginPath();
+        for (xx = x0; xx <= x1; xx += 9) { ph = (xx / 210) + turn + strand * Math.PI; yy = Math.sin(ph) * R + Math.sin(xx * 3.3 + t * 40 + strand * 2) * gj; if (xx === x0) gx.moveTo(xx, yy); else gx.lineTo(xx, yy); }
+        gx.globalAlpha = pres; gx.strokeStyle = "rgba(198,240,0,0.5)"; gx.lineWidth = (9.6 / cam.scale) * (0.35 + 0.65 * pres); gx.stroke();
+      }
+      gx.globalAlpha = pres * 0.6; gx.strokeStyle = "rgba(150,226,255,0.8)"; gx.lineWidth = 1.2 / cam.scale;
+      for (xx = x0; xx <= x1; xx += 40) { var pr = (xx / 210) + turn, ya = Math.sin(pr) * R, yb = Math.sin(pr + Math.PI) * R, jj = Math.sin(xx * 3.3 + t * 40) * gj; gx.beginPath(); gx.moveTo(xx, ya + jj); gx.lineTo(xx, yb + jj); gx.stroke(); }
+      gx.globalAlpha = 1;
+    }
+    for (var i = 0; i < nodes.length; i++) {
+      var n = nodes[i], tx, ty;
+      if (toDNA) { if (n.level === "Genre") { var ph2 = (n._hx / 210) + turn + n._strand * Math.PI; tx = n._hx; ty = Math.sin(ph2) * R; } else { tx = n._fx; ty = n._fyBase; } }
+      else { tx = n.x; ty = n.y; }
+      var x = n._mx0 + (tx - n._mx0) * e, y = n._my0 + (ty - n._my0) * e;
+      var col = colourOf(n), isHub = n.level === "Genre", r = radius(n) * (isHub ? 1.25 : 1.1), sh = glyphFor(n);
+      if (isHub) { var off = Math.max(1.1, r * 0.26); gx.fillStyle = "#00DCFF"; gx.strokeStyle = "#00DCFF"; drawGlyph(gx, sh, x - off, y, r); gx.fillStyle = "#FF288F"; gx.strokeStyle = "#FF288F"; drawGlyph(gx, sh, x + off, y, r); }
+      gx.fillStyle = col; gx.strokeStyle = col; gx.shadowColor = col; gx.shadowBlur = 8; drawGlyph(gx, sh, x, y, r); gx.shadowBlur = 0;
+      if (isHub) { var fr = r + Math.max(2.2, r * 0.7); gx.lineWidth = Math.max(1.5, r * 0.28); gx.strokeStyle = col; gx.strokeRect(x - fr, y - fr, fr * 2, fr * 2); }
+    }
+    gx.restore();
+  }
   function plotGlyph(n, x, y, r, alpha, isHub, hot) {
     var col = colourOf(n), sh = glyphFor(n);
     gx.globalAlpha = alpha;
@@ -518,7 +556,14 @@
   // ---- main loop ----
   function frame() {
     updateGlitch();
-    if (viewMode === "dna") { drawDNA(); } else { tick(); draw(); }
+    if (trans) {
+      var _tt = ((performance.now() - t0) / 1000 - trans.t0) / trans.dur; if (_tt > 1) _tt = 1;
+      var _e = _tt < 0.5 ? 4 * _tt * _tt * _tt : 1 - Math.pow(-2 * _tt + 2, 3) / 2;
+      cam.x = trans.from.x + (trans.to.x - trans.from.x) * _e; cam.y = trans.from.y + (trans.to.y - trans.from.y) * _e; cam.scale = trans.from.scale + (trans.to.scale - trans.from.scale) * _e;
+      drawMorph(_e, trans.toDNA);
+      document.documentElement.style.setProperty("--glitch", (Math.sin(_tt * Math.PI) * 0.5).toFixed(3));
+      if (_tt >= 1) { var _wasG = trans.toMode === "graph"; viewMode = trans.toMode; hover = null; trans = null; if (_wasG) reheat(0.6); }
+    } else if (viewMode === "dna") { drawDNA(); } else { tick(); draw(); }
     if (window.BeatGenomeAudio && window.BeatGenomeAudio.getReactiveState) { var _rs = window.BeatGenomeAudio.getReactiveState(); _rs.kick *= 0.86; _rs.snare *= 0.82; _rs.hat *= 0.75; _rs.bass *= 0.9; _rs.chord *= 0.93; _rs.master *= 0.9; }
     drawScope(sx, W, 40, focusParams(), false);
     if (pScopeOn && panel.classList.contains("open")) {
@@ -539,14 +584,40 @@
     return best;
   }
   var dragging = false, dragNode = null, moved = false, last = null;
+  // V46: multi-touch pinch-zoom / two-finger pan
+  var pointers = {}, pinch = null;
+  function pinchDist() { var k = Object.keys(pointers), a = pointers[k[0]], b = pointers[k[1]]; return Math.sqrt((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y)); }
+  function pinchMid() { var k = Object.keys(pointers), a = pointers[k[0]], b = pointers[k[1]]; return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; }
   graph.addEventListener("pointerdown", function (e) {
+    if (trans) return;
     graph.setPointerCapture(e.pointerId);
+    pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
     last = { x: e.clientX, y: e.clientY }; moved = false;
+    if (Object.keys(pointers).length === 2) {
+      // second finger -> enter pinch; cancel any single-finger drag/node-grab
+      if (dragNode) { dragNode.fixed = false; dragNode = null; }
+      dragging = false; dnaPending = null; graph.classList.remove("grabbing");
+      pinch = { d: pinchDist(), scale: cam.scale, pmid: pinchMid() };
+      return;
+    }
     if (viewMode === "dna") { dnaPending = nodeAtDNA(e.clientX, e.clientY); dragging = true; graph.classList.add("grabbing"); return; }
     var n = nodeAt(e.clientX, e.clientY);
     if (n) { dragNode = n; n.fixed = true; } else { dragging = true; graph.classList.add("grabbing"); }
   });
   graph.addEventListener("pointermove", function (e) {
+    if (pointers[e.pointerId]) pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
+    if (pinch && Object.keys(pointers).length >= 2) {
+      var mid = pinchMid();
+      // two-finger pan by midpoint movement
+      cam.x -= (mid.x - pinch.pmid.x) / cam.scale; cam.y -= (mid.y - pinch.pmid.y) / cam.scale;
+      pinch.pmid = mid;
+      // zoom anchored under the midpoint
+      var w0 = toWorld(mid.x, mid.y), nd = pinchDist();
+      if (nd > 0 && pinch.d > 0) cam.scale = Math.max(0.25, Math.min(4.5, pinch.scale * (nd / pinch.d)));
+      var w1 = toWorld(mid.x, mid.y);
+      cam.x += w0.x - w1.x; cam.y += w0.y - w1.y;
+      moved = true; return;
+    }
     if (viewMode === "dna") {
       if (dragging) { cam.x -= (e.clientX - last.x) / cam.scale; cam.y -= (e.clientY - last.y) / cam.scale; last = { x: e.clientX, y: e.clientY }; moved = true; dnaPending = null; }
       else { var hd = nodeAtDNA(e.clientX, e.clientY); if (hd !== hover) { hover = hd; graph.style.cursor = hd ? "pointer" : "grab"; } }
@@ -564,6 +635,14 @@
     if (h !== hover) { hover = h; graph.style.cursor = h ? "pointer" : "grab"; }
   });
   function endPointer(e) {
+    if (e && e.pointerId != null) delete pointers[e.pointerId];
+    if (pinch) {
+      // still pinching until fewer than two fingers remain; a lifted finger ends the gesture cleanly
+      if (Object.keys(pointers).length < 2) { pinch = null; moved = true; }
+      var rk = Object.keys(pointers)[0];
+      if (rk) last = { x: pointers[rk].x, y: pointers[rk].y };
+      dragging = false; dragNode = null; graph.classList.remove("grabbing"); return;
+    }
     if (viewMode === "dna") { if (dnaPending && !moved) select(dnaPending); dnaPending = null; dragging = false; graph.classList.remove("grabbing"); return; }
     if (dragNode && !moved) select(dragNode);
     else if (dragging && !moved) { /* click empty = deselect handled below */ }
@@ -574,6 +653,7 @@
   graph.addEventListener("pointercancel", endPointer);
   graph.addEventListener("wheel", function (e) {
     e.preventDefault();
+    if (trans) return;
     var w0 = toWorld(e.clientX, e.clientY);
     var k = Math.exp(-e.deltaY * 0.0014);
     cam.scale = Math.max(0.25, Math.min(4.5, cam.scale * k));
@@ -711,8 +791,11 @@
 
   // ---- V32: Producer drum grid + DJ compatible-genre finder ----
   function camelotNbr(code) { var m = (code || "").match(/(\d+)\s*([ABab])/); if (!m) return []; var n = parseInt(m[1], 10), L = m[2].toUpperCase(); return [(((n + 10) % 12) + 1) + L, ((n % 12) + 1) + L, n + (L === "A" ? "B" : "A")]; }
+  var ROM_MIN = ["i", "ii", "III", "iv", "v", "VI", "VII"], ROM_MAJ = ["I", "ii", "iii", "IV", "V", "vi", "vii"];
+  function profRomans(p) { var prog = (p.chordProg && p.chordProg.length) ? p.chordProg : [0, 5, 3, 6]; var m = (p.scale === "major") ? ROM_MAJ : ROM_MIN; return prog.map(function (d) { return m[(((d % 7) + 7) % 7)]; }); }
+  function chordPlayerHTML(p) { var r = profRomans(p); if (!r.length) return ""; return '<div class="cplay" id="cplay"><button class="cplaybtn">\u25B6 sequence</button><div class="cpills">' + r.map(function (x, i) { return '<button class="cpill" data-i="' + i + '">' + x + '</button>'; }).join("") + '</div></div>'; }
   function drumGridHTML(p) {
-    var rows = [["Kick", p.kickPattern], ["Snare", p.clapPattern], ["Hats", p.closedHatPattern], ["Open", p.openHatPattern]];
+    var rows = [["Kick", p.kickPattern], ["Snare", p.clapPattern], ["Hats", p.closedHatPattern], ["Open", p.openHatPattern], ["Perc", p.percPattern], ["Bass", p.bassPattern]];
     var h = '<div class="drum" id="drumGrid">';
     rows.forEach(function (r) {
       h += '<div class="drow"><span class="dlab">' + r[0] + '</span><div class="dcells">';
@@ -729,15 +812,16 @@
     var cells = grid.querySelectorAll("i");
     for (var i = 0; i < cells.length; i++) cells[i].classList.toggle("play", parseInt(cells[i].getAttribute("data-step"), 10) === step);
   }
+  function keyRel(x, y) { if (!x || !y) return "energy blend"; if (x === y) return "same key"; var px = x.match(/(\d+)([ABab])/), py = y.match(/(\d+)([ABab])/); if (!px || !py) return "energy blend"; var nx = +px[1], lx = px[2].toUpperCase(), ny = +py[1], ly = py[2].toUpperCase(); if (nx === ny && lx !== ly) return "relative"; if (lx === ly && (Math.abs(nx - ny) === 1 || Math.abs(nx - ny) === 11)) return "adjacent"; return "energy blend"; }
   function compatibleGenres(node) {
     if (!node) return [];
-    var bpm = node.bpm || 124, cam = node.camelot || "", ok = {}; ok[cam] = 1;
+    var bpm = node.bpm || 124, cam = node.camelot || "", en = node.energy || 5, ok = {}; ok[cam] = 1;
     camelotNbr(cam).forEach(function (k) { ok[k] = 1; });
     var res = [];
     for (var i = 0; i < nodes.length; i++) {
       var m = nodes[i]; if (m === node || m.level !== "Genre") continue;
       var db = Math.abs((m.bpm || 124) - bpm), keyOk = !!ok[m.camelot];
-      if (db <= Math.max(6, bpm * 0.06) || keyOk) res.push({ n: m, db: db, keyOk: keyOk, score: (keyOk ? 3 : 0) + Math.max(0, 4 - db / 2) });
+      if (db <= Math.max(6, bpm * 0.06) || keyOk) res.push({ n: m, db: db, dbs: (m.bpm || 124) - bpm, keyOk: keyOk, rel: keyRel(cam, m.camelot), de: (m.energy || 5) - en, score: (keyOk ? 3 : 0) + Math.max(0, 4 - db / 2) });
     }
     res.sort(function (a, b) { return b.score - a.score; });
     return res.slice(0, 6);
@@ -745,10 +829,13 @@
   function compHTML(list) {
     return '<div class="comp">' + list.map(function (c) {
       var diff = (c.keyOk && c.db <= 3) ? "easy" : (c.keyOk || c.db <= 5) ? "medium" : "hard";
-      return '<button class="crow" data-id="' + c.n.id + '" title="' + esc(c.n.name + " - " + (c.n.bpm || "?") + " BPM - " + (c.n.camelot || "?")) + '">' +
-        '<span class="cdot" style="background:' + colourOf(c.n) + '"></span><span class="cname">' + esc(c.n.name) + '</span>' +
+      var eq = diff === "easy" ? "swap bass on the phrase" : diff === "medium" ? "long blend, EQ out lows" : "ride FX/echo, mind the key";
+      var des = c.de > 0 ? "+" + c.de : "" + c.de, bs = (c.dbs > 0 ? "+" : "") + c.dbs;
+      return '<button class="crow" data-id="' + c.n.id + '">' +
+        '<div class="crow1"><span class="cdot" style="background:' + colourOf(c.n) + '"></span><span class="cname">' + esc(c.n.name) + '</span>' +
         '<span class="cbpm">' + (c.n.bpm || "-") + '</span><span class="ckey">' + esc(c.n.camelot || "-") + '</span>' +
-        '<span class="cdiff ' + diff + '">' + diff + '</span></button>';
+        '<span class="cdiff ' + diff + '">' + diff + '</span></div>' +
+        '<div class="cwhy">' + c.rel + ' - ' + bs + ' BPM - energy ' + des + ' - EQ: ' + eq + ' - phrase 32</div></button>';
     }).join("") + '</div>';
   }
   function openPanel(n) {
@@ -770,7 +857,7 @@
     for (var i = 1; i <= 10; i++) eb += '<i class="' + (i <= (n.energy || 0) ? "on" : "") + '"></i>';
     eb += "</div>";
     // sections
-    var body = libTagRow(n.id) + eb;
+    var body = eb;
     var arrBar = buildArrangeBar(d), dna = buildDNA(d);
     body += '<div class="sec"><h3>Arrangement</h3>' + arrBar +
       (dna || (arrBar ? "" : '<div class="field"><div class="v">' + esc(d["Track Structure"] || "—") + "</div></div>")) + "</div>";
@@ -792,6 +879,7 @@
 
     var prof2 = null; try { prof2 = window.BeatGenomeProfiles ? window.BeatGenomeProfiles.buildAudioProfile(n.d) : null; } catch (e) {}
     if (prof2 && prof2.kickPattern) body += '<div class="sec"><h3>Drum Pattern (16-step)</h3>' + drumGridHTML(prof2) + '</div>';
+    if (prof2 && prof2.chordProg) body += '<div class="sec"><h3>Chord Player</h3>' + chordPlayerHTML(prof2) + '</div>';
     var comp = compatibleGenres(n);
     if (comp.length) body += '<div class="sec"><h3>Compatible Mixes (DJ)</h3>' + compHTML(comp) + '</div>';
     document.getElementById("pBody").innerHTML = body;
@@ -802,9 +890,13 @@
     Array.prototype.forEach.call(document.querySelectorAll("#pBody .crow"), function (b) {
       b.addEventListener("click", function () { var t = byId[b.getAttribute("data-id")]; if (t) select(t); });
     });
-    Array.prototype.forEach.call(document.querySelectorAll("#pBody .libtag"), function (b) {
-      b.addEventListener("click", function () { toggleTag(n.id, b.getAttribute("data-tag")); b.classList.toggle("on"); });
-    });
+    (function () {
+      var cplay = document.getElementById("cplay"); if (!cplay) return;
+      var A = window.BeatGenomeAudio;
+      Array.prototype.forEach.call(cplay.querySelectorAll(".cpill"), function (b) { b.addEventListener("click", function () { if (A && A.strumChord) A.strumChord(parseInt(b.getAttribute("data-i"), 10)); }); });
+      var seq = cplay.querySelector(".cplaybtn"), pills = cplay.querySelectorAll(".cpill"), iv = Math.round(60000 / (n.bpm || 124));
+      if (seq) seq.addEventListener("click", function () { for (var i = 0; i < pills.length; i++) { (function (k) { setTimeout(function () { if (A && A.strumChord) A.strumChord(k); pills[k].classList.add("seqon"); setTimeout(function () { pills[k].classList.remove("seqon"); }, iv * 0.8); }, k * iv); })(i); } });
+    })();
     renderTracks(n);
     panel.classList.add("open"); panel.setAttribute("aria-hidden", "false"); document.body.classList.add("panel-open");
     pScopeOn = true; sizePanelScope();
@@ -1053,6 +1145,28 @@
   var savedCh = parseInt(store("edm_channel"), 10);
   applyChannel(isNaN(savedCh) ? 0 : savedCh);
 
+  // ---- V46: mirror colour channels into the mobile menu (header swatches are hidden on phones) ----
+  (function () {
+    var ta = document.getElementById("topActions");
+    if (!ta || !chWrap) return;
+    var strip = document.createElement("div");
+    strip.className = "menu-channels"; strip.setAttribute("role", "group"); strip.setAttribute("aria-label", "Colour channel");
+    CHANNELS.forEach(function (ch, i) {
+      var c = document.createElement("button");
+      c.type = "button";
+      c.style.background = "linear-gradient(135deg," + ch.c1 + "," + ch.c2 + ")";
+      c.title = ch.name; c.setAttribute("aria-label", "Channel " + ch.name);
+      c.addEventListener("click", function (ev) { ev.stopPropagation(); applyChannel(i); });
+      strip.appendChild(c);
+    });
+    ta.insertBefore(strip, ta.firstChild);
+    window.__syncMenuChannels = function () {
+      var cur = parseInt(store("edm_channel"), 10) || 0;
+      Array.prototype.forEach.call(strip.children, function (c, j) { c.setAttribute("aria-pressed", j === cur ? "true" : "false"); });
+    };
+    window.__syncMenuChannels();
+  })();
+
   // ---- colour-mode toggle (family / Camelot key) ----
   var colourBtn = document.getElementById("colourBtn");
   if (colourBtn) {
@@ -1075,9 +1189,10 @@
   if (viewBtn) {
     updViewBtn();
     viewBtn.addEventListener("click", function () {
-      viewMode = viewMode === "dna" ? "graph" : "dna";
-      store("edm_view", viewMode); updViewBtn(); hover = null;
-      if (viewMode === "dna") { fitDNA(); } else { cam.scale = 0.9; cam.x = 0; cam.y = 0; reheat(0.6); }
+      var toMode = viewMode === "dna" ? "graph" : "dna";
+      store("edm_view", toMode);
+      viewBtn.textContent = toMode === "dna" ? "⋉ GRAPH" : "◇ DNA"; viewBtn.setAttribute("aria-pressed", toMode === "dna" ? "true" : "false");
+      startViewTransition(toMode);
     });
   }
 
@@ -1094,6 +1209,15 @@
   document.getElementById("shuffleBtn").addEventListener("click", function () {
     select(nodes[Math.floor(Math.random() * nodes.length)]);
   });
+  // ---- V40: mobile top-bar menu ----
+  (function () {
+    var menuBtn = document.getElementById("menuBtn"), topbarEl = document.querySelector(".topbar"), topActions = document.getElementById("topActions");
+    if (!menuBtn || !topbarEl) return;
+    function closeM() { topbarEl.classList.remove("menu-open"); menuBtn.setAttribute("aria-expanded", "false"); }
+    menuBtn.addEventListener("click", function (e) { e.stopPropagation(); var open = topbarEl.classList.toggle("menu-open"); menuBtn.setAttribute("aria-expanded", open ? "true" : "false"); });
+    if (topActions) topActions.addEventListener("click", function (e) { if (e.target.closest && e.target.closest("button")) closeM(); });
+    document.addEventListener("click", function (e) { if (topbarEl.classList.contains("menu-open") && !topbarEl.contains(e.target)) closeM(); });
+  })();
 
   // ---- V33: Mood Explorer (filter genres by feeling) ----
   var MOODS = [
@@ -1122,10 +1246,33 @@
     moodBtn.addEventListener("click", function () { moodBar.hidden = !moodBar.hidden; moodBtn.setAttribute("aria-pressed", moodBar.hidden ? "false" : "true"); });
   }
   // ---- V34: Compare Mode (two genres side by side + A/B playback) ----
+  function themedSelect(items, selIndex, onChange, ariaLabel) {
+    var wrap = document.createElement("div"); wrap.className = "tsel"; if (ariaLabel) wrap.setAttribute("aria-label", ariaLabel);
+    var cur = selIndex || 0;
+    var btn = document.createElement("button"); btn.type = "button"; btn.className = "tsel-btn";
+    var lbl = document.createElement("span"), ar = document.createElement("span"); ar.className = "tsel-ar"; ar.textContent = "▾";
+    btn.appendChild(lbl); btn.appendChild(ar);
+    var list = document.createElement("div"); list.className = "tsel-list"; list.hidden = true;
+    function render() { lbl.textContent = items[cur] ? items[cur].name : ""; Array.prototype.forEach.call(list.children, function (o, i) { o.classList.toggle("sel", i === cur); }); }
+    items.forEach(function (it, i) { var op = document.createElement("button"); op.type = "button"; op.className = "tsel-opt"; op.textContent = it.name; op.addEventListener("click", function (e) { e.stopPropagation(); cur = i; render(); list.hidden = true; wrap.classList.remove("open"); if (onChange) onChange(items[cur].id, cur); }); list.appendChild(op); });
+    btn.addEventListener("click", function (e) { e.stopPropagation(); list.hidden = !list.hidden; wrap.classList.toggle("open", !list.hidden); if (!list.hidden) { var s = list.querySelector(".sel"); if (s) list.scrollTop = Math.max(0, s.offsetTop - 60); } });
+    document.addEventListener("click", function (e) { if (!wrap.contains(e.target)) { list.hidden = true; wrap.classList.remove("open"); } });
+    wrap.appendChild(btn); wrap.appendChild(list); render();
+    return { el: wrap, get value() { return items[cur] ? items[cur].id : null; } };
+  }
   var cmpEl = null, cmpA = null, cmpB = null;
   function cmpVal(node, field) { return (node && node.d && node.d[field]) ? node.d[field] : "-"; }
   function renderCompare() {
     if (!cmpEl) return;
+    var _cmpChart = "";
+    try {
+      var _pa = window.BeatGenomeProfiles.buildAudioProfile(cmpA.d), _pb = window.BeatGenomeProfiles.buildAudioProfile(cmpB.d);
+      var _tr = [["Energy", "energy"], ["Groove", "groove"], ["Darkness", "darkness"], ["Melody", "melody"], ["Swing", "swing"]];
+      _cmpChart = '<div class="cmpchart">' + _tr.map(function (x) {
+        var va = Math.round((_pa[x[1]] || 0) * 100), vb = Math.round((_pb[x[1]] || 0) * 100);
+        return '<div class="cmptrait"><span class="ctl">' + x[0] + '</span><div class="cbars"><div class="cba" style="width:' + va + '%"></div><div class="cbb" style="width:' + vb + '%"></div></div></div>';
+      }).join("") + '</div>';
+    } catch (e) { _cmpChart = ""; }
     var rows = [
       ["Family", function (n) { return n ? n.family : "-"; }],
       ["BPM", function (n) { return n ? (cmpVal(n, "Typical BPM") !== "-" ? cmpVal(n, "Typical BPM") : n.bpm) : "-"; }],
@@ -1141,7 +1288,7 @@
     ];
     var h = '<div class="cmpgrid"><div class="cmpr cmphdr"><span class="cl"></span><span class="ca">' + esc(cmpA ? cmpA.name : "A") + '</span><span class="cb">' + esc(cmpB ? cmpB.name : "B") + '</span></div>';
     rows.forEach(function (r) { h += '<div class="cmpr"><span class="cl">' + r[0] + '</span><span class="ca">' + esc(String(r[1](cmpA) || "-")) + '</span><span class="cb">' + esc(String(r[1](cmpB) || "-")) + '</span></div>'; });
-    cmpEl.querySelector("#cmpBody").innerHTML = h + '</div>';
+    cmpEl.querySelector("#cmpBody").innerHTML = _cmpChart + h + '</div>';
   }
   function ensureCompare() {
     if (cmpEl) return;
@@ -1149,15 +1296,16 @@
     cmpEl.innerHTML = '<div class="cmpsheet"><div class="cmphead"><span>Compare genres</span>' +
       '<div class="cmpplay"><button id="cmpPlayA">▶ A</button><button id="cmpPlayB">▶ B</button><button id="cmpStop">■</button></div>' +
       '<button class="x" id="cmpClose">✕ close</button></div>' +
-      '<div class="cmpsel"><select id="cmpSelA" aria-label="Genre A"></select><select id="cmpSelB" aria-label="Genre B"></select></div>' +
+      '<div class="cmpsel" id="cmpSel"></div>' +
       '<div class="cmpbody" id="cmpBody"></div></div>';
     document.body.appendChild(cmpEl);
     var genres = nodes.filter(function (n) { return n.level === "Genre"; }).sort(function (a, b) { return a.name.localeCompare(b.name); });
-    var optHTML = genres.map(function (g) { return '<option value="' + g.id + '">' + esc(g.name) + '</option>'; }).join("");
-    var selA = cmpEl.querySelector("#cmpSelA"), selB = cmpEl.querySelector("#cmpSelB");
-    selA.innerHTML = optHTML; selB.innerHTML = optHTML; selA.selectedIndex = 0; selB.selectedIndex = Math.min(1, genres.length - 1);
-    function upd() { cmpA = byId[selA.value]; cmpB = byId[selB.value]; renderCompare(); }
-    selA.addEventListener("change", upd); selB.addEventListener("change", upd);
+    var items = genres.map(function (g) { return { id: g.id, name: g.name }; });
+    var _selWrap = cmpEl.querySelector("#cmpSel");
+    var tsA = themedSelect(items, 0, function (id) { cmpA = byId[id]; renderCompare(); }, "Genre A");
+    var tsB = themedSelect(items, Math.min(1, items.length - 1), function (id) { cmpB = byId[id]; renderCompare(); }, "Genre B");
+    _selWrap.appendChild(tsA.el); _selWrap.appendChild(tsB.el);
+    function upd() { cmpA = byId[tsA.value]; cmpB = byId[tsB.value]; renderCompare(); }
     cmpEl.querySelector("#cmpPlayA").addEventListener("click", function () { if (cmpA && window.BeatGenomeOnSelect) window.BeatGenomeOnSelect(cmpA); });
     cmpEl.querySelector("#cmpPlayB").addEventListener("click", function () { if (cmpB && window.BeatGenomeOnSelect) window.BeatGenomeOnSelect(cmpB); });
     cmpEl.querySelector("#cmpStop").addEventListener("click", function () { if (window.BeatGenomeAudio) window.BeatGenomeAudio.stop(); });
@@ -1167,40 +1315,68 @@
   }
   function openCompare() { ensureCompare(); cmpEl.classList.add("show"); }
   var compareBtn = document.getElementById("compareBtn"); if (compareBtn) compareBtn.addEventListener("click", openCompare);
-  // ---- V35: Personal Library (localStorage tags + recommendations) ----
-  var LIB_TAGS = [["fav", "★ Favourite"], ["learn", "Want to Learn"], ["dj", "I DJ"], ["produce", "I Produce"]];
-  function getLib() { try { return JSON.parse(store("edm_library") || "{}") || {}; } catch (e) { return {}; } }
-  function setLib(o) { try { store("edm_library", JSON.stringify(o)); } catch (e) {} }
-  function nodeTags(id) { var l = getLib(); return l[id] || []; }
-  function toggleTag(id, tag) { var l = getLib(), t = l[id] || []; var i = t.indexOf(tag); if (i >= 0) t.splice(i, 1); else t.push(tag); if (t.length) l[id] = t; else delete l[id]; setLib(l); }
-  function libTagRow(id) { var tags = nodeTags(id); return '<div class="libtags">' + LIB_TAGS.map(function (t) { return '<button class="libtag' + (tags.indexOf(t[0]) >= 0 ? " on" : "") + '" data-tag="' + t[0] + '">' + t[1] + '</button>'; }).join("") + '</div>'; }
-  var libEl = null;
-  function libChips(list) { if (!list.length) return '<span class="libempty">-</span>'; return list.map(function (nd) { return '<button class="libchip" data-id="' + nd.id + '"><span class="cdot" style="background:' + colourOf(nd) + '"></span>' + esc(nd.name) + '</button>'; }).join(""); }
-  function renderLibrary() {
-    if (!libEl) return;
-    var l = getLib(), groups = { fav: [], learn: [], dj: [], produce: [] };
-    Object.keys(l).forEach(function (id) { var nd = byId[id]; if (!nd) return; l[id].forEach(function (tag) { if (groups[tag]) groups[tag].push(nd); }); });
-    var seed = {}; Object.keys(l).forEach(function (id) { seed[id] = 1; });
-    var recMap = {};
-    groups.fav.concat(groups.dj).forEach(function (nd) { compatibleGenres(nd).forEach(function (c) { if (!seed[c.n.id]) recMap[c.n.id] = (recMap[c.n.id] || 0) + c.score; }); });
-    var recs = Object.keys(recMap).map(function (id) { return byId[id]; }).filter(Boolean).sort(function (x, y) { return recMap[y.id] - recMap[x.id]; }).slice(0, 8);
-    var h = "";
-    [["★ Favourites", groups.fav], ["Want to Learn", groups.learn], ["I DJ", groups.dj], ["I Produce", groups.produce], ["Recommended for you", recs]].forEach(function (g) {
-      h += '<div class="libsec"><h4>' + g[0] + '</h4><div class="libchips">' + libChips(g[1]) + '</div></div>';
-    });
-    libEl.querySelector("#libBody").innerHTML = h;
-    Array.prototype.forEach.call(libEl.querySelectorAll(".libchip"), function (b) { b.addEventListener("click", function () { var t = byId[b.getAttribute("data-id")]; if (t) { libEl.classList.remove("show"); select(t); } }); });
+  // ---- V45: About Me overlay (replaces the Personal Library) ----
+  var aboutEl = null;
+  function ensureAbout() {
+    if (aboutEl) return;
+    aboutEl = document.createElement("div"); aboutEl.className = "overlay about"; aboutEl.id = "aboutOverlay"; aboutEl.setAttribute("role", "dialog");
+    aboutEl.innerHTML = '<div class="aboutsheet"><div class="cmphead"><span>About Me</span><button class="x" id="aboutClose">✕ close</button></div>' +
+      '<div class="aboutbody">' +
+      '<div class="aboutpic"><div class="apic-frame"><img src="assets/about-me.jpg?v=47" alt="DJ7 - Wilsonlicioussss" onerror="this.parentNode.classList.add(\'empty\');this.remove()"></div><span class="aname">DJ7 · Wilsonlicioussss</span></div>' +
+      '<div class="aboutsec"><h4>★ Things I Love</h4><p>Thoughtful spaces, quiet details, electronic music, new technology and ideas that feel slightly ahead of their time.</p></div>' +
+      '<div class="aboutsec"><h4>Always Learning</h4><p>Everything begins with curiosity. I explore how design, data, people and culture connect.</p></div>' +
+      '<div class="aboutsec"><h4>I DJ</h4><p>A personal journey through electronic music — from high-energy moments to deeper, melodic and atmospheric sounds.</p></div>' +
+      '<div class="aboutsec"><h4>I Produce</h4><p>Exploring rhythm, emotion and the technology behind sound, while creating tools that make electronic music easier to understand.</p></div>' +
+      '<div class="aboutsec"><h4>Currently Exploring</h4><p>The spaces I design, the tools I build, the music I listen to and the ideas currently occupying my mind.</p></div>' +
+      '</div></div>';
+    document.body.appendChild(aboutEl);
+    aboutEl.querySelector("#aboutClose").addEventListener("click", function () { aboutEl.classList.remove("show"); });
+    aboutEl.addEventListener("click", function (e) { if (e.target === aboutEl) aboutEl.classList.remove("show"); });
   }
-  function ensureLibrary() {
-    if (libEl) return;
-    libEl = document.createElement("div"); libEl.className = "overlay lib"; libEl.id = "libraryOverlay"; libEl.setAttribute("role", "dialog");
-    libEl.innerHTML = '<div class="libsheet"><div class="cmphead"><span>Your Library</span><button class="x" id="libClose">✕ close</button></div><div class="libbody" id="libBody"></div></div>';
-    document.body.appendChild(libEl);
-    libEl.querySelector("#libClose").addEventListener("click", function () { libEl.classList.remove("show"); });
-    libEl.addEventListener("click", function (e) { if (e.target === libEl) libEl.classList.remove("show"); });
+  function openAbout() { ensureAbout(); aboutEl.classList.add("show"); }
+  var aboutBtn = document.getElementById("aboutBtn"); if (aboutBtn) aboutBtn.addEventListener("click", openAbout);
+  // ---- V39: Genre Morph (blend two genres via interpolate; switches on the bar) ----
+  var morphEl = null, morphA = null, morphB = null, morphT = 0.5, morphTimer = null;
+  function applyMorph() {
+    if (!morphEl || !morphA || !morphB || !window.BeatGenomeProfiles) return;
+    var pa, pb, pm;
+    try { pa = window.BeatGenomeProfiles.buildAudioProfile(morphA.d); pb = window.BeatGenomeProfiles.buildAudioProfile(morphB.d); pm = window.BeatGenomeProfiles.interpolate(pa, pb, morphT); } catch (e) { return; }
+    var dom = morphT < 0.5 ? morphA.name : morphB.name;
+    morphEl.querySelector("#mrphRead").innerHTML =
+      '<div class="mrow"><span>Blend</span><b>' + Math.round((1 - morphT) * 100) + '% ' + esc(morphA.name) + ' / ' + Math.round(morphT * 100) + '% ' + esc(morphB.name) + '</b></div>' +
+      '<div class="mrow"><span>BPM</span><b>' + Math.round(pm.bpm) + '</b></div>' +
+      '<div class="mrow"><span>Patterns + key</span><b>' + esc(dom) + '</b></div>' +
+      '<div class="mrow"><span>Energy</span><b>' + Math.round((pm.energy || 0) * 100) + '%</b></div>';
+    if (morphTimer) clearTimeout(morphTimer);
+    morphTimer = setTimeout(function () {
+      var A = window.BeatGenomeAudio; if (!A) return;
+      if (A.enabled) A.playGenre(pm); else A.initialize().then(function (ok) { if (ok) A.playGenre(pm); });
+    }, 140);
   }
-  function openLibrary() { ensureLibrary(); renderLibrary(); libEl.classList.add("show"); }
-  var libraryBtn = document.getElementById("libraryBtn"); if (libraryBtn) libraryBtn.addEventListener("click", openLibrary);
+  function ensureMorph() {
+    if (morphEl) return;
+    morphEl = document.createElement("div"); morphEl.className = "overlay mrph"; morphEl.id = "morphOverlay"; morphEl.setAttribute("role", "dialog");
+    morphEl.innerHTML = '<div class="mrphsheet"><div class="cmphead"><span>Genre Morph</span><div class="cmpplay"><button id="mrphStop">■ stop</button></div><button class="x" id="mrphClose">✕ close</button></div>' +
+      '<div class="cmpsel" id="mrphSel"></div>' +
+      '<div class="mrphslide"><span id="mrphLa">A</span><input type="range" id="mrphRange" min="0" max="100" value="50" aria-label="Morph blend"><span id="mrphLb">B</span></div>' +
+      '<div class="mrphread" id="mrphRead"></div></div>';
+    document.body.appendChild(morphEl);
+    var genres = nodes.filter(function (n) { return n.level === "Genre"; }).sort(function (a, b) { return a.name.localeCompare(b.name); });
+    var items = genres.map(function (g) { return { id: g.id, name: g.name }; });
+    var _mSel = morphEl.querySelector("#mrphSel"), rg = morphEl.querySelector("#mrphRange");
+    function onAB() { morphEl.querySelector("#mrphLa").textContent = morphA ? morphA.name : "A"; morphEl.querySelector("#mrphLb").textContent = morphB ? morphB.name : "B"; applyMorph(); }
+    var tsA = themedSelect(items, 0, function (id) { morphA = byId[id]; onAB(); }, "Genre A");
+    var tsB = themedSelect(items, Math.min(1, items.length - 1), function (id) { morphB = byId[id]; onAB(); }, "Genre B");
+    _mSel.appendChild(tsA.el); _mSel.appendChild(tsB.el);
+    function setAB() { morphA = byId[tsA.value]; morphB = byId[tsB.value]; onAB(); }
+    rg.addEventListener("input", function () { morphT = (parseInt(rg.value, 10) || 0) / 100; applyMorph(); });
+    morphEl.querySelector("#mrphStop").addEventListener("click", function () { if (window.BeatGenomeAudio) window.BeatGenomeAudio.stop(); });
+    morphEl.querySelector("#mrphClose").addEventListener("click", function () { morphEl.classList.remove("show"); });
+    morphEl.addEventListener("click", function (e) { if (e.target === morphEl) morphEl.classList.remove("show"); });
+    setAB();
+  }
+  function openMorph() { ensureMorph(); morphEl.classList.add("show"); }
+  var morphBtn = document.getElementById("morphBtn"); if (morphBtn) morphBtn.addEventListener("click", openMorph);
   // ---- meta line ----
   document.getElementById("metaLine").textContent = "By [DJ7]-[AOC] //Wilsonlicioussss";
 
@@ -1226,5 +1402,5 @@
   setTimeout(function () { document.getElementById("loading").classList.add("done"); }, Math.max(300, 900 - (performance.now() - loadStart)));
 
   // expose for quick console poking / tests
-  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, version: "V35" };
+  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, version: "V47" };
 })();
