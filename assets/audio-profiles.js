@@ -182,7 +182,7 @@
   var ROMAN = { i:0, ii:1, iii:2, iv:3, v:4, vi:5, vii:6 };
   function parseProg(g) {
     var s = (g["Chord Progression"] || "").split("(")[0], toks = s.split(/[\s\-\u2013\u2014\/]+/), deg = [];
-    for (var i = 0; i < toks.length; i++) { var t = toks[i].toLowerCase().replace(/[^iv]/g, ""); if (t && ROMAN.hasOwnProperty(t)) deg.push(ROMAN[t]); }
+    for (var i = 0; i < toks.length; i++) { var m = toks[i].toLowerCase().match(/^[b#]?(iii|vii|ii|iv|vi|i|v)(?:maj7|maj|min|sus2|sus4|sus|dim|aug|add9|m|7|9|6|\u00B0|\+)?[0-9]?$/); if (m && ROMAN.hasOwnProperty(m[1])) deg.push(ROMAN[m[1]]); }
     return deg.length >= 2 ? deg.slice(0, 4) : [0, 5, 2, 6];
   }
   function bassStyle(g, dflt) {

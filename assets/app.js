@@ -32,12 +32,12 @@
       for (var k = 0; k < olds.length; k++) { if (olds[k].parentNode) olds[k].parentNode.removeChild(olds[k]); }
       var link = document.createElement("link");
       link.rel = "icon"; link.type = "image/png"; link.setAttribute("sizes", "48x48");
-      link.href = "assets/icons/favicon-" + col + "-48.png?v=19";
+      link.href = "assets/icons/favicon-" + col + "-48.png?v=29";
       document.head.appendChild(link);
     } catch (e) {}
     try {
       var badge = document.querySelector(".badge");
-      if (badge) badge.style.backgroundImage = 'url("assets/icons/product-' + col + '-216.png?v=19")';
+      if (badge) badge.style.backgroundImage = 'url("assets/icons/product-' + col + '-216.png?v=29")';
     } catch (e) {}
   }
   function applyChannel(i) {
@@ -348,10 +348,175 @@
     return w;
   }
 
+  // ================= V20: DNA timeline view + bpm/bar glitch =================
+  var viewMode = (store("edm_view") === "dna") ? "dna" : "graph";
+  var dnaPending = null;
+  var DNA = { width: 2600, minY: 1970, maxY: 2025, genres: [] };
+  var DNA_R = 118;
+  function parseEra(s) {
+    s = (s || "").toLowerCase();
+    var yrs = (s.match(/(?:19|20)\d\d/g) || []).map(Number);
+    var mod = /early/.test(s) ? 1 : /late/.test(s) ? 8 : 5;
+    if (yrs.length > 1) return Math.round((yrs[0] + yrs[yrs.length - 1]) / 2);
+    if (yrs.length === 1) return Math.floor(yrs[0] / 10) * 10 + mod;
+    return null;
+  }
+  function mapX(y) { var span = (DNA.maxY - DNA.minY) || 1; return (((y - DNA.minY) / span) - 0.5) * DNA.width; }
+  function seededF(i, salt) { var x = Math.sin((i + 1) * 12.9898 + salt * 78.233) * 43758.5453; return x - Math.floor(x); }
+  function buildTimeline() {
+    var gen = nodes.filter(function (n) { return n.level === "Genre"; });
+    gen.forEach(function (n) { n._year = parseEra(n.d.Era); });
+    var famYear = {};
+    gen.forEach(function (n) { if (n._year != null) famYear[n.family] = n._year; });
+    var allY = gen.map(function (n) { return n._year; }).filter(function (y) { return y != null; }).sort(function (p, q) { return p - q; });
+    var medY = allY.length ? allY[Math.floor(allY.length / 2)] : 2005;
+    gen.forEach(function (n) { if (n._year == null) n._year = medY; });
+    nodes.forEach(function (n) { if (n.level !== "Genre") { n._year = parseEra(n.d.Era) || famYear[n.family] || medY; } });
+    var ys = nodes.map(function (n) { return n._year; });
+    DNA.minY = Math.min(1970, Math.min.apply(null, ys));
+    DNA.maxY = Math.max(2025, Math.max.apply(null, ys));
+    gen.sort(function (p, q) { return (p._year - q._year) || p.name.localeCompare(q.name); });
+    var byYear = {};
+    gen.forEach(function (n) { (byYear[n._year] = byYear[n._year] || []).push(n); });
+    Object.keys(byYear).forEach(function (yy) {
+      var arr = byYear[yy];
+      arr.forEach(function (n, j) { n._hx = mapX(n._year) + (j - (arr.length - 1) / 2) * 30; n._strand = j % 2; });
+    });
+    gen.forEach(function (n) { n._subs = nodes.filter(function (m) { return m.level !== "Genre" && m.family === n.family; }); });
+    DNA.genres = gen;
+    var subs = nodes.filter(function (n) { return n.level !== "Genre"; });
+    subs.forEach(function (m, i) {
+      m._fx = mapX(m._year) + (seededF(i, 1) - 0.5) * 46;
+      var side = (i % 2) ? 1 : -1;
+      m._fyBase = side * (DNA_R + 44 + seededF(i, 2) * 132);
+    });
+    DNA.subs = subs;
+  }
+  function fitDNA() { cam.x = 0; cam.y = 0; var sw = (W * 0.92) / DNA.width, sh = (H * 0.88) / (2 * (DNA_R + 190)); cam.scale = Math.max(0.24, Math.min(1.1, Math.min(sw, sh))); }
+  function plotGlyph(n, x, y, r, alpha, isHub, hot) {
+    var col = colourOf(n), sh = glyphFor(n);
+    gx.globalAlpha = alpha;
+    if (isHub) {
+      var off = Math.max(1.1, r * 0.26);
+      gx.fillStyle = "#00DCFF"; gx.strokeStyle = "#00DCFF"; drawGlyph(gx, sh, x - off, y, r);
+      gx.fillStyle = "#FF288F"; gx.strokeStyle = "#FF288F"; drawGlyph(gx, sh, x + off, y, r);
+    }
+    gx.fillStyle = col; gx.strokeStyle = col;
+    gx.shadowColor = col; gx.shadowBlur = hot ? 20 : 8;
+    drawGlyph(gx, sh, x, y, r);
+    gx.shadowBlur = 0;
+    if (isHub) {
+      var fr = r + Math.max(2.2, r * 0.7);
+      gx.lineWidth = Math.max(1.5, r * 0.28); gx.strokeStyle = hot ? "#fff" : col;
+      gx.strokeRect(x - fr, y - fr, fr * 2, fr * 2);
+    }
+    gx.globalAlpha = 1; n._dx = x; n._dy = y;
+  }
+  function drawDNA() {
+    gx.clearRect(0, 0, W, H);
+    gx.save();
+    gx.translate(W / 2, H / 2); gx.scale(cam.scale, cam.scale); gx.translate(-cam.x, -cam.y);
+    var t = (performance.now() - t0) / 1000;
+    var cbpm = 124, ccd = 1e9;
+    for (var ci = 0; ci < DNA.genres.length; ci++) { var cgd = Math.abs(DNA.genres[ci]._hx - cam.x); if (cgd < ccd) { ccd = cgd; cbpm = DNA.genres[ci].bpm || 124; } }
+    var turn = t * (cbpm / 120) * 0.85;
+    var beatHz = cbpm / 60;
+    function wob(x) { return Math.sin(x * 0.016 - t * beatHz * Math.PI) * 34; }
+    var R = DNA_R, x0 = mapX(DNA.minY) - 30, x1 = mapX(DNA.maxY) + 30, TOP = R + 190;
+    gx.textAlign = "center"; gx.font = (12 / cam.scale) + "px 'Space Mono',monospace";
+    for (var yr = Math.ceil(DNA.minY / 10) * 10; yr <= DNA.maxY; yr += 10) {
+      var xd = mapX(yr);
+      gx.strokeStyle = "rgba(255,255,255,0.055)"; gx.lineWidth = 1 / cam.scale;
+      gx.beginPath(); gx.moveTo(xd, -TOP); gx.lineTo(xd, TOP); gx.stroke();
+      gx.fillStyle = "rgba(154,154,182,0.6)"; gx.fillText(yr + "s", xd, -TOP + 20);
+    }
+    for (var strand = 0; strand < 2; strand++) {
+      gx.beginPath();
+      for (var xx = x0; xx <= x1; xx += 9) { var ph = (xx / 210) + turn + strand * Math.PI, yy = Math.sin(ph) * R; if (xx === x0) gx.moveTo(xx, yy); else gx.lineTo(xx, yy); }
+      gx.strokeStyle = "rgba(198,240,0,0.5)"; gx.lineWidth = 9.6 / cam.scale; gx.stroke();
+    }
+    var eframe = Math.floor(t * 26);
+    gx.shadowColor = "rgba(120,210,255,0.85)";
+    for (var xrg = x0; xrg <= x1; xrg += 40) {
+      var pr = (xrg / 210) + turn, ya = Math.sin(pr) * R, yb = Math.sin(pr + Math.PI) * R, dep = Math.cos(pr);
+      var flick = 0.55 + 0.45 * Math.abs(Math.sin(xrg * 0.9 + t * 21));
+      gx.globalAlpha = (0.14 + 0.2 * (dep + 1) / 2) * flick;
+      gx.strokeStyle = "rgba(150,226,255,0.95)"; gx.lineWidth = 1.1 / cam.scale; gx.shadowBlur = 5;
+      gx.beginPath();
+      for (var sw = 0; sw <= 1.0001; sw += 0.07) {
+        var yy = ya + (yb - ya) * sw, tap = Math.sin(sw * Math.PI);
+        var base = Math.sin(sw * Math.PI * 3 + xrg * 0.05 - t * beatHz * Math.PI * 2);
+        var sd = Math.sin((sw * 57.3 + xrg * 3.1 + eframe) * 12.9898) * 43758.5453; var jit = (sd - Math.floor(sd)) - 0.5;
+        var off = (base + jit * 1.1) * tap * (26 + 12 * (dep + 1) / 2);
+        if (sw === 0) gx.moveTo(xrg + off, yy); else gx.lineTo(xrg + off, yy);
+      }
+      gx.stroke();
+    }
+    gx.shadowBlur = 0;
+    gx.globalAlpha = 1;
+    var focus = hover || selected;
+    DNA.genres.forEach(function (n) { var ph = (n._hx / 210) + turn + n._strand * Math.PI; n._dx = n._hx; n._dy = Math.sin(ph) * R; n._dep = Math.cos(ph); });
+    DNA.subs.forEach(function (m) { m._dx = m._fx + Math.cos(t * 0.24 + (m.wb || 0)) * 10; m._dy = m._fyBase + Math.sin(t * 0.30 + (m.wa || 0)) * 14; });
+    if (focus) {
+      gx.strokeStyle = "rgba(198,240,0,0.55)"; gx.lineWidth = 1.3 / cam.scale; gx.setLineDash([5 / cam.scale, 4 / cam.scale]);
+      if (focus.level === "Genre") {
+        (focus._subs || []).forEach(function (m) { if (m._dx != null) { gx.beginPath(); gx.moveTo(focus._dx, focus._dy); gx.lineTo(m._dx, m._dy); gx.stroke(); } });
+        gx.setLineDash([]);
+      } else {
+        var g = DNA.genres.filter(function (f) { return f.family === focus.family; })[0];
+        if (g && g._dx != null) {
+          gx.beginPath(); gx.moveTo(focus._dx, focus._dy); gx.lineTo(g._dx, g._dy); gx.stroke(); gx.setLineDash([]);
+          gx.font = "600 " + (11 / cam.scale) + "px 'Space Grotesk',sans-serif"; gx.fillStyle = "#C6F000"; gx.textAlign = "center";
+          gx.fillText("↳ " + g.name, focus._dx, focus._dy + radius(focus) * 1.2 + 15 / cam.scale);
+        }
+        gx.setLineDash([]);
+      }
+    }
+    DNA.subs.forEach(function (m) {
+      var dim = matchSet && !matchSet[m.id];
+      var rel = focus && ((focus === m) || (focus.family === m.family));
+      var mbeat = (t * (m.bpm || 120) / 60) % 1, mthump = Math.pow(1 - mbeat, 3);
+      var r = radius(m) * 1.12 * (1 + 0.22 * mthump);
+      plotGlyph(m, m._dx, m._dy, r, dim ? 0.12 : (focus && !rel ? 0.4 : 0.82), false, focus === m);
+      if (rel) {
+        gx.globalAlpha = 1; gx.font = "400 " + (10 / cam.scale) + "px 'Space Grotesk',sans-serif"; gx.fillStyle = focus === m ? "#fff" : "rgba(236,236,244,0.82)"; gx.textAlign = "center";
+        gx.fillText(m.name, m._dx, m._dy - r - 5 / cam.scale); gx.globalAlpha = 1;
+      }
+    });
+    DNA.genres.forEach(function (n) {
+      var sc = 0.62 + 0.38 * (n._dep + 1) / 2, dim = matchSet && !matchSet[n.id];
+      var rel = focus && (n === focus || focus.family === n.family);
+      var nbeat = (t * (n.bpm || 120) / 60) % 1, nthump = Math.pow(1 - nbeat, 3);
+      var r = radius(n) * 1.25 * sc * (1 + 0.22 * nthump);
+      plotGlyph(n, n._dx, n._dy, r, dim ? 0.16 : 1, true, rel);
+      gx.globalAlpha = dim ? 0.2 : (0.55 + 0.45 * (n._dep + 1) / 2);
+      gx.font = "600 " + (11 / cam.scale) + "px 'Space Grotesk',sans-serif"; gx.fillStyle = rel ? "#fff" : "rgba(236,236,244,0.85)"; gx.textAlign = "center";
+      gx.fillText(n.name, n._dx, n._dy - r - 6 / cam.scale); gx.globalAlpha = 1;
+    });
+    gx.restore();
+  }
+  function nodeAtDNA(px, py) {
+    var w = toWorld(px, py), best = null, bd = 1e9, pool = DNA.genres.concat(DNA.subs);
+    for (var i = 0; i < pool.length; i++) {
+      var n = pool[i]; if (n._dx == null) continue;
+      var dx = n._dx - w.x, dy = n._dy - w.y, d = dx * dx + dy * dy, rr = radius(n) * 1.4 + 8 / cam.scale;
+      if (d < rr * rr && d < bd) { bd = d; best = n; }
+    }
+    return best;
+  }
+  function updateGlitch() {
+    if (reduceMotion) { document.documentElement.style.setProperty("--glitch", "0"); return; }
+    var bpm = focusParams().bpm || 124, t = (performance.now() - t0) / 1000;
+    var barPos = (t * bpm / 60 / 4) % 1, g = Math.pow(1 - barPos, 7);
+    var rs = (window.BeatGenomeAudio && window.BeatGenomeAudio.getReactiveState) ? window.BeatGenomeAudio.getReactiveState() : null;
+    var amt = g * ((rs && rs.playing) ? 1 : 0.34);
+    document.documentElement.style.setProperty("--glitch", amt.toFixed(3));
+  }
+
   // ---- main loop ----
   function frame() {
-    tick();
-    draw();
+    updateGlitch();
+    if (viewMode === "dna") { drawDNA(); } else { tick(); draw(); }
     if (window.BeatGenomeAudio && window.BeatGenomeAudio.getReactiveState) { var _rs = window.BeatGenomeAudio.getReactiveState(); _rs.kick *= 0.86; _rs.snare *= 0.82; _rs.hat *= 0.75; _rs.bass *= 0.9; _rs.chord *= 0.93; _rs.master *= 0.9; }
     drawScope(sx, W, 40, focusParams(), false);
     if (pScopeOn && panel.classList.contains("open")) {
@@ -374,10 +539,16 @@
   graph.addEventListener("pointerdown", function (e) {
     graph.setPointerCapture(e.pointerId);
     last = { x: e.clientX, y: e.clientY }; moved = false;
+    if (viewMode === "dna") { dnaPending = nodeAtDNA(e.clientX, e.clientY); dragging = true; graph.classList.add("grabbing"); return; }
     var n = nodeAt(e.clientX, e.clientY);
     if (n) { dragNode = n; n.fixed = true; } else { dragging = true; graph.classList.add("grabbing"); }
   });
   graph.addEventListener("pointermove", function (e) {
+    if (viewMode === "dna") {
+      if (dragging) { cam.x -= (e.clientX - last.x) / cam.scale; cam.y -= (e.clientY - last.y) / cam.scale; last = { x: e.clientX, y: e.clientY }; moved = true; dnaPending = null; }
+      else { var hd = nodeAtDNA(e.clientX, e.clientY); if (hd !== hover) { hover = hd; graph.style.cursor = hd ? "pointer" : "grab"; } }
+      return;
+    }
     if (dragNode) {
       var w = toWorld(e.clientX, e.clientY); dragNode.x = w.x; dragNode.y = w.y; dragNode.vx = dragNode.vy = 0;
       moved = true; reheat(0.5); return;
@@ -390,6 +561,7 @@
     if (h !== hover) { hover = h; graph.style.cursor = h ? "pointer" : "grab"; }
   });
   function endPointer(e) {
+    if (viewMode === "dna") { if (dnaPending && !moved) select(dnaPending); dnaPending = null; dragging = false; graph.classList.remove("grabbing"); return; }
     if (dragNode && !moved) select(dragNode);
     else if (dragging && !moved) { /* click empty = deselect handled below */ }
     if (dragNode) dragNode.fixed = false;
@@ -436,6 +608,7 @@
   }
   function esc(s) { return (s || "").replace(/[&<>"]/g, function (c) { return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]; }); }
 
+  function segKey(name) { return (name || "").toLowerCase().replace("/main", "").split(" ")[0]; }
   function buildDNA(d) {
     var segs = [
       ["Intro", d["Intro (bars)"], d["Intro Feel"]],
@@ -447,7 +620,7 @@
     if (!segs.length) return "";
     var h = '<div class="dna"><div class="rail"></div>';
     segs.forEach(function (s) {
-      h += '<div class="seg"><div class="knot"></div>' +
+      h += '<div class="seg" data-seg="' + segKey(s[0]) + '"><div class="knot"></div>' +
         '<div class="lab">' + esc(s[0]) + '</div>' +
         '<div class="bars">' + esc(s[1] || "–") + '</div>' +
         '<div class="feel">' + esc(s[2] || "") + '</div></div>';
@@ -458,6 +631,14 @@
   // horizontal arrangement timeline: Intro → Build → Drop → Breakdown → Outro,
   // segment widths proportional to bar-counts, brightness peaking at the drop.
   function firstInt(s) { var m = (s || "").match(/\d+/); return m ? parseInt(m[0], 10) : 0; }
+  function chordCell(d) {
+    var raw = (d["Chord Progression"] || "").trim();
+    if (!raw) return "";
+    var main = raw.split("(")[0].trim();
+    var mode = (raw.match(/\(([^)]+)\)/) || [])[1] || "";
+    return '<div class="arrchords" title="' + esc(raw) + '"><span class="ck">Chords</span>' +
+      '<span class="cv">' + esc(main) + '</span>' + (mode ? '<span class="cm">' + esc(mode) + '</span>' : '') + '</div>';
+  }
   function buildArrangeBar(d) {
     var defs = [
       ["Intro", "Intro (bars)", "Intro Feel", 0.52],
@@ -475,7 +656,7 @@
     segs.forEach(function (s) {
       var grow = anyN ? (s.n > 0 ? s.n : 1) : 1;
       var label = (s.bars && s.bars.toLowerCase() !== "n/a") ? s.bars : "";
-      html += '<div class="arrseg" style="flex:' + grow + ';--o:' + s.o + '" title="' +
+      html += '<div class="arrseg" data-seg="' + segKey(s.name) + '" style="flex:' + grow + ';--o:' + s.o + '" title="' +
         esc(s.name + " · " + (s.bars || "—") + (s.feel ? " · " + s.feel : "")) + '">' +
         '<span class="an">' + esc(s.name) + '</span>' +
         (label ? '<span class="ab">' + esc(label) + '</span>' : '') + '</div>';
@@ -594,6 +775,13 @@
   }
   function closePanel() { panel.classList.remove("open"); panel.setAttribute("aria-hidden", "true"); document.body.classList.remove("panel-open"); pScopeOn = false; selected = null; }
   document.getElementById("panelClose").addEventListener("click", closePanel);
+  (function () {
+    var pb = document.getElementById("pBody");
+    if (!pb) return;
+    function hl(key, on) { Array.prototype.forEach.call(pb.querySelectorAll('[data-seg="' + key + '"]'), function (el) { el.classList.toggle("seg-hl", on); }); }
+    pb.addEventListener("mouseover", function (e) { var s = e.target.closest ? e.target.closest("[data-seg]") : null; if (s) hl(s.getAttribute("data-seg"), true); });
+    pb.addEventListener("mouseout", function (e) { var s = e.target.closest ? e.target.closest("[data-seg]") : null; if (s) hl(s.getAttribute("data-seg"), false); });
+  })();
 
   // ---- song preview popup (Spotify embed when a track id is known; else a keyless 30s preview) ----
   var previewEl = null, previewAudio = null, audioWasPlaying = false;
@@ -676,7 +864,7 @@
       .catch(function () { player.innerHTML = '<div class="pvnote">Preview unavailable \u2014 try Open in Spotify.</div>'; });
   }
 
-  function select(n) { if (!n) return; selected = n; selectAnim = (performance.now() - t0) / 1000; splash(n.x, n.y, colourOf(n)); openPanel(n); centerOn(n); if (window.BeatGenomeOnSelect) { try { window.BeatGenomeOnSelect(n); } catch (e) {} } }
+  function select(n) { if (!n) return; selected = n; selectAnim = (performance.now() - t0) / 1000; if (viewMode === "graph") splash(n.x, n.y, colourOf(n)); openPanel(n); if (viewMode === "graph") centerOn(n); if (window.BeatGenomeOnSelect) { try { window.BeatGenomeOnSelect(n); } catch (e) {} } }
 
   // ---- search ----
   var resIdx = -1, resList = [];
@@ -826,6 +1014,18 @@
     });
   }
 
+  // ---- view toggle: force-graph <-> DNA timeline ----
+  var viewBtn = document.getElementById("viewBtn");
+  function updViewBtn() { if (!viewBtn) return; viewBtn.textContent = viewMode === "dna" ? "⋉ GRAPH" : "◇ DNA"; viewBtn.setAttribute("aria-pressed", viewMode === "dna" ? "true" : "false"); }
+  if (viewBtn) {
+    updViewBtn();
+    viewBtn.addEventListener("click", function () {
+      viewMode = viewMode === "dna" ? "graph" : "dna";
+      store("edm_view", viewMode); updViewBtn(); hover = null;
+      if (viewMode === "dna") { fitDNA(); } else { cam.scale = 0.9; cam.x = 0; cam.y = 0; reheat(0.6); }
+    });
+  }
+
   // ---- global keys ----
   document.addEventListener("keydown", function (e) {
     if (e.key === "/" && document.activeElement !== searchIn) { e.preventDefault(); searchIn.focus(); searchIn.select(); }
@@ -841,8 +1041,7 @@
   });
 
   // ---- meta line ----
-  document.getElementById("metaLine").textContent =
-    DATA.meta.genres + " genres · " + DATA.meta.subgenres + " subgenres · " + DATA.meta.columns + " data points each";
+  document.getElementById("metaLine").textContent = "By [DJ7]-[AOC] //Wilsonlicioussss";
 
   // ---- loading animation, then reveal ----
   var loadCv = document.getElementById("loadScope"), lcx = loadCv.getContext("2d");
@@ -860,10 +1059,11 @@
   resize();
   // warm the simulation before revealing
   for (var w = 0; w < 220; w++) tick();
-  cam.scale = 0.9; cam.x = 0; cam.y = 0;
+  buildTimeline();
+  if (viewMode === "dna") { fitDNA(); } else { cam.scale = 0.9; cam.x = 0; cam.y = 0; }
   requestAnimationFrame(frame);
   setTimeout(function () { document.getElementById("loading").classList.add("done"); }, Math.max(300, 900 - (performance.now() - loadStart)));
 
   // expose for quick console poking / tests
-  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, version: "V19" };
+  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, version: "V29" };
 })();

@@ -1,5 +1,68 @@
 # Changelog
 
+## V29 — 2026-07-16
+Bolder backbones, and DNA nodes that bounce.
+
+- **Defined backbones** — the two DNA strands are now 3× thicker (and brighter), reading as solid rails.
+- **Nodes bounce to their BPM** — in the DNA view, the genres (hubs) and floating subgenres (orphans) now pulse to their own native tempo, just like the force-graph nodes do.
+
+## V28 — 2026-07-16
+Electric base pairs, and a new byline.
+
+- **Electric wave** — the DNA base-pair waveforms now arc like electricity: cyan glow, per-frame jitter and flicker, so the rungs crackle between the firm backbones.
+- **Renamed** — the browser tab and header byline now read "BeatGenome By [DJ7]-[AOC] //Wilsonlicioussss".
+
+## V27 — 2026-07-16
+Base pairs are now audio waveforms.
+
+- **Waveform base pairs** — each A-T rung between the DNA backbones is now drawn as a small oscilloscope-style waveform (tapered at both ends so it still meets the strands), rippling to the nearest genre's BPM. The firm, thick backbones stay put.
+
+## V26 — 2026-07-16
+Thicker backbones, bigger wave.
+
+- **Firmer backbones** — the two DNA strands are now drawn noticeably thicker (and a touch brighter), reading as solid sugar-phosphate rails.
+- **Stronger ripple** — the base-pair wave amplitude is increased, so the A-T rungs sway more dramatically as the helix turns to the nearest genre's BPM.
+
+## V25 — 2026-07-16
+Firm backbones — only the base pairs ripple.
+
+- **Rigid sugar-phosphate backbones** — the two DNA strands (and the genres riding them) are firm again; the travelling wave was removed from them.
+- **Base pairs wave** — each base-pair rung now bows in a travelling wave (still paced by the nearest genre's BPM), so the ripple lives in the A-T rungs while the helix holds its shape.
+
+## V24 — 2026-07-16
+Fixed structure labels, stronger highlight, and a living DNA.
+
+- **No more clipped labels** — the arrangement structure rows (Intro / Build / Drop / Breakdown / Outro) no longer sit under the knot; a V21 spacing regression is fixed.
+- **Background highlight** — hovering a structure row (or its matching arrangement segment) now fills the row with the genre's colour, a left accent bar and a lit knot.
+- **The DNA breathes** — in the DNA view, the base pairs and strands ripple in a travelling wave whose speed follows the BPM of the main genre nearest the centre of your view, so panning toward a faster genre makes the helix pulse faster.
+
+## V23 — 2026-07-16
+Live, interactive chord box in the footer.
+
+- **Chords move to the footer** — a box at the far left of the bottom player now shows the current genre's chord progression as roman numerals, and the chord that Tone.js is playing lights up in real time, bar by bar. (Removed from the info panel's arrangement.)
+- **Click to strum** — tapping a chord pill plays that chord over the loop, so the box is playable.
+- **Cleaner progressions** — tightened the chord parser so prose words in the data (e.g. "emotive", "vamps") are no longer misread as extra chords, which also cleans up the engine's harmony.
+
+## V22 — 2026-07-16
+Chord progression sits beside the arrangement.
+
+- **Chords before the bars** — a genre's info panel now shows its chord progression (roman-numeral movement, in the genre's colour) at the far left of the Intro / Build / Drop / Breakdown / Outro arrangement bar, so harmony and structure read together.
+
+## V21 — 2026-07-16
+Linked arrangement rows, and a floating-by-year DNA.
+
+- **Arrangement hover-link** — in a genre's panel, hovering a segment in the arrangement bar now highlights its matching structure row (and vice-versa), so Intro / Build / Drop / Breakdown / Outro line up at a glance.
+- **DNA: subgenres float by year** — every subgenre is now shown, floating at its own year rather than hidden until you open its parent; the view stays a clean constellation.
+- **Links on hover** — hovering a subgenre reveals a dashed link to its main genre with a "↳ name" tag so you always know where it belongs; hovering a main genre lights up and links all of its subgenres.
+
+## V20 — 2026-07-16
+Sharp UI, a turning DNA timeline, and a beat-synced glitch.
+
+- **DNA timeline view** — a new GRAPH ⇄ DNA toggle in the top bar. Genres arrange left→right by origin year on a horizontal double-helix that turns continuously (speed follows the playing genre's BPM), with decade markers; click a genre to fan out its subgenres and open the panel. The force graph is untouched — it's a second view.
+- **Sharp everything** — removed rounded corners across the UI and info panel (Collective Rev-02); only the vinyl preview disc stays round, and the channel dots are now square.
+- **BEATGENOME** — the wordmark is now all-caps.
+- **Beat glitch** — a cyan/magenta RGB-split glitch pulses on the ΛΩ mark, the wordmark and the panel header on each bar at the current tempo (subtle when nothing's playing; off under reduced-motion).
+
 ## V19 — 2026-07-16
 Family-glyph graph + framed hubs, and the chord progression brought forward.
 

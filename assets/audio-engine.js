@@ -6,7 +6,7 @@
 (function (root) {
   "use strict";
   var T = root.Tone;
-  var RS = { kick: 0, snare: 0, hat: 0, bass: 0, chord: 0, master: 0, playing: false, bpm: 124, genreId: null };
+  var RS = { kick: 0, snare: 0, hat: 0, bass: 0, chord: 0, master: 0, playing: false, bpm: 124, genreId: null, progRomans: [], chordStep: 0 };
   var state = { supported: !!T, initialized: false, enabled: false, playing: false,
     volume: 0.7, lowPerf: false, active: null, pending: null, step: 0, listeners: [] };
   try { state.lowPerf = ("ontouchstart" in root) || (navigator.maxTouchPoints > 0) || ((navigator.hardwareConcurrency || 8) <= 4); } catch (e) {}
@@ -59,6 +59,13 @@
   }
 
   var CHORD_PROG = [0, 5, 3, 6];
+  var ROMAN_MIN = ["i", "ii", "III", "iv", "v", "VI", "VII"];
+  var ROMAN_MAJ = ["I", "ii", "iii", "IV", "V", "vi", "vii"];
+  function romansFor(p) {
+    var prog = (p.chordProg && p.chordProg.length) ? p.chordProg : CHORD_PROG;
+    var m = (p.scale === "major") ? ROMAN_MAJ : ROMAN_MIN;
+    return prog.map(function (d) { return m[(((d % 7) + 7) % 7)]; });
+  }
   function onStep(time) {
     var p = state.active; if (!p) return;
     if (state.pending && state.step % 16 === 0) { state.active = p = state.pending; state.pending = null; }
@@ -79,6 +86,7 @@
       if (p.chords !== "none" && p.chordDensity > 0.12) {
         var prog = (p.chordProg && p.chordProg.length) ? p.chordProg : CHORD_PROG;
         var deg = prog[bar % prog.length];
+        RS.chordStep = bar % prog.length;
         var triad = [noteFor(p, deg, 3), noteFor(p, deg + 2, 3), noteFor(p, deg + 4, 4)];
         if (p.chords === "arp") {
           if (s % 2 === 0) { nodes.chords.triggerAttackRelease(triad[(s / 2) % 3], "16n", when, 0.5); RS.chord = Math.max(RS.chord, 0.7); }
@@ -129,7 +137,7 @@
     playGenre: function (p) {
       if (!state.initialized || !p) return;
       state.pending = p; if (!state.active) { state.active = p; state.step = 0; }
-      applyProfile(p, true); RS.genreId = p.id;
+      applyProfile(p, true); RS.genreId = p.id; RS.progRomans = romansFor(p);
       if (!state.playing) { try { T.Transport.start(); } catch (e) {} state.playing = true; RS.playing = true; try { nodes.master.gain.rampTo(state.volume * 0.85, 0.4); } catch (e) {} }
       emit("play");
     },
@@ -139,6 +147,15 @@
     setVolume: function (v) { state.volume = Math.max(0, Math.min(1, +v || 0)); try { if (state.playing) nodes.master.gain.rampTo(state.volume * 0.85, 0.1); } catch (e) {} emit("volume"); },
     getVolume: function () { return state.volume; },
     getReactiveState: function () { return RS; },
+    strumChord: function (i) {
+      var p = state.active; if (!p || !state.initialized) return;
+      try {
+        var prog = (p.chordProg && p.chordProg.length) ? p.chordProg : CHORD_PROG;
+        var deg = prog[(((i % prog.length) + prog.length) % prog.length)];
+        var triad = [noteFor(p, deg, 3), noteFor(p, deg + 2, 3), noteFor(p, deg + 4, 4)];
+        nodes.chords.triggerAttackRelease(triad, "4n", (T.now ? T.now() : undefined), 0.7); RS.chord = 1;
+      } catch (e) {}
+    },
     onChange: function (fn) { if (typeof fn === "function") state.listeners.push(fn); },
     destroy: function () { try { T.Transport.stop(); T.Transport.cancel(); } catch (e) {} Object.keys(nodes).forEach(function (k) { try { nodes[k].dispose(); } catch (e) {} }); nodes = {}; state.initialized = false; state.playing = false; RS.playing = false; }
   };

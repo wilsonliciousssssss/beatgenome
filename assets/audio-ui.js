@@ -16,6 +16,7 @@
     wrap.className = "bgaudio"; wrap.id = "bgaudio";
     wrap.innerHTML =
       '<div class="bga-player" id="bgaPlayer">' +
+        '<div class="bga-chords" id="bgaChords" aria-label="Chord progression (live)"></div>' +
         '<canvas class="bga-meter" id="bgaMeter" width="200" height="26" aria-hidden="true"></canvas>' +
         '<div class="bga-info"><span class="bga-dot"></span>' +
           '<span class="bga-genre" id="bgaGenre">select a genre</span>' +
@@ -83,10 +84,40 @@
       }
     };
 
+    // ---- footer chord box (live roman numerals for what Tone.js is playing) ----
+    var elChords = wrap.querySelector("#bgaChords");
+    var lastSig = "", lastStep = -2;
+    function updateChords(rs) {
+      var romans = (rs && rs.progRomans) ? rs.progRomans : [];
+      var sig = romans.join("-");
+      if (sig !== lastSig) {
+        lastSig = sig; lastStep = -2;
+        if (!romans.length) { elChords.innerHTML = ""; return; }
+        var html = '<span class="bga-ck">Chords</span><span class="bga-chips">';
+        for (var k = 0; k < romans.length; k++) html += '<button class="bga-chip" data-i="' + k + '">' + romans[k] + '</button>';
+        elChords.innerHTML = html + '</span>';
+        Array.prototype.forEach.call(elChords.querySelectorAll(".bga-chip"), function (b) {
+          b.addEventListener("click", function () {
+            var i = parseInt(b.dataset.i, 10) || 0;
+            if (!AUDIO.enabled) { tapPlay(); return; }
+            if (!AUDIO.playing && currentProfile) AUDIO.playGenre(currentProfile);
+            if (AUDIO.strumChord) AUDIO.strumChord(i);
+          });
+        });
+      }
+      var step = (rs && rs.playing) ? (rs.chordStep | 0) : -1;
+      if (step !== lastStep) {
+        lastStep = step;
+        var chips = elChords.querySelectorAll(".bga-chip");
+        for (var j = 0; j < chips.length; j++) chips[j].classList.toggle("on", j === step);
+      }
+    }
+
     // live reacting meter (kick · bass · snare · hat · chord)
     var c1 = function () { return getComputedStyle(document.documentElement).getPropertyValue("--c1").trim() || "#FF3D9A"; };
     (function meter() {
       var w = elMeter.width, h = elMeter.height, rs = AUDIO.getReactiveState ? AUDIO.getReactiveState() : null;
+      updateChords(rs);
       mx.clearRect(0, 0, w, h);
       var vals = rs ? [rs.kick, rs.bass, rs.snare, rs.hat, rs.chord, rs.master] : [0, 0, 0, 0, 0, 0];
       var n = vals.length, bw = w / n, col = c1();

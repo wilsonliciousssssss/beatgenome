@@ -46,7 +46,7 @@ body::before{
 .badge{
   width:42px;height:42px;border-radius:11px;flex:none;
   background:#08080F center/cover no-repeat;
-  background-image:url("icons/product-magenta-216.png?v=19");
+  background-image:url("icons/product-magenta-216.png?v=29");
   box-shadow:0 0 18px color-mix(in srgb,var(--c1) 45%, transparent), inset 0 0 0 1px rgba(255,255,255,.08);
 }
 .title{display:flex;flex-direction:column;line-height:1;min-width:0}
@@ -380,3 +380,41 @@ body::before{
 .pvbar i{position:absolute;left:0;top:0;bottom:0;width:0;border-radius:999px;
   background:linear-gradient(90deg,color-mix(in srgb,var(--nodeC) 55%,transparent),var(--nodeC));box-shadow:0 0 8px color-mix(in srgb,var(--nodeC) 60%,transparent)}
 .pvtime{font-family:"Space Mono";font-size:11px;color:var(--fog);flex:none;min-width:78px;text-align:right}
+
+/* ---------- V20: sharp corners + ALL-CAPS wordmark + bpm/bar glitch ---------- */
+.title h1{ text-transform:uppercase; letter-spacing:0.5px;
+  text-shadow: calc(var(--glitch,0) * 2.4px) 0 rgba(0,220,255,.9), calc(var(--glitch,0) * -2.4px) 0 rgba(255,40,143,.9);
+  transform: translateX(calc(var(--glitch,0) * 1.6px)); }
+.topbar, .topbar *, .search *, .results, .results *, .legend, .legend *,
+.panel, .panel *, .sheet, .sheet *, .tracksbar, .tracksbar *, .bgaudio, .bgaudio *,
+.pvcard, .pvcard *, .metric, .chip, .badge, .iconbtn, input, button,
+::-webkit-scrollbar-thumb, ::-webkit-scrollbar-track { border-radius:0 !important; }
+.pvcd, .pvcd img, .pvcd::after, .pvhole, .panel .head .ring { border-radius:50% !important; }
+.panel h2{ text-shadow: calc(var(--glitch,0) * 2px) 0 rgba(0,220,255,.85), calc(var(--glitch,0) * -2px) 0 rgba(255,40,143,.85); }
+.badge{ transform: translateX(calc(var(--glitch,0) * 1.6px)); }
+
+/* ---------- V21: arrangement <-> structure hover cross-highlight ---------- */
+.arrseg{transition:filter .12s, outline-color .12s}
+.arrseg.seg-hl{outline:2px solid var(--nodeC);outline-offset:-2px;filter:brightness(1.28)}
+.dna .seg{transition:background .12s;padding-left:32px}
+.dna .seg.seg-hl,.dna .seg:hover{background:color-mix(in srgb,var(--nodeC) 18%, transparent);box-shadow:inset 3px 0 0 var(--nodeC)}
+.dna .seg.seg-hl .lab,.dna .seg:hover .lab{color:#fff}
+.dna .seg.seg-hl .knot,.dna .seg:hover .knot{background:var(--nodeC);box-shadow:0 0 10px var(--nodeC)}
+
+/* ---------- V22: chord progression cell, left of the arrangement bar ---------- */
+.arrwrap{display:flex;gap:10px;align-items:stretch;margin:2px 0 14px}
+.arrwrap .arrbar{flex:1;margin:0;min-width:0}
+.arrchords{flex:none;max-width:48%;display:flex;flex-direction:column;justify-content:center;gap:1px;padding:2px 12px 2px 2px;border-right:1px solid var(--line)}
+.arrchords .ck{font-family:"Space Mono";font-size:8.5px;letter-spacing:1.2px;color:var(--fog);text-transform:uppercase}
+.arrchords .cv{font-family:"Space Grotesk";font-weight:700;font-size:15px;color:var(--nodeC);line-height:1.05}
+.arrchords .cm{font-family:"Space Mono";font-size:9px;color:var(--fog)}
+
+/* ---------- V23: footer-left interactive live chord box ---------- */
+.bga-chords{flex:none;display:flex;align-items:center;gap:8px;max-width:40%;overflow:hidden;padding-right:14px;margin-right:2px;border-right:1px solid var(--line)}
+.bga-ck{font-family:"Space Mono";font-size:8.5px;letter-spacing:1px;color:var(--fog);text-transform:uppercase;flex:none}
+.bga-chips{display:flex;gap:5px;overflow-x:auto}
+.bga-chip{font-family:"Space Grotesk";font-weight:700;font-size:13px;line-height:1;padding:6px 9px;cursor:pointer;flex:none;color:var(--fog);background:rgba(255,255,255,.05);border:1px solid var(--line);transition:color .12s,background .12s,border-color .12s}
+.bga-chip:hover{color:var(--ink);border-color:color-mix(in srgb,var(--c1) 55%,transparent)}
+.bga-chip.on{color:#08080F;background:var(--c1);border-color:transparent;box-shadow:0 0 12px color-mix(in srgb,var(--c1) 60%,transparent)}
+.bgaudio:not(.playing) .bga-chip.on{color:var(--ink);background:color-mix(in srgb,var(--c1) 26%,transparent);box-shadow:none}
+@media(max-width:720px){ .bga-chords{display:none} }
