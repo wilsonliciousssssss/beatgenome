@@ -24,11 +24,28 @@
     { name: "Mint",   c1: "#12E1B0", c2: "#2FA8FF" }
   ];
   function store(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) {} }
+  var CHANNEL_ART = ["magenta", "cobalt", "lime", "orange", "magenta", "teal"];
+  function setChannelArt(i) {
+    var col = CHANNEL_ART[i] || "magenta";
+    try {
+      var olds = document.querySelectorAll('link[rel="icon"]');
+      for (var k = 0; k < olds.length; k++) { if (olds[k].parentNode) olds[k].parentNode.removeChild(olds[k]); }
+      var link = document.createElement("link");
+      link.rel = "icon"; link.type = "image/png"; link.setAttribute("sizes", "48x48");
+      link.href = "assets/icons/favicon-" + col + "-48.png?v=19";
+      document.head.appendChild(link);
+    } catch (e) {}
+    try {
+      var badge = document.querySelector(".badge");
+      if (badge) badge.style.backgroundImage = 'url("assets/icons/product-' + col + '-216.png?v=19")';
+    } catch (e) {}
+  }
   function applyChannel(i) {
     var ch = CHANNELS[i] || CHANNELS[0];
     document.documentElement.style.setProperty("--c1", ch.c1);
     document.documentElement.style.setProperty("--c2", ch.c2);
     store("edm_channel", i);
+    setChannelArt(i);
     Array.prototype.forEach.call(chWrap.children, function (b, j) {
       b.setAttribute("aria-pressed", j === i ? "true" : "false");
     });
@@ -83,6 +100,21 @@
   }
   var colourMode = (store("edm_colourmode") === "camelot") ? "camelot" : "family";
   function colourOf(nd) { return colourMode === "camelot" ? camelotColour(nd) : nd.colour; }
+  // ---- V19: family-encoded node glyphs (sharp/pixel) ----
+  var GLYPHS = ["square", "diamond", "plus", "xbox", "ring", "tri", "boxdot", "aster"];
+  function glyphFor(nd) { var fi = famIndex[nd.family]; if (fi == null) fi = 0; return GLYPHS[fi % GLYPHS.length]; }
+  function drawGlyph(g, shape, x, y, r) {
+    switch (shape) {
+      case "diamond": g.beginPath(); g.moveTo(x, y - r); g.lineTo(x + r, y); g.lineTo(x, y + r); g.lineTo(x - r, y); g.closePath(); g.fill(); break;
+      case "plus": { var t = r * 0.42; g.fillRect(x - t, y - r, 2 * t, 2 * r); g.fillRect(x - r, y - t, 2 * r, 2 * t); break; }
+      case "xbox": { var t2 = r * 0.4; g.save(); g.translate(x, y); g.rotate(0.785398); g.fillRect(-t2, -r, 2 * t2, 2 * r); g.fillRect(-r, -t2, 2 * r, 2 * t2); g.restore(); break; }
+      case "ring": g.lineWidth = Math.max(1.1, r * 0.46); g.beginPath(); g.arc(x, y, r * 0.82, 0, 6.2832); g.stroke(); break;
+      case "tri": g.beginPath(); g.moveTo(x, y - r); g.lineTo(x + r, y + r * 0.82); g.lineTo(x - r, y + r * 0.82); g.closePath(); g.fill(); break;
+      case "boxdot": g.lineWidth = Math.max(1, r * 0.3); g.strokeRect(x - r, y - r, 2 * r, 2 * r); g.beginPath(); g.arc(x, y, r * 0.3, 0, 6.2832); g.fill(); break;
+      case "aster": { g.lineWidth = Math.max(1, r * 0.3); g.beginPath(); for (var k = 0; k < 6; k++) { var an = k * 1.0472; g.moveTo(x, y); g.lineTo(x + Math.cos(an) * r, y + Math.sin(an) * r); } g.stroke(); break; }
+      default: g.fillRect(x - r, y - r, 2 * r, 2 * r);
+    }
+  }
 
   // ---- view transform ----
   var cam = { x: 0, y: 0, scale: 0.9 }, W = 0, H = 0;
@@ -162,7 +194,7 @@
 
     // base links (child only, faint)
     gx.lineWidth = 0.6 / cam.scale;
-    gx.strokeStyle = "rgba(255,255,255,0.06)";
+    gx.strokeStyle = "rgba(198,240,0,0.10)";
     gx.beginPath();
     for (var i = 0; i < links.length; i++) {
       if (links[i].k !== "child") continue;
@@ -198,44 +230,61 @@
       gx.globalAlpha = 1;
     }
 
-    // nodes — each ripples to its own BPM
+    // nodes — glyph by family; hubs get glitch-split + bold square frame (V19)
     var nowS = (performance.now() - t0) / 1000;
     for (i = 0; i < nodes.length; i++) {
       var nd = nodes[i], r0 = radius(nd);
       var dim = matchSet && !matchSet[nd.id];
       var isFocus = focus && (nd === focus || adj[focus.id][nd.id]);
-      var beat = (nowS * (nd.bpm || 120) / 60) % 1;   // position in the beat at this genre's tempo
-      var thump = Math.pow(1 - beat, 3);              // sharp attack, quick decay
-      var r = r0 * (1 + 0.16 * thump);                // body pulses on the beat
+      var isHub = nd.level === "Genre";
+      var beat = (nowS * (nd.bpm || 120) / 60) % 1;
+      var thump = Math.pow(1 - beat, 3);
+      var r = r0 * (1 + 0.16 * thump);
       var col = colourOf(nd);
+      var shape = glyphFor(nd);
       if (nd === selected) { var se = nowS - selectAnim; if (se >= 0 && se < 0.85) r *= 1 + 0.55 * Math.exp(-7 * se) * Math.cos(16 * se); }
       if (RS && RS.playing && nd === selected && !reduceMotion) r *= 1 + RS.kick * 0.28 + RS.bass * 0.05;
       var baseA = dim ? 0.12 : (focus && !isFocus ? 0.28 : 1);
-      // ripple ring on hubs (genre-level) — expands once per beat, fades as it grows
-      if (nd.level === "Genre" && !dim) {
-        var ringR = r + beat * (r0 * 2.6);
-        gx.globalAlpha = baseA * 0.5 * (1 - beat);
-        gx.beginPath(); gx.arc(nd.x, nd.y, ringR, 0, 6.2832);
-        gx.strokeStyle = col; gx.lineWidth = 1.3 / cam.scale; gx.stroke();
+      // hub beat-ring — a square outline expanding once per beat
+      if (isHub && !dim) {
+        var rr = r + beat * (r0 * 2.4);
+        gx.globalAlpha = baseA * 0.42 * (1 - beat);
+        gx.strokeStyle = col; gx.lineWidth = 1.4 / cam.scale;
+        gx.strokeRect(nd.x - rr, nd.y - rr, rr * 2, rr * 2);
         gx.globalAlpha = 1;
       }
       gx.globalAlpha = baseA;
-      gx.beginPath(); gx.arc(nd.x, nd.y, r, 0, 6.2832);
-      gx.fillStyle = col;
-      gx.shadowColor = col; gx.shadowBlur = (nd === focus ? 26 : 10) + 8 * thump + (RS && nd === selected ? RS.chord * 14 : 0);
-      gx.fill();
+      // hubs: cyan/magenta glitch split behind the fill (ΛΩ look)
+      if (isHub && !dim) {
+        var off = Math.max(1.1, r * 0.26);
+        gx.fillStyle = "#00DCFF"; gx.strokeStyle = "#00DCFF"; drawGlyph(gx, shape, nd.x - off, nd.y, r);
+        gx.fillStyle = "#FF288F"; gx.strokeStyle = "#FF288F"; drawGlyph(gx, shape, nd.x + off, nd.y, r);
+      }
+      gx.fillStyle = col; gx.strokeStyle = col;
+      gx.shadowColor = col; gx.shadowBlur = (nd === focus ? 22 : 8) + 7 * thump + (RS && nd === selected ? RS.chord * 12 : 0);
+      drawGlyph(gx, shape, nd.x, nd.y, r);
       gx.shadowBlur = 0;
-      if (nd === selected) { gx.lineWidth = 2 / cam.scale; gx.strokeStyle = "#fff"; gx.stroke(); }
+      // hub distinct bold square frame
+      if (isHub) {
+        var fr = r + Math.max(2.2, r * 0.7);
+        gx.lineWidth = Math.max(1.6, r * 0.3);
+        gx.strokeStyle = (nd === selected) ? "#fff" : col;
+        gx.strokeRect(nd.x - fr, nd.y - fr, fr * 2, fr * 2);
+      } else if (nd === selected) {
+        var sf = r + Math.max(1.6, r * 0.6);
+        gx.lineWidth = Math.max(1.2, r * 0.26); gx.strokeStyle = "#fff";
+        gx.strokeRect(nd.x - sf, nd.y - sf, sf * 2, sf * 2);
+      }
       gx.globalAlpha = 1;
 
       // labels
-      var showLabel = (nd.level === "Genre" && cam.scale > 0.5) || nd === focus || (cam.scale > 1.7);
+      var showLabel = (isHub && cam.scale > 0.5) || nd === focus || (cam.scale > 1.7);
       if (showLabel && !dim) {
         gx.globalAlpha = focus && !isFocus ? 0.3 : 1;
-        gx.font = (nd.level === "Genre" ? "600 " : "400 ") + (11 / cam.scale) + "px 'Space Grotesk',sans-serif";
+        gx.font = (isHub ? "600 " : "400 ") + (11 / cam.scale) + "px 'Space Grotesk',sans-serif";
         gx.fillStyle = nd === focus ? "#fff" : "rgba(236,236,244,0.85)";
         gx.textAlign = "center";
-        gx.fillText(nd.name, nd.x, nd.y - r - 4 / cam.scale);
+        gx.fillText(nd.name, nd.x, nd.y - r - 6 / cam.scale);
         gx.globalAlpha = 1;
       }
     }
@@ -592,12 +641,34 @@
       .then(function (j) {
         var hit = j.results && j.results[0];
         if (hit && hit.previewUrl) {
-          var art = (hit.artworkUrl100 || "").replace("100x100bb", "300x300bb");
-          player.innerHTML = (art ? '<img class="pvart" src="' + art + '" alt="">' : "") +
-            '<audio class="pvaudio" controls autoplay src="' + hit.previewUrl + '"></audio>' +
-            '<div class="pvnote">30-sec preview \u00b7 Apple Music</div>';
+          var art = (hit.artworkUrl100 || "").replace("100x100bb", "600x600bb");
+          var cdBpm = (panelNode && panelNode.bpm) ? panelNode.bpm : 120;
+          player.innerHTML =
+            '<div class="pvcd" style="--cdspin:' + (240 / cdBpm).toFixed(2) + 's">' + (art ? '<img src="' + art + '" alt="">' : "") + '<span class="pvhole"></span></div>' +
+            '<div class="pvctrls"><button class="pvplay" aria-label="Play or pause">\u23F8</button><div class="pvbar"><i></i></div><span class="pvtime">0:00 / 0:30</span></div>' +
+            '<div class="pvnote">30-sec preview \u00b7 Apple Music</div>' +
+            '<audio src="' + hit.previewUrl + '" autoplay></audio>';
           previewAudio = player.querySelector("audio");
-          if (previewAudio) { var pr = previewAudio.play(); if (pr && pr.catch) pr.catch(function () {}); }
+          (function () {
+            var cd = player.querySelector(".pvcd"), pb = player.querySelector(".pvplay"),
+                bar = player.querySelector(".pvbar"), fill = player.querySelector(".pvbar i"), tm = player.querySelector(".pvtime");
+            function fmt(s) { s = Math.max(0, s || 0); return Math.floor(s / 60) + ":" + ("0" + Math.floor(s % 60)).slice(-2); }
+            function sync() { var pl = previewAudio && !previewAudio.paused; if (cd) cd.classList.toggle("spinning", pl); if (pb) pb.textContent = pl ? "\u23F8" : "\u25B6"; }
+            if (pb) pb.addEventListener("click", function () { if (!previewAudio) return; if (previewAudio.paused) previewAudio.play(); else previewAudio.pause(); });
+            if (bar) bar.addEventListener("click", function (e) { if (!previewAudio) return; var rc = bar.getBoundingClientRect(); previewAudio.currentTime = (e.clientX - rc.left) / rc.width * (previewAudio.duration || 30); });
+            if (previewAudio) {
+              previewAudio.addEventListener("play", sync);
+              previewAudio.addEventListener("pause", sync);
+              previewAudio.addEventListener("ended", sync);
+              previewAudio.addEventListener("timeupdate", function () {
+                var d = previewAudio.duration || 30, c = previewAudio.currentTime || 0;
+                if (fill) fill.style.width = (c / d * 100) + "%";
+                if (tm) tm.textContent = fmt(c) + " / " + fmt(d);
+              });
+              var pr = previewAudio.play(); if (pr && pr.catch) pr.catch(function () {});
+              setTimeout(sync, 80);
+            }
+          })();
         } else {
           player.innerHTML = '<div class="pvnote">No preview found \u2014 try Open in Spotify.</div>';
         }
@@ -794,5 +865,5 @@
   setTimeout(function () { document.getElementById("loading").classList.add("done"); }, Math.max(300, 900 - (performance.now() - loadStart)));
 
   // expose for quick console poking / tests
-  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, version: "V10" };
+  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, version: "V19" };
 })();

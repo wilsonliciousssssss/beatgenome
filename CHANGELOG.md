@@ -1,5 +1,27 @@
 # Changelog
 
+## V19 — 2026-07-16
+Family-glyph graph + framed hubs, and the chord progression brought forward.
+
+- **Symbols by family** — each genre family now draws as its own sharp glyph (square, diamond, plus, x-box, ring, triangle, box-dot, asterisk), so clusters read apart by shape as well as colour.
+- **Distinct hubs** — main-genre hubs get a bold square outline frame plus a cyan/magenta ΛΩ glitch split and a square beat-ring, so they stand clear of their subgenres.
+- **Cleaner cyber field** — faint lime connections on deep space (the image-1 feel); the force-graph logic, physics, clicks and zoom are unchanged.
+- **Chords you can hear** — raised the chord level and velocities so each genre's per-bar progression sits forward in the mix instead of buried.
+
+## V18 — 2026-07-16
+Alpha Omega Collective brand pass + a real browser-tab icon.
+
+- **ΛΩ mark, for real** — the topbar badge is now the pixel-glitch ΛΩ mark from your logo (not a gradient "ΑΩ"), recoloured to the active channel.
+- **Channel-reactive tab icon** — the favicon is the ΛΩ mark and swaps colour with the channel switcher (magenta / cobalt / lime / orange / teal); added apple-touch icon, theme-color and a social og:image too.
+- **Lime signature** — the Collective's #C6F000 signature now marks the active channel dot, the hint keys, the loading wordmark and the "Alpha Omega Collective" line — constant across every channel.
+
+## V17 — 2026-07-16
+Song preview becomes a spinning CD with a themed, genre-coloured player.
+
+- **CD / vinyl artwork** — the preview cover is now a circle with a centre spindle; it spins while the track plays and stops when paused.
+- **Spin follows the BPM** — one rotation per bar at the selected genre's tempo (faster genre = faster spin).
+- **Themed player** — the default browser audio bar is replaced by a custom play/pause button, progress bar and time readout, all coloured by the genre (family colour, or Camelot-key colour when KEY mode is on), matching the graph.
+
 ## V16 — 2026-07-16
 Legend gets out of the way · panel clears the footer · Collective polish.
 

@@ -50,7 +50,7 @@
     nodes.chordFilt = new T.Filter(1200, "lowpass").connect(nodes.reverb); nodes.chordFilt.connect(nodes.delay);
     nodes.chords = new T.PolySynth(T.Synth); nodes.chords.maxPolyphony = state.lowPerf ? 4 : 8;
     nodes.chords.set({ oscillator: { type: "sawtooth" }, envelope: { attack: 0.02, decay: 0.3, sustain: 0.5, release: 1.4 } });
-    nodes.chordGain = new T.Gain(0.15); nodes.chords.connect(nodes.chordGain); nodes.chordGain.connect(nodes.chordFilt);
+    nodes.chordGain = new T.Gain(0.32); nodes.chords.connect(nodes.chordGain); nodes.chordGain.connect(nodes.chordFilt);
 
     nodes.lead = new T.FMSynth({ harmonicity: 2, modulationIndex: 6, envelope: { attack: 0.01, decay: 0.2, sustain: 0.2, release: 0.4 } });
     nodes.leadGain = new T.Gain(0.1).connect(nodes.delay); nodes.lead.connect(nodes.leadGain);
@@ -81,9 +81,9 @@
         var deg = prog[bar % prog.length];
         var triad = [noteFor(p, deg, 3), noteFor(p, deg + 2, 3), noteFor(p, deg + 4, 4)];
         if (p.chords === "arp") {
-          if (s % 2 === 0) { nodes.chords.triggerAttackRelease(triad[(s / 2) % 3], "16n", when, 0.4); RS.chord = Math.max(RS.chord, 0.7); }
+          if (s % 2 === 0) { nodes.chords.triggerAttackRelease(triad[(s / 2) % 3], "16n", when, 0.5); RS.chord = Math.max(RS.chord, 0.7); }
         } else if (s === 0) {
-          nodes.chords.triggerAttackRelease(triad, p.chords === "stab" ? "8n" : "2n", when, 0.5); RS.chord = 1;
+          nodes.chords.triggerAttackRelease(triad, p.chords === "stab" ? "8n" : "2n", when, 0.62); RS.chord = 1;
         }
       }
       if (!state.lowPerf && p.melody > 0.6 && (s === 2 || s === 7 || s === 12) && Math.random() < 0.55) {

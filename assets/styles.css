@@ -12,6 +12,7 @@
   /* channel (recoloured live by the dots) — default: Plasma */
   --c1:#FF3D9A;
   --c2:#7A5CFF;
+  --lime:#C6F000;
 }
 *{box-sizing:border-box}
 html,body{height:100%}
@@ -43,11 +44,10 @@ body::before{
 }
 .brand{display:flex;align-items:center;gap:12px;min-width:0}
 .badge{
-  width:42px;height:42px;border-radius:50%;flex:none;
-  display:grid;place-items:center;
-  font-family:"Space Grotesk";font-weight:700;font-size:17px;color:#08080F;
-  background:linear-gradient(135deg,var(--c1),var(--c2));
-  box-shadow:0 0 22px color-mix(in srgb,var(--c1) 55%, transparent);
+  width:42px;height:42px;border-radius:11px;flex:none;
+  background:#08080F center/cover no-repeat;
+  background-image:url("icons/product-magenta-216.png?v=19");
+  box-shadow:0 0 18px color-mix(in srgb,var(--c1) 45%, transparent), inset 0 0 0 1px rgba(255,255,255,.08);
 }
 .title{display:flex;flex-direction:column;line-height:1;min-width:0}
 .title h1{
@@ -56,7 +56,7 @@ body::before{
   background:linear-gradient(90deg,var(--c1),var(--c2));
   -webkit-background-clip:text;background-clip:text;color:transparent;white-space:nowrap;
 }
-.title .sub{font-family:"Space Mono";font-size:10.5px;color:var(--fog);letter-spacing:1px;text-transform:uppercase;margin-top:3px}
+.title .sub{font-family:"Space Mono";font-size:10.5px;color:var(--lime);letter-spacing:1px;text-transform:uppercase;margin-top:3px;opacity:.92}
 .spacer{flex:1}
 
 .search{position:relative;display:flex;align-items:center}
@@ -89,7 +89,7 @@ body::before{
   transition:transform .12s,border-color .12s;
 }
 .channels button:hover{transform:scale(1.15)}
-.channels button[aria-pressed="true"]{border-color:var(--ink)}
+.channels button[aria-pressed="true"]{border-color:var(--lime);box-shadow:0 0 8px color-mix(in srgb,var(--lime) 55%,transparent)}
 .iconbtn{
   background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--ink);
   border-radius:999px;height:38px;padding:0 15px;font-size:12.5px;cursor:pointer;font-family:"Space Mono";
@@ -107,7 +107,7 @@ body::before{
   position:fixed;left:18px;bottom:14px;z-index:8;color:var(--fog);
   font-family:"Space Mono";font-size:11px;letter-spacing:.3px;pointer-events:none;
 }
-.hint b{color:var(--ink)}
+.hint b{color:var(--lime)}
 
 /* ---------- legend ---------- */
 .legend{
@@ -219,7 +219,7 @@ body::before{
 .loading.done{opacity:0;pointer-events:none}
 .loading canvas{width:220px;height:120px}
 .loading .lab{font-family:"Space Mono";font-size:12px;color:var(--fog);letter-spacing:2px;text-transform:uppercase}
-.loading .lab b{color:var(--ink)}
+.loading .lab b{color:var(--lime)}
 
 .err{position:fixed;inset:0;z-index:60;display:none;place-items:center;text-align:center;padding:30px}
 .err.show{display:grid}
@@ -359,3 +359,24 @@ body::before{
 .sec h3{display:flex;align-items:center;gap:8px}
 .sec h3::before{content:"";width:14px;height:2px;border-radius:2px;flex:none;background:linear-gradient(90deg,var(--c1),var(--c2))}
 @media(max-width:720px){ .panel-open .legend{right:auto} }
+
+/* ---------- V17: CD-style spinning preview artwork + themed player (genre-coloured) ---------- */
+.pvcd{position:relative;width:190px;height:190px;border-radius:50%;overflow:hidden;margin:8px auto 2px;background:#0a0a12;
+  box-shadow:0 12px 32px rgba(0,0,0,.6), 0 0 0 6px color-mix(in srgb,var(--nodeC) 28%, #0a0a12), 0 0 26px color-mix(in srgb,var(--nodeC) 45%, transparent);
+  animation:cdspin var(--cdspin,2s) linear infinite;animation-play-state:paused}
+.pvcd.spinning{animation-play-state:running}
+.pvcd img{width:100%;height:100%;object-fit:cover;display:block}
+.pvcd::after{content:"";position:absolute;inset:0;border-radius:50%;pointer-events:none;box-shadow:inset 0 0 0 2px rgba(255,255,255,.08), inset 0 0 40px rgba(0,0,0,.35)}
+.pvhole{position:absolute;top:50%;left:50%;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;
+  background:radial-gradient(circle,#0a0a12 44%, color-mix(in srgb,var(--nodeC) 45%,#0a0a12) 49%, #0a0a12 55%);
+  box-shadow:0 0 0 2px rgba(255,255,255,.12), inset 0 0 6px rgba(0,0,0,.85)}
+@keyframes cdspin{to{transform:rotate(360deg)}}
+.pvctrls{display:flex;align-items:center;gap:12px;width:100%;margin-top:12px}
+.pvplay{width:40px;height:40px;border-radius:50%;flex:none;cursor:pointer;font-size:14px;display:grid;place-items:center;color:var(--ink);
+  border:1px solid color-mix(in srgb,var(--nodeC) 50%,transparent);background:color-mix(in srgb,var(--nodeC) 20%, #12121c);
+  box-shadow:0 0 16px color-mix(in srgb,var(--nodeC) 35%,transparent);transition:background .15s}
+.pvplay:hover{background:color-mix(in srgb,var(--nodeC) 34%, #12121c)}
+.pvbar{flex:1;height:6px;border-radius:999px;background:rgba(255,255,255,.1);position:relative;cursor:pointer}
+.pvbar i{position:absolute;left:0;top:0;bottom:0;width:0;border-radius:999px;
+  background:linear-gradient(90deg,color-mix(in srgb,var(--nodeC) 55%,transparent),var(--nodeC));box-shadow:0 0 8px color-mix(in srgb,var(--nodeC) 60%,transparent)}
+.pvtime{font-family:"Space Mono";font-size:11px;color:var(--fog);flex:none;min-width:78px;text-align:right}
