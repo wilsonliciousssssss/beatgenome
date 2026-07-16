@@ -32,12 +32,12 @@
       for (var k = 0; k < olds.length; k++) { if (olds[k].parentNode) olds[k].parentNode.removeChild(olds[k]); }
       var link = document.createElement("link");
       link.rel = "icon"; link.type = "image/png"; link.setAttribute("sizes", "48x48");
-      link.href = "assets/icons/favicon-" + col + "-48.png?v=29";
+      link.href = "assets/icons/favicon-" + col + "-48.png?v=31";
       document.head.appendChild(link);
     } catch (e) {}
     try {
       var badge = document.querySelector(".badge");
-      if (badge) badge.style.backgroundImage = 'url("assets/icons/product-' + col + '-216.png?v=29")';
+      if (badge) badge.style.backgroundImage = 'url("assets/icons/product-' + col + '-216.png?v=31")';
     } catch (e) {}
   }
   function applyChannel(i) {
@@ -436,14 +436,16 @@
       gx.strokeStyle = "rgba(198,240,0,0.5)"; gx.lineWidth = 9.6 / cam.scale; gx.stroke();
     }
     var eframe = Math.floor(t * 26);
-    gx.shadowColor = "rgba(120,210,255,0.85)";
+    var dashDot = 0.6 / cam.scale, dashGap = 5.5 / cam.scale, dashOff = -(t * beatHz * 30) / cam.scale;
+    gx.shadowColor = "rgba(120,210,255,0.85)"; gx.lineCap = "round";
     for (var xrg = x0; xrg <= x1; xrg += 40) {
       var pr = (xrg / 210) + turn, ya = Math.sin(pr) * R, yb = Math.sin(pr + Math.PI) * R, dep = Math.cos(pr);
       var flick = 0.55 + 0.45 * Math.abs(Math.sin(xrg * 0.9 + t * 21));
-      gx.globalAlpha = (0.14 + 0.2 * (dep + 1) / 2) * flick;
-      gx.strokeStyle = "rgba(150,226,255,0.95)"; gx.lineWidth = 1.1 / cam.scale; gx.shadowBlur = 5;
+      gx.globalAlpha = (0.18 + 0.26 * (dep + 1) / 2) * flick;
+      gx.strokeStyle = "rgba(150,226,255,0.95)"; gx.lineWidth = 1.5 / cam.scale; gx.shadowBlur = 5;
+      gx.setLineDash([dashDot, dashGap]); gx.lineDashOffset = dashOff;
       gx.beginPath();
-      for (var sw = 0; sw <= 1.0001; sw += 0.07) {
+      for (var sw = 0; sw <= 1.0001; sw += 0.06) {
         var yy = ya + (yb - ya) * sw, tap = Math.sin(sw * Math.PI);
         var base = Math.sin(sw * Math.PI * 3 + xrg * 0.05 - t * beatHz * Math.PI * 2);
         var sd = Math.sin((sw * 57.3 + xrg * 3.1 + eframe) * 12.9898) * 43758.5453; var jit = (sd - Math.floor(sd)) - 0.5;
@@ -452,7 +454,7 @@
       }
       gx.stroke();
     }
-    gx.shadowBlur = 0;
+    gx.setLineDash([]); gx.lineCap = "butt"; gx.shadowBlur = 0;
     gx.globalAlpha = 1;
     var focus = hover || selected;
     DNA.genres.forEach(function (n) { var ph = (n._hx / 210) + turn + n._strand * Math.PI; n._dx = n._hx; n._dy = Math.sin(ph) * R; n._dep = Math.cos(ph); });
@@ -1065,5 +1067,5 @@
   setTimeout(function () { document.getElementById("loading").classList.add("done"); }, Math.max(300, 900 - (performance.now() - loadStart)));
 
   // expose for quick console poking / tests
-  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, version: "V29" };
+  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, version: "V31" };
 })();

@@ -16,6 +16,7 @@
     wrap.className = "bgaudio"; wrap.id = "bgaudio";
     wrap.innerHTML =
       '<div class="bga-player" id="bgaPlayer">' +
+        '<div class="bga-camelot" id="bgaCamelot" aria-label="Camelot key"></div>' +
         '<div class="bga-chords" id="bgaChords" aria-label="Chord progression (live)"></div>' +
         '<canvas class="bga-meter" id="bgaMeter" width="200" height="26" aria-hidden="true"></canvas>' +
         '<div class="bga-info"><span class="bga-dot"></span>' +
@@ -72,6 +73,7 @@
       currentName = node.name || currentProfile.name;
       elGenre.textContent = currentName;
       elBpm.textContent = currentProfile.bpm + " BPM";
+      updateCamelot(node);
       if (AUDIO.enabled) { AUDIO.playGenre(currentProfile); setState("playing " + currentName); }
       else {
         // autoplay: the click is a user gesture, so start the engine and play this genre
@@ -86,6 +88,25 @@
 
     // ---- footer chord box (live roman numerals for what Tone.js is playing) ----
     var elChords = wrap.querySelector("#bgaChords");
+    var elCamelot = wrap.querySelector("#bgaCamelot");
+    function camelotNeighbors(code) {
+      var m = (code || "").match(/(\d+)\s*([ABab])/); if (!m) return [];
+      var n = parseInt(m[1], 10), L = m[2].toUpperCase();
+      var up = (n % 12) + 1, dn = ((n + 10) % 12) + 1, other = L === "A" ? "B" : "A";
+      return [dn + L, up + L, n + other];
+    }
+    var CAM_KEY = { "1A":"Ab min","2A":"Eb min","3A":"Bb min","4A":"F min","5A":"C min","6A":"G min","7A":"D min","8A":"A min","9A":"E min","10A":"B min","11A":"F# min","12A":"Db min","1B":"B maj","2B":"F# maj","3B":"Db maj","4B":"Ab maj","5B":"Eb maj","6B":"Bb maj","7B":"F maj","8B":"C maj","9B":"G maj","10B":"D maj","11B":"A maj","12B":"E maj" };
+    function updateCamelot(node) {
+      if (!elCamelot) return;
+      var code = (node && node.camelot) ? node.camelot : "";
+      if (!code) { elCamelot.innerHTML = ""; return; }
+      var key = CAM_KEY[code] || ((node.d && node.d["Common Keys"]) ? node.d["Common Keys"].split(",")[0].trim() : "");
+      var nb = camelotNeighbors(code);
+      elCamelot.innerHTML = '<span class="bga-ck">Camelot</span>' +
+        '<div class="bga-cam"><span class="bga-cam-code">' + code + '</span>' +
+        '<div class="bga-cam-col">' + (key ? '<span class="bga-cam-key">' + key + '</span>' : '') +
+        (nb.length ? '<span class="bga-cam-mix">\u2194 ' + nb.join(" ") + '</span>' : '') + '</div></div>';
+    }
     var lastSig = "", lastStep = -2;
     function updateChords(rs) {
       var romans = (rs && rs.progRomans) ? rs.progRomans : [];

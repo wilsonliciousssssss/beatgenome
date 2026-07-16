@@ -1,5 +1,15 @@
 # Changelog
 
+## V31 — 2026-07-16
+Camelot key box in the footer.
+
+- **Camelot box** — the bottom player now leads (far left, beside the chords) with a Camelot box: the current genre's Camelot code (e.g. 8A), its key (A min), and the three harmonic-mixing neighbours (7A · 9A · 8B) for quick key matching.
+
+## V30 — 2026-07-16
+Electric base pairs are now marching dotted lines.
+
+- **Dotted electric wave** — each DNA base pair is now a thin dotted line whose dots travel along it (paced by the nearest genre's BPM), keeping the cyan glow, jitter and flicker of the electric effect.
+
 ## V29 — 2026-07-16
 Bolder backbones, and DNA nodes that bounce.
 

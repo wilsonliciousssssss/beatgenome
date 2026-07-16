@@ -46,7 +46,7 @@ body::before{
 .badge{
   width:42px;height:42px;border-radius:11px;flex:none;
   background:#08080F center/cover no-repeat;
-  background-image:url("icons/product-magenta-216.png?v=29");
+  background-image:url("icons/product-magenta-216.png?v=31");
   box-shadow:0 0 18px color-mix(in srgb,var(--c1) 45%, transparent), inset 0 0 0 1px rgba(255,255,255,.08);
 }
 .title{display:flex;flex-direction:column;line-height:1;min-width:0}
@@ -410,7 +410,7 @@ body::before{
 .arrchords .cm{font-family:"Space Mono";font-size:9px;color:var(--fog)}
 
 /* ---------- V23: footer-left interactive live chord box ---------- */
-.bga-chords{flex:none;display:flex;align-items:center;gap:8px;max-width:40%;overflow:hidden;padding-right:14px;margin-right:2px;border-right:1px solid var(--line)}
+.bga-chords{flex:none;display:flex;align-items:center;gap:8px;max-width:32%;overflow:hidden;padding-right:14px;margin-right:2px;border-right:1px solid var(--line)}
 .bga-ck{font-family:"Space Mono";font-size:8.5px;letter-spacing:1px;color:var(--fog);text-transform:uppercase;flex:none}
 .bga-chips{display:flex;gap:5px;overflow-x:auto}
 .bga-chip{font-family:"Space Grotesk";font-weight:700;font-size:13px;line-height:1;padding:6px 9px;cursor:pointer;flex:none;color:var(--fog);background:rgba(255,255,255,.05);border:1px solid var(--line);transition:color .12s,background .12s,border-color .12s}
@@ -418,3 +418,12 @@ body::before{
 .bga-chip.on{color:#08080F;background:var(--c1);border-color:transparent;box-shadow:0 0 12px color-mix(in srgb,var(--c1) 60%,transparent)}
 .bgaudio:not(.playing) .bga-chip.on{color:var(--ink);background:color-mix(in srgb,var(--c1) 26%,transparent);box-shadow:none}
 @media(max-width:720px){ .bga-chords{display:none} }
+
+/* ---------- V31: footer Camelot key box (leftmost, beside chords) ---------- */
+.bga-camelot{flex:none;display:flex;align-items:center;gap:8px;max-width:210px;overflow:hidden;padding-right:12px;margin-right:2px;border-right:1px solid var(--line)}
+.bga-cam{display:flex;align-items:center;gap:8px}
+.bga-cam-code{font-family:"Space Grotesk";font-weight:700;font-size:18px;color:var(--c1);line-height:1}
+.bga-cam-col{display:flex;flex-direction:column;gap:1px;min-width:0}
+.bga-cam-key{font-family:"Space Mono";font-size:10px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bga-cam-mix{font-family:"Space Mono";font-size:9.5px;color:var(--fog);white-space:nowrap}
+@media(max-width:720px){ .bga-camelot{display:none} }
