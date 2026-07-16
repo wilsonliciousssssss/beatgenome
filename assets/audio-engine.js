@@ -6,7 +6,7 @@
 (function (root) {
   "use strict";
   var T = root.Tone;
-  var RS = { kick: 0, snare: 0, hat: 0, bass: 0, chord: 0, master: 0, playing: false, bpm: 124, genreId: null, progRomans: [], chordStep: 0 };
+  var RS = { kick: 0, snare: 0, hat: 0, bass: 0, chord: 0, master: 0, playing: false, bpm: 124, genreId: null, progRomans: [], chordStep: 0, step16: 0 };
   var state = { supported: !!T, initialized: false, enabled: false, playing: false,
     volume: 0.7, lowPerf: false, active: null, pending: null, step: 0, listeners: [] };
   try { state.lowPerf = ("ontouchstart" in root) || (navigator.maxTouchPoints > 0) || ((navigator.hardwareConcurrency || 8) <= 4); } catch (e) {}
@@ -70,6 +70,7 @@
     var p = state.active; if (!p) return;
     if (state.pending && state.step % 16 === 0) { state.active = p = state.pending; state.pending = null; }
     var s = state.step % 16, bar = Math.floor(state.step / 16) % 4;
+    RS.step16 = s;
     var when = time + ((s % 2 === 1) ? (p.swing || 0) * 0.05 : 0);
     try {
       if (p.kickPattern[s]) { nodes.kick.triggerAttackRelease("C1", "8n", when, 0.9 + (p.energy - 0.5) * 0.2); RS.kick = 1; RS.master = 0.9; }

@@ -73,3 +73,15 @@ DJ Project/
 - Dependencies: **none** (vanilla JS + Canvas). Fonts via Google Fonts CDN, with system fallbacks offline.
 
 Made with Alpha Omega Collective — *freedom in colour, discipline in structure.*
+
+## Engineering terminology (per BeatGenome Terminology Guide)
+
+Primary implementation object: the **Genre Profile** (`assets/audio-profiles.js` -> `buildAudioProfile`).
+
+- **Musical Characteristics** - BPM, energy, groove, rhythm style, melody, harmony, arrangement style.
+- **Audio Profile** - tempo, swing, kick pattern, hat density, bass style, chord style, reverb, delay, filter, distortion.
+- **Visual Behaviour** - node pulse, background motion, glow, beat synchronisation, animation speed, connection highlight.
+- **DJ Information** - transition advice, compatible genres, BPM compatibility, harmonic (Camelot) compatibility, energy progression, mixing notes.
+- **Producer Information** - kick style, bass style, chord style, arrangement, FX chain, stereo image, mixing notes, sound design tips.
+
+"DNA" is kept only as the marketing name of the timeline/helix view; avoid it as an engineering term. "BeatGenome" is the product name only.

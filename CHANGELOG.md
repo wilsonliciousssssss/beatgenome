@@ -1,5 +1,28 @@
 # Changelog
 
+## V35 - 2026-07-16
+Personal Library.
+
+- **Tag your genres** - each genre panel now has Favourite / Want to Learn / I DJ / I Produce toggles, saved in your browser.
+- **Library + recommendations** - a LIBRARY button opens your tagged genres grouped by list, plus a "Recommended for you" section built from genres that mix well with your favourites and DJ picks.
+
+## V34 - 2026-07-16
+Compare Mode.
+
+- **Two genres side by side** - a COMPARE button opens a panel with two genre pickers and a side-by-side table (family, BPM, energy, Camelot/key, groove, bass, chords, arrangement, mixes-with, artists, producer notes), plus A/B playback buttons.
+
+## V33 - 2026-07-16
+Mood Explorer.
+
+- **Filter by feeling** - a new MOOD button opens a filter bar (Dark, Euphoric, Driving, Minimal, Organic, Festival, Underground, Emotional). Pick a mood and the graph/timeline highlights the genres that fit and dims the rest; pick again to clear.
+
+## V32 - 2026-07-16
+Producer drum grid + DJ compatible-genre finder.
+
+- **Drum Pattern (16-step)** - a genre's info panel now shows its kick/snare/hat/open-hat pattern on a 16-step grid, straight from the audio profile, with a live playhead that follows the beat while sound plays.
+- **Compatible Mixes (DJ)** - the panel ranks other genres you can mix into: BPM-close and/or harmonically compatible (Camelot), each tagged easy/medium/hard, click to jump.
+- **Terminology** - README aligned to the Genre Profile / Musical Characteristics / Audio Profile / Visual Behaviour / DJ Information / Producer Information vocabulary.
+
 ## V31 — 2026-07-16
 Camelot key box in the footer.
 

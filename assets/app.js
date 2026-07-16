@@ -32,12 +32,12 @@
       for (var k = 0; k < olds.length; k++) { if (olds[k].parentNode) olds[k].parentNode.removeChild(olds[k]); }
       var link = document.createElement("link");
       link.rel = "icon"; link.type = "image/png"; link.setAttribute("sizes", "48x48");
-      link.href = "assets/icons/favicon-" + col + "-48.png?v=31";
+      link.href = "assets/icons/favicon-" + col + "-48.png?v=35";
       document.head.appendChild(link);
     } catch (e) {}
     try {
       var badge = document.querySelector(".badge");
-      if (badge) badge.style.backgroundImage = 'url("assets/icons/product-' + col + '-216.png?v=31")';
+      if (badge) badge.style.backgroundImage = 'url("assets/icons/product-' + col + '-216.png?v=35")';
     } catch (e) {}
   }
   function applyChannel(i) {
@@ -523,6 +523,7 @@
     drawScope(sx, W, 40, focusParams(), false);
     if (pScopeOn && panel.classList.contains("open")) {
       drawScope(psx, pScope.clientWidth || 380, 46, currentPanelParams(), true);
+      updateDrumPlayhead();
     }
     requestAnimationFrame(frame);
   }
@@ -708,6 +709,48 @@
     updateDock();
   }
 
+  // ---- V32: Producer drum grid + DJ compatible-genre finder ----
+  function camelotNbr(code) { var m = (code || "").match(/(\d+)\s*([ABab])/); if (!m) return []; var n = parseInt(m[1], 10), L = m[2].toUpperCase(); return [(((n + 10) % 12) + 1) + L, ((n % 12) + 1) + L, n + (L === "A" ? "B" : "A")]; }
+  function drumGridHTML(p) {
+    var rows = [["Kick", p.kickPattern], ["Snare", p.clapPattern], ["Hats", p.closedHatPattern], ["Open", p.openHatPattern]];
+    var h = '<div class="drum" id="drumGrid">';
+    rows.forEach(function (r) {
+      h += '<div class="drow"><span class="dlab">' + r[0] + '</span><div class="dcells">';
+      for (var i = 0; i < 16; i++) h += '<i class="' + (r[1] && r[1][i] ? "on" : "") + (i % 4 === 0 ? " beat" : "") + '" data-step="' + i + '"></i>';
+      h += '</div></div>';
+    });
+    return h + '</div>';
+  }
+  function updateDrumPlayhead() {
+    var grid = document.getElementById("drumGrid"); if (!grid) return;
+    var rs = (window.BeatGenomeAudio && window.BeatGenomeAudio.getReactiveState) ? window.BeatGenomeAudio.getReactiveState() : null;
+    var step = (rs && rs.playing) ? (rs.step16 | 0) : -1;
+    if (step === grid._ls) return; grid._ls = step;
+    var cells = grid.querySelectorAll("i");
+    for (var i = 0; i < cells.length; i++) cells[i].classList.toggle("play", parseInt(cells[i].getAttribute("data-step"), 10) === step);
+  }
+  function compatibleGenres(node) {
+    if (!node) return [];
+    var bpm = node.bpm || 124, cam = node.camelot || "", ok = {}; ok[cam] = 1;
+    camelotNbr(cam).forEach(function (k) { ok[k] = 1; });
+    var res = [];
+    for (var i = 0; i < nodes.length; i++) {
+      var m = nodes[i]; if (m === node || m.level !== "Genre") continue;
+      var db = Math.abs((m.bpm || 124) - bpm), keyOk = !!ok[m.camelot];
+      if (db <= Math.max(6, bpm * 0.06) || keyOk) res.push({ n: m, db: db, keyOk: keyOk, score: (keyOk ? 3 : 0) + Math.max(0, 4 - db / 2) });
+    }
+    res.sort(function (a, b) { return b.score - a.score; });
+    return res.slice(0, 6);
+  }
+  function compHTML(list) {
+    return '<div class="comp">' + list.map(function (c) {
+      var diff = (c.keyOk && c.db <= 3) ? "easy" : (c.keyOk || c.db <= 5) ? "medium" : "hard";
+      return '<button class="crow" data-id="' + c.n.id + '" title="' + esc(c.n.name + " - " + (c.n.bpm || "?") + " BPM - " + (c.n.camelot || "?")) + '">' +
+        '<span class="cdot" style="background:' + colourOf(c.n) + '"></span><span class="cname">' + esc(c.n.name) + '</span>' +
+        '<span class="cbpm">' + (c.n.bpm || "-") + '</span><span class="ckey">' + esc(c.n.camelot || "-") + '</span>' +
+        '<span class="cdiff ' + diff + '">' + diff + '</span></button>';
+    }).join("") + '</div>';
+  }
   function openPanel(n) {
     panelNode = n;
     panel.style.setProperty("--nodeC", colourOf(n));
@@ -727,7 +770,7 @@
     for (var i = 1; i <= 10; i++) eb += '<i class="' + (i <= (n.energy || 0) ? "on" : "") + '"></i>';
     eb += "</div>";
     // sections
-    var body = eb;
+    var body = libTagRow(n.id) + eb;
     var arrBar = buildArrangeBar(d), dna = buildDNA(d);
     body += '<div class="sec"><h3>Arrangement</h3>' + arrBar +
       (dna || (arrBar ? "" : '<div class="field"><div class="v">' + esc(d["Track Structure"] || "—") + "</div></div>")) + "</div>";
@@ -747,10 +790,20 @@
     });
     // signature tracks now live in the bottom-centre tracks bar (renderTracks)
 
+    var prof2 = null; try { prof2 = window.BeatGenomeProfiles ? window.BeatGenomeProfiles.buildAudioProfile(n.d) : null; } catch (e) {}
+    if (prof2 && prof2.kickPattern) body += '<div class="sec"><h3>Drum Pattern (16-step)</h3>' + drumGridHTML(prof2) + '</div>';
+    var comp = compatibleGenres(n);
+    if (comp.length) body += '<div class="sec"><h3>Compatible Mixes (DJ)</h3>' + compHTML(comp) + '</div>';
     document.getElementById("pBody").innerHTML = body;
     // wire chips
     Array.prototype.forEach.call(document.querySelectorAll("#pBody .chip"), function (c) {
       if (c.dataset.id) c.addEventListener("click", function () { select(byId[c.dataset.id]); });
+    });
+    Array.prototype.forEach.call(document.querySelectorAll("#pBody .crow"), function (b) {
+      b.addEventListener("click", function () { var t = byId[b.getAttribute("data-id")]; if (t) select(t); });
+    });
+    Array.prototype.forEach.call(document.querySelectorAll("#pBody .libtag"), function (b) {
+      b.addEventListener("click", function () { toggleTag(n.id, b.getAttribute("data-tag")); b.classList.toggle("on"); });
     });
     renderTracks(n);
     panel.classList.add("open"); panel.setAttribute("aria-hidden", "false"); document.body.classList.add("panel-open");
@@ -1042,6 +1095,112 @@
     select(nodes[Math.floor(Math.random() * nodes.length)]);
   });
 
+  // ---- V33: Mood Explorer (filter genres by feeling) ----
+  var MOODS = [
+    ["Dark", /dark|hypnotic|industrial|menac|grim|brood|dystop|warehouse/i, 0],
+    ["Euphoric", /euphor|uplift|anthem|hands.?up|epic|festival/i, 8],
+    ["Driving", /driv|relentless|peak.?time|pump|rolling|propuls|hypnotic/i, 7],
+    ["Minimal", /minimal|strip|reduc|micro|dub tech|hypnotic/i, -5],
+    ["Organic", /organic|afro|live|percuss|warm|jazz|soul|tribal|amapiano/i, 0],
+    ["Festival", /big room|mainstage|festival|anthem|electro house|future house/i, 9],
+    ["Underground", /underground|raw|deep|\bdub\b|warehouse|acid/i, 0],
+    ["Emotional", /emotion|melanchol|soul|melodic|nostalg|beauti/i, 0]
+  ];
+  function moodText(n) { var d = n.d || {}; return ((n.name || "") + " " + (n.family || "") + " " + (d["Sound Signature"] || "") + " " + (d["Notes"] || "") + " " + (d["Drum Feel"] || "") + " " + (d["Sound Design / Instrumentation"] || "") + " " + (d["Harmony Approach"] || "")).toLowerCase(); }
+  function nodeHasMood(n, i) { var m = MOODS[i], e = n.energy || 5; var byE = m[2] > 0 ? e >= m[2] : m[2] < 0 ? e <= (-m[2]) : false; return m[1].test(moodText(n)) || byE; }
+  function applyMood(i) {
+    activeMood = (activeMood === i) ? -1 : i;
+    if (activeMood < 0) { matchSet = null; }
+    else { matchSet = {}; var any = false; for (var k = 0; k < nodes.length; k++) { if (nodeHasMood(nodes[k], activeMood)) { matchSet[nodes[k].id] = 1; any = true; } } if (!any) matchSet = null; }
+    if (moodBar) Array.prototype.forEach.call(moodBar.children, function (b, j) { b.setAttribute("aria-pressed", j === activeMood ? "true" : "false"); });
+    if (searchIn) searchIn.value = ""; if (results) results.classList.remove("show");
+    reheat(0.5);
+  }
+  var moodBar = document.getElementById("moodBar"), moodBtn = document.getElementById("moodBtn"), activeMood = -1;
+  if (moodBar && moodBtn) {
+    MOODS.forEach(function (m, i) { var b = document.createElement("button"); b.className = "moodchip"; b.textContent = m[0]; b.setAttribute("aria-pressed", "false"); b.addEventListener("click", function () { applyMood(i); }); moodBar.appendChild(b); });
+    moodBtn.addEventListener("click", function () { moodBar.hidden = !moodBar.hidden; moodBtn.setAttribute("aria-pressed", moodBar.hidden ? "false" : "true"); });
+  }
+  // ---- V34: Compare Mode (two genres side by side + A/B playback) ----
+  var cmpEl = null, cmpA = null, cmpB = null;
+  function cmpVal(node, field) { return (node && node.d && node.d[field]) ? node.d[field] : "-"; }
+  function renderCompare() {
+    if (!cmpEl) return;
+    var rows = [
+      ["Family", function (n) { return n ? n.family : "-"; }],
+      ["BPM", function (n) { return n ? (cmpVal(n, "Typical BPM") !== "-" ? cmpVal(n, "Typical BPM") : n.bpm) : "-"; }],
+      ["Energy", function (n) { return n ? (n.energy || "-") + "/10" : "-"; }],
+      ["Camelot / Key", function (n) { return n ? (n.camelot || "-") + " - " + cmpVal(n, "Common Keys") : "-"; }],
+      ["Groove / Feel", function (n) { return cmpVal(n, "Drum Feel"); }],
+      ["Bass / Sound", function (n) { return cmpVal(n, "Sound Design / Instrumentation"); }],
+      ["Chords", function (n) { return cmpVal(n, "Chord Progression"); }],
+      ["Arrangement", function (n) { return cmpVal(n, "Track Structure"); }],
+      ["Mixes with", function (n) { return cmpVal(n, "Mixes Well With"); }],
+      ["Artists", function (n) { return cmpVal(n, "Representative Artists"); }],
+      ["Producer notes", function (n) { return cmpVal(n, "Production Techniques"); }]
+    ];
+    var h = '<div class="cmpgrid"><div class="cmpr cmphdr"><span class="cl"></span><span class="ca">' + esc(cmpA ? cmpA.name : "A") + '</span><span class="cb">' + esc(cmpB ? cmpB.name : "B") + '</span></div>';
+    rows.forEach(function (r) { h += '<div class="cmpr"><span class="cl">' + r[0] + '</span><span class="ca">' + esc(String(r[1](cmpA) || "-")) + '</span><span class="cb">' + esc(String(r[1](cmpB) || "-")) + '</span></div>'; });
+    cmpEl.querySelector("#cmpBody").innerHTML = h + '</div>';
+  }
+  function ensureCompare() {
+    if (cmpEl) return;
+    cmpEl = document.createElement("div"); cmpEl.className = "overlay cmp"; cmpEl.id = "compareOverlay"; cmpEl.setAttribute("role", "dialog");
+    cmpEl.innerHTML = '<div class="cmpsheet"><div class="cmphead"><span>Compare genres</span>' +
+      '<div class="cmpplay"><button id="cmpPlayA">▶ A</button><button id="cmpPlayB">▶ B</button><button id="cmpStop">■</button></div>' +
+      '<button class="x" id="cmpClose">✕ close</button></div>' +
+      '<div class="cmpsel"><select id="cmpSelA" aria-label="Genre A"></select><select id="cmpSelB" aria-label="Genre B"></select></div>' +
+      '<div class="cmpbody" id="cmpBody"></div></div>';
+    document.body.appendChild(cmpEl);
+    var genres = nodes.filter(function (n) { return n.level === "Genre"; }).sort(function (a, b) { return a.name.localeCompare(b.name); });
+    var optHTML = genres.map(function (g) { return '<option value="' + g.id + '">' + esc(g.name) + '</option>'; }).join("");
+    var selA = cmpEl.querySelector("#cmpSelA"), selB = cmpEl.querySelector("#cmpSelB");
+    selA.innerHTML = optHTML; selB.innerHTML = optHTML; selA.selectedIndex = 0; selB.selectedIndex = Math.min(1, genres.length - 1);
+    function upd() { cmpA = byId[selA.value]; cmpB = byId[selB.value]; renderCompare(); }
+    selA.addEventListener("change", upd); selB.addEventListener("change", upd);
+    cmpEl.querySelector("#cmpPlayA").addEventListener("click", function () { if (cmpA && window.BeatGenomeOnSelect) window.BeatGenomeOnSelect(cmpA); });
+    cmpEl.querySelector("#cmpPlayB").addEventListener("click", function () { if (cmpB && window.BeatGenomeOnSelect) window.BeatGenomeOnSelect(cmpB); });
+    cmpEl.querySelector("#cmpStop").addEventListener("click", function () { if (window.BeatGenomeAudio) window.BeatGenomeAudio.stop(); });
+    cmpEl.querySelector("#cmpClose").addEventListener("click", function () { cmpEl.classList.remove("show"); });
+    cmpEl.addEventListener("click", function (e) { if (e.target === cmpEl) cmpEl.classList.remove("show"); });
+    upd();
+  }
+  function openCompare() { ensureCompare(); cmpEl.classList.add("show"); }
+  var compareBtn = document.getElementById("compareBtn"); if (compareBtn) compareBtn.addEventListener("click", openCompare);
+  // ---- V35: Personal Library (localStorage tags + recommendations) ----
+  var LIB_TAGS = [["fav", "★ Favourite"], ["learn", "Want to Learn"], ["dj", "I DJ"], ["produce", "I Produce"]];
+  function getLib() { try { return JSON.parse(store("edm_library") || "{}") || {}; } catch (e) { return {}; } }
+  function setLib(o) { try { store("edm_library", JSON.stringify(o)); } catch (e) {} }
+  function nodeTags(id) { var l = getLib(); return l[id] || []; }
+  function toggleTag(id, tag) { var l = getLib(), t = l[id] || []; var i = t.indexOf(tag); if (i >= 0) t.splice(i, 1); else t.push(tag); if (t.length) l[id] = t; else delete l[id]; setLib(l); }
+  function libTagRow(id) { var tags = nodeTags(id); return '<div class="libtags">' + LIB_TAGS.map(function (t) { return '<button class="libtag' + (tags.indexOf(t[0]) >= 0 ? " on" : "") + '" data-tag="' + t[0] + '">' + t[1] + '</button>'; }).join("") + '</div>'; }
+  var libEl = null;
+  function libChips(list) { if (!list.length) return '<span class="libempty">-</span>'; return list.map(function (nd) { return '<button class="libchip" data-id="' + nd.id + '"><span class="cdot" style="background:' + colourOf(nd) + '"></span>' + esc(nd.name) + '</button>'; }).join(""); }
+  function renderLibrary() {
+    if (!libEl) return;
+    var l = getLib(), groups = { fav: [], learn: [], dj: [], produce: [] };
+    Object.keys(l).forEach(function (id) { var nd = byId[id]; if (!nd) return; l[id].forEach(function (tag) { if (groups[tag]) groups[tag].push(nd); }); });
+    var seed = {}; Object.keys(l).forEach(function (id) { seed[id] = 1; });
+    var recMap = {};
+    groups.fav.concat(groups.dj).forEach(function (nd) { compatibleGenres(nd).forEach(function (c) { if (!seed[c.n.id]) recMap[c.n.id] = (recMap[c.n.id] || 0) + c.score; }); });
+    var recs = Object.keys(recMap).map(function (id) { return byId[id]; }).filter(Boolean).sort(function (x, y) { return recMap[y.id] - recMap[x.id]; }).slice(0, 8);
+    var h = "";
+    [["★ Favourites", groups.fav], ["Want to Learn", groups.learn], ["I DJ", groups.dj], ["I Produce", groups.produce], ["Recommended for you", recs]].forEach(function (g) {
+      h += '<div class="libsec"><h4>' + g[0] + '</h4><div class="libchips">' + libChips(g[1]) + '</div></div>';
+    });
+    libEl.querySelector("#libBody").innerHTML = h;
+    Array.prototype.forEach.call(libEl.querySelectorAll(".libchip"), function (b) { b.addEventListener("click", function () { var t = byId[b.getAttribute("data-id")]; if (t) { libEl.classList.remove("show"); select(t); } }); });
+  }
+  function ensureLibrary() {
+    if (libEl) return;
+    libEl = document.createElement("div"); libEl.className = "overlay lib"; libEl.id = "libraryOverlay"; libEl.setAttribute("role", "dialog");
+    libEl.innerHTML = '<div class="libsheet"><div class="cmphead"><span>Your Library</span><button class="x" id="libClose">✕ close</button></div><div class="libbody" id="libBody"></div></div>';
+    document.body.appendChild(libEl);
+    libEl.querySelector("#libClose").addEventListener("click", function () { libEl.classList.remove("show"); });
+    libEl.addEventListener("click", function (e) { if (e.target === libEl) libEl.classList.remove("show"); });
+  }
+  function openLibrary() { ensureLibrary(); renderLibrary(); libEl.classList.add("show"); }
+  var libraryBtn = document.getElementById("libraryBtn"); if (libraryBtn) libraryBtn.addEventListener("click", openLibrary);
   // ---- meta line ----
   document.getElementById("metaLine").textContent = "By [DJ7]-[AOC] //Wilsonlicioussss";
 
@@ -1067,5 +1226,5 @@
   setTimeout(function () { document.getElementById("loading").classList.add("done"); }, Math.max(300, 900 - (performance.now() - loadStart)));
 
   // expose for quick console poking / tests
-  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, version: "V31" };
+  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, version: "V35" };
 })();
