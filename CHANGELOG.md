@@ -1,5 +1,58 @@
 # Changelog
 
+## V45 - 2026-07-16
+Library becomes About Me.
+
+- **About Me** - the top-bar LIBRARY button is now ABOUT, opening a personal page: a profile-picture area plus five sections (Things I Love, Always Learning, I DJ, I Produce, Currently Exploring). The per-genre library tags were retired with it.
+- **Your photo** - drop a picture at `assets/about-me.jpg` to replace the placeholder (your uploaded photo was visible in chat but not saved as a file here).
+
+## V44 - 2026-07-16
+Morph always runs.
+
+- **Fix: GRAPH<->DNA morph** was skipped whenever the system had "reduce motion" enabled (it fell back to an instant switch). Now the morph always animates; under reduced-motion it uses a shorter duration and drops the backbone glitch jitter so it stays gentle.
+
+## V43 - 2026-07-16
+Morphing GRAPH <-> DNA transition.
+
+- **Nodes glide, backbone glitches in** - toggling to DNA now animates the hubs and orphans gliding from their graph positions to their timeline locations over ~1.1s, while the phosphate backbone (and base pairs) glitch into place - a jittery, electric form-up that settles into the firm helix. Toggling back reverses it. Reduced-motion still switches instantly.
+
+## V42 - 2026-07-16
+Full drum grid.
+
+- **Perc lane** - the 16-step drum grid now shows the Percussion voice too, so every step the engine triggers (kick, snare, hats, open, perc, bass) is visible and in sync with the live playhead.
+
+## V41 - 2026-07-16
+Themed dropdowns.
+
+- **In-theme genre pickers** - Compare Mode and Genre Morph now use a custom dropdown (dark list, channel-colour hover/selected, scrollable) instead of the browser's default select popup, so the blue system highlight is gone.
+
+## V40 - 2026-07-16
+Mobile top-bar menu.
+
+- **Tidy controls on small screens** - the secondary top-bar buttons now collapse into a menu on narrow screens; on desktop they stay inline. Regenerated the GitHub Pages package from this build.
+
+## V39 - 2026-07-16
+Genre Morph.
+
+- **Blend two genres** - a MORPH button opens a slider between any two genres; drag it and the procedural audio blends (BPM, energy, groove, FX interpolate smoothly; drum/chord patterns and key snap at the midpoint), switching on the bar. A readout shows the live blend, BPM and which genre's patterns are driving.
+
+## V38 - 2026-07-16
+Producer Playground.
+
+- **Bass lane** - the 16-step drum grid now includes a Bass row, so you can see the bass movement alongside the kit.
+- **Chord player** - a Chord Player block plays the genre's progression: click a roman-numeral to strum it, or hit sequence to hear the whole progression at tempo.
+
+## V37 - 2026-07-16
+DJ transition detail + Compare bar chart.
+
+- **Why a transition works** - each Compatible Mix now shows the key relationship (same/relative/adjacent), BPM and energy delta, an EQ tip and phrase length under the row.
+- **Compare bars** - Compare Mode gains an A/B bar chart of energy, groove, darkness, melody and swing above the table.
+
+## V36 - 2026-07-16
+Animated GRAPH <-> DNA transition.
+
+- **View transition** - toggling between the force graph and the DNA timeline now animates: the camera zooms/pans between the two framings over ~0.55s, and the switch is covered by an electric dip (dim + travelling cyan scan-lines + a glitch spike). Falls back to instant under reduced-motion.
+
 ## V35 - 2026-07-16
 Personal Library.
 

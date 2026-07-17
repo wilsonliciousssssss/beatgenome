@@ -46,7 +46,7 @@ body::before{
 .badge{
   width:42px;height:42px;border-radius:11px;flex:none;
   background:#08080F center/cover no-repeat;
-  background-image:url("icons/product-magenta-216.png?v=47");
+  background-image:url("icons/product-magenta-216.png?v=49");
   box-shadow:0 0 18px color-mix(in srgb,var(--c1) 45%, transparent), inset 0 0 0 1px rgba(255,255,255,.08);
 }
 .title{display:flex;flex-direction:column;line-height:1;min-width:0}
@@ -640,3 +640,92 @@ body::before{
   .sheet, .cmp .cmpsheet, .about .aboutsheet, .mrph .mrphsheet{ max-height:96vh; }
   .apic-frame{ width:104px; height:104px; }
 }
+
+/* V48 - About: come-say-hi social links */
+.aboutlinks{display:flex;flex-wrap:wrap;gap:8px;margin-top:2px}
+.alink{display:inline-flex;align-items:center;gap:6px;font-family:"Space Mono";font-size:12.5px;color:var(--ink);background:rgba(255,255,255,.05);border:1px solid var(--line);padding:9px 13px;text-decoration:none;transition:color .12s,background .12s,border-color .12s}
+.alink:hover{color:var(--c1);border-color:color-mix(in srgb,var(--c1) 55%,transparent);background:color-mix(in srgb,var(--c1) 10%,transparent)}
+
+/* ===================================================================
+   V49 - Mobile & Tablet Optimisation Package
+   central scale vars - focus mode - gestures UI - sheets - perf shell
+   =================================================================== */
+
+/* scale-manager-driven sizing (all vars = 1 on desktop, so no regression) */
+.iconbtn{ height:calc(38px * var(--ui-scale,1)); }
+.panel .head{ padding:calc(22px * var(--spacing-scale,1)) calc(22px * var(--spacing-scale,1)) calc(16px * var(--spacing-scale,1)); }
+.panel .body{ padding:6px calc(22px * var(--spacing-scale,1)) calc(40px * var(--spacing-scale,1)); }
+.metric{ padding:calc(9px * var(--spacing-scale,1)) calc(11px * var(--spacing-scale,1)); }
+.aboutbody{ padding:calc(20px * var(--panel-scale,1)) calc(22px * var(--panel-scale,1)) calc(28px * var(--panel-scale,1)); }
+#graph{ overscroll-behavior:contain; }
+.topactions .iconbtn, .cmpsel .tsel{ min-width:0; }
+.panel, .sheet{ min-height:0; }
+
+/* focus-mode chips (ALL | FAMILY | RELATED) in the panel head */
+.focuschips{ display:flex; align-items:center; gap:5px; margin-top:10px; }
+.focuschips .fclab{ font-family:"Space Mono"; font-size:8.5px; letter-spacing:1.2px; color:var(--fog); margin-right:3px; }
+.focuschips button{ font-family:"Space Mono"; font-size:10px; letter-spacing:.5px; color:var(--fog);
+  background:rgba(255,255,255,.05); border:1px solid var(--line); padding:5px 9px; cursor:pointer;
+  transition:color .12s, background .12s, border-color .12s; }
+.focuschips button:hover{ color:var(--ink); border-color:color-mix(in srgb, var(--nodeC) 50%, transparent); }
+.focuschips button[aria-pressed="true"]{ color:#08080F; background:var(--nodeC); border-color:transparent; }
+.focuschips button:focus-visible{ outline:2px solid var(--lime); outline-offset:1px; }
+
+/* long-press quick actions + overlapping-node chooser */
+.gpop{ position:fixed; z-index:55; min-width:180px; background:var(--panel); border:1px solid var(--line);
+  box-shadow:0 24px 60px rgba(0,0,0,.6); backdrop-filter:blur(12px); padding:6px; }
+.gpop .gpop-t{ font-family:"Space Grotesk"; font-weight:700; font-size:13px; color:var(--ink); padding:7px 9px 8px; border-bottom:1px solid var(--line); margin-bottom:4px; }
+.gpop button{ display:flex; align-items:center; gap:8px; width:100%; text-align:left; font-family:"Space Mono"; font-size:12px;
+  color:var(--ink); background:none; border:0; padding:11px 9px; cursor:pointer; }
+.gpop button:hover{ background:color-mix(in srgb, var(--c1) 18%, transparent); }
+.gpop button i{ width:9px; height:9px; flex:none; display:inline-block; }
+
+/* reset-view control - visible on touch devices and narrow screens */
+.resetview{ display:none; position:fixed; left:12px; bottom:calc(var(--dockh,64px) + 46px); z-index:9;
+  font-family:"Space Mono"; font-size:11px; letter-spacing:.5px; color:var(--ink);
+  background:var(--panel); border:1px solid var(--line); padding:10px 13px; cursor:pointer; }
+.resetview:hover{ border-color:var(--c1); color:var(--c1); }
+html[data-touch="1"] .resetview{ display:inline-flex; }
+@media (max-width:900px){ .resetview{ display:inline-flex; bottom:calc(var(--dockh,64px) + 12px); } }
+
+/* one-time phone hint */
+.bg-toast{ position:fixed; top:calc(64px + env(safe-area-inset-top,0px)); left:50%; transform:translateX(-50%); z-index:35;
+  font-family:"Space Mono"; font-size:11.5px; color:var(--ink); background:var(--panel); border:1px solid var(--line);
+  box-shadow:0 16px 44px rgba(0,0,0,.5); padding:11px 16px; white-space:nowrap; }
+.bg-toast b{ color:var(--lime); }
+
+/* phone-landscape recommendation (non-blocking) */
+.rotbar{ position:fixed; left:0; right:0; bottom:var(--dockh,56px); z-index:34; display:flex; align-items:center; gap:12px;
+  background:var(--panel); border-top:1px solid var(--line); padding:10px 14px; }
+.rotbar span{ font-family:"Space Mono"; font-size:10.5px; color:var(--fog); flex:1; line-height:1.4; }
+.rotbar button{ font-family:"Space Mono"; font-size:10.5px; letter-spacing:.5px; color:#08080F; background:var(--lime);
+  border:0; padding:9px 13px; cursor:pointer; flex:none; }
+
+/* phone bottom sheet: peek height by default, .tall when dragged up */
+@media (max-width:640px){
+  .panel{ max-height:52dvh; }
+  .panel.tall{ max-height:88dvh; }
+  .panel .head{ touch-action:none; cursor:grab; }
+}
+
+/* tablet portrait: panel becomes a lower sheet (graph keeps the upper ~60%) */
+html[data-layout="tablet-portrait"] .panel{ top:auto; left:0; right:0; width:auto; max-width:none; height:auto;
+  max-height:44dvh; bottom:var(--dockh,64px); transform:translateY(112%);
+  border-left:0; border-top:1px solid var(--line); box-shadow:0 -26px 60px rgba(0,0,0,.6); }
+html[data-layout="tablet-portrait"] .panel.open{ transform:none; }
+html[data-layout="tablet-portrait"] .panel.tall{ max-height:82dvh; }
+html[data-layout="tablet-portrait"] .panel .head{ touch-action:none; cursor:grab; }
+html[data-layout="tablet-portrait"] .panel .head::before{ content:""; position:absolute; top:7px; left:50%; transform:translateX(-50%);
+  width:42px; height:4px; background:rgba(255,255,255,.22); }
+html[data-layout="tablet-portrait"] .panel-open .legend{ right:14px; }
+
+/* phone landscape: trim chrome, keep the graph */
+html[data-layout="phone-landscape"]{ --dockh:calc(48px + env(safe-area-inset-bottom,0px)); }
+html[data-layout="phone-landscape"] .topbar{ padding-top:calc(6px + env(safe-area-inset-top,0px)); padding-bottom:6px; }
+html[data-layout="phone-landscape"] .title .sub{ display:none; }
+html[data-layout="phone-landscape"] .bgaudio{ height:var(--dockh); }
+html[data-layout="phone-landscape"] .panel{ max-height:82dvh; }
+
+/* visible keyboard focus on primary controls (spec 15) */
+.iconbtn:focus-visible, .bga-btn:focus-visible, .chip:focus-visible, .moodchip:focus-visible,
+.tsel-btn:focus-visible, .resetview:focus-visible{ outline:2px solid var(--lime); outline-offset:2px; }

@@ -41,7 +41,10 @@ I built this to be fun and genuinely useful, not to pretend it's the last word. 
 
 I'm Wilson — **DJ7 · Wilsonlicioussss**. I love thoughtful design, quiet details, electronic music and ideas that feel a little ahead of their time. Everything I make starts with curiosity — how design, data, people and culture connect — and BeatGenome is one of those experiments: a way to make the music I love easier to understand and explore. There's a bit more about me inside the app, under **About**.
 
-Come say hi → https://harbingermsc.blogspot.com/
+Come say hi:
+
+- **Instagram** — https://www.instagram.com/wilsonlicioussss/
+- **Blog** — https://harbingermsc.blogspot.com/
 
 ---
 

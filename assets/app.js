@@ -32,12 +32,12 @@
       for (var k = 0; k < olds.length; k++) { if (olds[k].parentNode) olds[k].parentNode.removeChild(olds[k]); }
       var link = document.createElement("link");
       link.rel = "icon"; link.type = "image/png"; link.setAttribute("sizes", "48x48");
-      link.href = "assets/icons/favicon-" + col + "-48.png?v=47";
+      link.href = "assets/icons/favicon-" + col + "-48.png?v=49";
       document.head.appendChild(link);
     } catch (e) {}
     try {
       var badge = document.querySelector(".badge");
-      if (badge) badge.style.backgroundImage = 'url("assets/icons/product-' + col + '-216.png?v=47")';
+      if (badge) badge.style.backgroundImage = 'url("assets/icons/product-' + col + '-216.png?v=49")';
     } catch (e) {}
   }
   function applyChannel(i) {
@@ -63,7 +63,14 @@
       panel = document.getElementById("panel"),
       legend = document.getElementById("legend"),
       overlay = document.getElementById("overlay");
-  var DPR = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+  // V49: central Layout & Scale Manager (assets/layout-manager.js) is the single sizing source
+  var LM = window.BeatGenomeLayout || null;
+  var MX = LM ? LM.metrics() : null;
+  var IS_TOUCH = MX ? MX.isTouch : !!(window.matchMedia && matchMedia("(pointer: coarse)").matches);
+  var QUALITY = MX ? MX.renderQuality : "high";
+  var NODE_SCALE = MX ? MX.nodeScale : 1;
+  var LABEL_SCALE = MX ? MX.typographyScale : 1;
+  var DPR = Math.max(1, Math.min(2, (MX && MX.pixelRatio) || window.devicePixelRatio || 1));
 
   // ---- data prep ----
   var nodes = DATA.nodes.map(function (n) {
@@ -90,7 +97,7 @@
     n.wa = Math.random() * 6.2832; n.wb = Math.random() * 6.2832;
   });
   function radius(n) {
-    return n.level === "Genre" ? 7 + (n.energy || 5) * 0.7 : 3.5 + (n.energy || 5) * 0.28;
+    return (n.level === "Genre" ? 7 + (n.energy || 5) * 0.7 : 3.5 + (n.energy || 5) * 0.28) * NODE_SCALE;
   }
   // node colour: by family (data) or by Camelot key (harmonic-mixing wheel)
   function camelotColour(nd) {
@@ -182,10 +189,11 @@
     if (alpha > 0.06) alpha *= 0.99; else alpha = 0.06; // gentle "on water" drift, forever
   }
   function reheat(v) { alpha = Math.max(alpha, v || 0.5); }
-  function splash(x, y, c) { waves.push({ x: x, y: y, t: (performance.now() - t0) / 1000, c: c }); if (waves.length > 8) waves.shift(); reheat(0.8); }
+  function splash(x, y, c) { waves.push({ x: x, y: y, t: (performance.now() - t0) / 1000, c: c }); if (waves.length > (QUALITY === "reduced" ? 3 : 8)) waves.shift(); reheat(0.8); }
 
   // ---- render ----
   var hover = null, selected = null, query = "", matchSet = null, selectAnim = -1e9, waves = [], reduceMotion = false;
+  var focusMode = "all", userSetFocus = false, interactingUntil = 0;
   try { reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) {}
   function draw() {
     gx.clearRect(0, 0, W, H);
@@ -193,16 +201,35 @@
     gx.save();
     gx.translate(W / 2, H / 2); gx.scale(cam.scale, cam.scale); gx.translate(-cam.x, -cam.y);
 
-    // base links (child only, faint)
-    gx.lineWidth = 0.6 / cam.scale;
+    // V49 focus-mode visibility set: ALL = null, FAMILY = same family, RELATED = neighbours
+    var fset = null;
+    if (selected && focusMode !== "all") {
+      fset = {}; fset[selected.id] = 1;
+      if (focusMode === "family") { for (var fi2 = 0; fi2 < nodes.length; fi2++) { if (nodes[fi2].family === selected.family) fset[nodes[fi2].id] = 1; } }
+      else { for (var akey in adj[selected.id]) fset[akey] = 1; }
+    }
+    // base links (child only, faint) - second faded pass when focus mode dims part of the graph
+    gx.lineWidth = Math.max(0.6, 0.75 * (MX ? MX.graphScale : 1)) / cam.scale;
     gx.strokeStyle = "rgba(198,240,0,0.10)";
     gx.beginPath();
     for (var i = 0; i < links.length; i++) {
       if (links[i].k !== "child") continue;
+      if (fset && !(fset[links[i].s] && fset[links[i].t])) continue;
       var n = byId[links[i].s], m = byId[links[i].t];
       gx.moveTo(n.x, n.y); gx.lineTo(m.x, m.y);
     }
     gx.stroke();
+    if (fset) {
+      gx.globalAlpha = 0.3;
+      gx.beginPath();
+      for (i = 0; i < links.length; i++) {
+        if (links[i].k !== "child") continue;
+        if (fset[links[i].s] && fset[links[i].t]) continue;
+        var n2f = byId[links[i].s], m2f = byId[links[i].t];
+        gx.moveTo(n2f.x, n2f.y); gx.lineTo(m2f.x, m2f.y);
+      }
+      gx.stroke(); gx.globalAlpha = 1;
+    }
 
     // highlighted links for focus node
     var focus = hover || selected;
@@ -236,6 +263,7 @@
     for (i = 0; i < nodes.length; i++) {
       var nd = nodes[i], r0 = radius(nd);
       var dim = matchSet && !matchSet[nd.id];
+      var dimF = fset && !fset[nd.id];
       var isFocus = focus && (nd === focus || adj[focus.id][nd.id]);
       var isHub = nd.level === "Genre";
       var beat = (nowS * (nd.bpm || 120) / 60) % 1;
@@ -245,7 +273,7 @@
       var shape = glyphFor(nd);
       if (nd === selected) { var se = nowS - selectAnim; if (se >= 0 && se < 0.85) r *= 1 + 0.55 * Math.exp(-7 * se) * Math.cos(16 * se); }
       if (RS && RS.playing && nd === selected && !reduceMotion) r *= 1 + RS.kick * 0.28 + RS.bass * 0.05;
-      var baseA = dim ? 0.12 : (focus && !isFocus ? 0.28 : 1);
+      var baseA = dim ? 0.12 : dimF ? 0.18 : (focus && !isFocus ? 0.28 : 1);
       // hub beat-ring — a square outline expanding once per beat
       if (isHub && !dim) {
         var rr = r + beat * (r0 * 2.4);
@@ -262,7 +290,7 @@
         gx.fillStyle = "#FF288F"; gx.strokeStyle = "#FF288F"; drawGlyph(gx, shape, nd.x + off, nd.y, r);
       }
       gx.fillStyle = col; gx.strokeStyle = col;
-      gx.shadowColor = col; gx.shadowBlur = (nd === focus ? 22 : 8) + 7 * thump + (RS && nd === selected ? RS.chord * 12 : 0);
+      gx.shadowColor = col; gx.shadowBlur = QUALITY === "reduced" ? 0 : (nd === focus ? 22 : 8) + 7 * thump + (RS && nd === selected ? RS.chord * 12 : 0);
       drawGlyph(gx, shape, nd.x, nd.y, r);
       gx.shadowBlur = 0;
       // hub distinct bold square frame
@@ -278,11 +306,16 @@
       }
       gx.globalAlpha = 1;
 
-      // labels
-      var showLabel = (isHub && cam.scale > 0.5) || nd === focus || (cam.scale > 1.7);
-      if (showLabel && !dim) {
+      // labels - V49 adaptive density: fewer on small screens, fewer while panning, selected always
+      var dens = MX ? MX.labelDensity : "high";
+      var allTh = dens === "low" ? 2.2 : dens === "medium" ? 1.9 : 1.7;
+      var busy = performance.now() < interactingUntil;
+      var showLabel = (isHub && cam.scale > 0.5) || nd === focus || nd === selected || (!busy && cam.scale > allTh);
+      if (busy && !isHub && nd !== focus && nd !== selected) showLabel = false;
+      if (showLabel && !dim && !dimF) {
         gx.globalAlpha = focus && !isFocus ? 0.3 : 1;
-        gx.font = (isHub ? "600 " : "400 ") + (11 / cam.scale) + "px 'Space Grotesk',sans-serif";
+        var fpx = Math.max(10, (nd === focus || nd === selected ? 13 : isHub ? 12 : 10.5) * LABEL_SCALE);
+        gx.font = (isHub ? "600 " : "400 ") + (fpx / cam.scale) + "px 'Space Grotesk',sans-serif";
         gx.fillStyle = nd === focus ? "#fff" : "rgba(236,236,244,0.85)";
         gx.textAlign = "center";
         gx.fillText(nd.name, nd.x, nd.y - r - 6 / cam.scale);
@@ -554,7 +587,18 @@
   }
 
   // ---- main loop ----
+  var _fN = 0, _fAcc = 0, _fLast = performance.now();
   function frame() {
+    if (document.hidden) { setTimeout(function () { requestAnimationFrame(frame); }, 300); return; } // spec 07: idle when hidden
+    var _fNow = performance.now(), _fDt = _fNow - _fLast; _fLast = _fNow;
+    if (_fDt > 0 && _fDt < 500) {
+      _fAcc += _fDt; _fN++;
+      if (_fN >= 240) {
+        var _fps = 1000 / (_fAcc / _fN);
+        if (_fps < 28 && QUALITY !== "reduced") { QUALITY = "reduced"; if (LM) LM.degrade(); }
+        _fN = 0; _fAcc = 0;
+      }
+    }
     updateGlitch();
     if (trans) {
       var _tt = ((performance.now() - t0) / 1000 - trans.t0) / trans.dur; if (_tt > 1) _tt = 1;
@@ -563,7 +607,7 @@
       drawMorph(_e, trans.toDNA);
       document.documentElement.style.setProperty("--glitch", (Math.sin(_tt * Math.PI) * 0.5).toFixed(3));
       if (_tt >= 1) { var _wasG = trans.toMode === "graph"; viewMode = trans.toMode; hover = null; trans = null; if (_wasG) reheat(0.6); }
-    } else if (viewMode === "dna") { drawDNA(); } else { tick(); draw(); }
+    } else if (viewMode === "dna") { drawDNA(); } else { if (!(QUALITY === "reduced" && alpha <= 0.07 && (_fN % 2))) tick(); draw(); }
     if (window.BeatGenomeAudio && window.BeatGenomeAudio.getReactiveState) { var _rs = window.BeatGenomeAudio.getReactiveState(); _rs.kick *= 0.86; _rs.snare *= 0.82; _rs.hat *= 0.75; _rs.bass *= 0.9; _rs.chord *= 0.93; _rs.master *= 0.9; }
     drawScope(sx, W, 40, focusParams(), false);
     if (pScopeOn && panel.classList.contains("open")) {
@@ -574,16 +618,80 @@
   }
 
   // ---- hit testing / interaction ----
+  function hitR(n) {
+    var vis = radius(n);
+    return IS_TOUCH ? Math.max(vis + 10 / cam.scale, 22 / cam.scale) : vis + 6 / cam.scale;
+  }
   function nodeAt(px, py) {
     var w = toWorld(px, py), best = null, bd = 1e9;
     for (var i = 0; i < nodes.length; i++) {
       var n = nodes[i], dx = n.x - w.x, dy = n.y - w.y, d = dx * dx + dy * dy;
-      var rr = radius(n) + 6 / cam.scale;
+      var rr = hitR(n);
       if (d < rr * rr && d < bd) { bd = d; best = n; }
     }
     return best;
   }
+  function nodesAt(px, py) {
+    var w = toWorld(px, py), out = [];
+    for (var i = 0; i < nodes.length; i++) {
+      var n = nodes[i], dx = n.x - w.x, dy = n.y - w.y, d = Math.sqrt(dx * dx + dy * dy);
+      if (d < hitR(n)) out.push({ n: n, d: d });
+    }
+    out.sort(function (a, b) { return a.d - b.d; });
+    var seen = {};
+    return out.filter(function (o) { if (seen[o.n.id]) return false; seen[o.n.id] = 1; return true; }).map(function (o) { return o.n; });
+  }
+  function zoomAt(px, py, k) {
+    var w0 = toWorld(px, py);
+    cam.scale = Math.max(0.25, Math.min(4.5, cam.scale * k));
+    var w1 = toWorld(px, py);
+    cam.x += w0.x - w1.x; cam.y += w0.y - w1.y;
+  }
+  // V49: shared popover for long-press quick actions + overlapping-node chooser
+  var gpop = null;
+  function killPop() { if (gpop && gpop.parentNode) gpop.parentNode.removeChild(gpop); gpop = null; }
+  function popOut(e) {
+    if (!gpop) return;
+    if (!gpop.contains(e.target)) killPop();
+    else setTimeout(function () { document.addEventListener("pointerdown", popOut, { once: true, capture: true }); }, 0);
+  }
+  function popAt(x, y) {
+    killPop();
+    gpop = document.createElement("div"); gpop.className = "gpop";
+    document.body.appendChild(gpop);
+    gpop.style.left = Math.max(8, Math.min(x, window.innerWidth - 196)) + "px";
+    gpop.style.top = Math.max(60, Math.min(y, window.innerHeight - 210)) + "px";
+    setTimeout(function () { document.addEventListener("pointerdown", popOut, { once: true, capture: true }); }, 0);
+    return gpop;
+  }
+  function showQuickActions(n, x, y) {
+    var p = popAt(x, y);
+    p.innerHTML = '<div class="gpop-t">' + n.name + '</div>' +
+      '<button type="button" data-a="play">\u25B6 PLAY</button>' +
+      '<button type="button" data-a="cmp">\u21C4 COMPARE</button>' +
+      '<button type="button" data-a="mrph">\u25C8 MORPH</button>';
+    p.addEventListener("click", function (e2) {
+      var b = e2.target.closest && e2.target.closest("button"); if (!b) return;
+      var a = b.dataset.a; killPop();
+      if (a === "play") select(n);
+      else if (a === "cmp") openCompareWith(n);
+      else openMorphWith(n);
+    });
+    try { if (navigator.vibrate) navigator.vibrate(12); } catch (e3) {}
+  }
+  function showNodeChooser(list, x, y) {
+    var p = popAt(x, y);
+    p.innerHTML = '<div class="gpop-t">Select genre</div>' + list.map(function (n, i) {
+      return '<button type="button" data-i="' + i + '"><i style="background:' + colourOf(n) + '"></i>' + n.name + '</button>';
+    }).join("");
+    p.addEventListener("click", function (e2) {
+      var b = e2.target.closest && e2.target.closest("button"); if (!b) return;
+      var n = list[parseInt(b.dataset.i, 10) || 0]; killPop(); select(n);
+    });
+  }
   var dragging = false, dragNode = null, moved = false, last = null;
+  var lpTimer = 0, lpFired = false, downX = 0, downY = 0, lastTap = null;
+  function movedFar(e) { return Math.abs(e.clientX - downX) > 8 || Math.abs(e.clientY - downY) > 8; }
   // V46: multi-touch pinch-zoom / two-finger pan
   var pointers = {}, pinch = null;
   function pinchDist() { var k = Object.keys(pointers), a = pointers[k[0]], b = pointers[k[1]]; return Math.sqrt((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y)); }
@@ -593,6 +701,15 @@
     graph.setPointerCapture(e.pointerId);
     pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
     last = { x: e.clientX, y: e.clientY }; moved = false;
+    downX = e.clientX; downY = e.clientY; lpFired = false;
+    clearTimeout(lpTimer);
+    if (IS_TOUCH && Object.keys(pointers).length === 1) {
+      lpTimer = setTimeout(function () {
+        if (pinch || moved) return;
+        var lpN = viewMode === "dna" ? nodeAtDNA(downX, downY) : nodeAt(downX, downY);
+        if (lpN) { lpFired = true; showQuickActions(lpN, downX, downY); }
+      }, 550);
+    }
     if (Object.keys(pointers).length === 2) {
       // second finger -> enter pinch; cancel any single-finger drag/node-grab
       if (dragNode) { dragNode.fixed = false; dragNode = null; }
@@ -616,26 +733,30 @@
       if (nd > 0 && pinch.d > 0) cam.scale = Math.max(0.25, Math.min(4.5, pinch.scale * (nd / pinch.d)));
       var w1 = toWorld(mid.x, mid.y);
       cam.x += w0.x - w1.x; cam.y += w0.y - w1.y;
-      moved = true; return;
+      interactingUntil = performance.now() + 350; clearTimeout(lpTimer); moved = true; return;
     }
     if (viewMode === "dna") {
-      if (dragging) { cam.x -= (e.clientX - last.x) / cam.scale; cam.y -= (e.clientY - last.y) / cam.scale; last = { x: e.clientX, y: e.clientY }; moved = true; dnaPending = null; }
+      if (dragging) { cam.x -= (e.clientX - last.x) / cam.scale; cam.y -= (e.clientY - last.y) / cam.scale; last = { x: e.clientX, y: e.clientY }; interactingUntil = performance.now() + 350; if (movedFar(e)) { moved = true; dnaPending = null; clearTimeout(lpTimer); } }
       else { var hd = nodeAtDNA(e.clientX, e.clientY); if (hd !== hover) { hover = hd; graph.style.cursor = hd ? "pointer" : "grab"; } }
       return;
     }
     if (dragNode) {
       var w = toWorld(e.clientX, e.clientY); dragNode.x = w.x; dragNode.y = w.y; dragNode.vx = dragNode.vy = 0;
-      moved = true; reheat(0.5); return;
+      if (movedFar(e)) { moved = true; clearTimeout(lpTimer); }
+      reheat(0.5); return;
     }
     if (dragging) {
       cam.x -= (e.clientX - last.x) / cam.scale; cam.y -= (e.clientY - last.y) / cam.scale;
-      last = { x: e.clientX, y: e.clientY }; moved = true; return;
+      last = { x: e.clientX, y: e.clientY }; interactingUntil = performance.now() + 350;
+      if (movedFar(e)) { moved = true; clearTimeout(lpTimer); }
+      return;
     }
     var h = nodeAt(e.clientX, e.clientY);
     if (h !== hover) { hover = h; graph.style.cursor = h ? "pointer" : "grab"; }
   });
   function endPointer(e) {
     if (e && e.pointerId != null) delete pointers[e.pointerId];
+    clearTimeout(lpTimer);
     if (pinch) {
       // still pinching until fewer than two fingers remain; a lifted finger ends the gesture cleanly
       if (Object.keys(pointers).length < 2) { pinch = null; moved = true; }
@@ -643,9 +764,31 @@
       if (rk) last = { x: pointers[rk].x, y: pointers[rk].y };
       dragging = false; dragNode = null; graph.classList.remove("grabbing"); return;
     }
+    if (lpFired) { // a long-press already acted; swallow this tap
+      lpFired = false; dnaPending = null;
+      if (dragNode) dragNode.fixed = false;
+      dragNode = null; dragging = false; graph.classList.remove("grabbing"); return;
+    }
+    // double-tap zoom on touch (spec 06): second quick tap zooms toward the point
+    if (IS_TOUCH && e && !moved && e.type === "pointerup") {
+      var nowT = performance.now();
+      if (lastTap && nowT - lastTap.t < 320 && Math.abs(e.clientX - lastTap.x) < 30 && Math.abs(e.clientY - lastTap.y) < 30) {
+        lastTap = null;
+        if (viewMode !== "dna") zoomAt(e.clientX, e.clientY, 1.6);
+        dnaPending = null;
+        if (dragNode) dragNode.fixed = false;
+        dragNode = null; dragging = false; graph.classList.remove("grabbing"); return;
+      }
+      lastTap = { t: nowT, x: e.clientX, y: e.clientY };
+    }
     if (viewMode === "dna") { if (dnaPending && !moved) select(dnaPending); dnaPending = null; dragging = false; graph.classList.remove("grabbing"); return; }
-    if (dragNode && !moved) select(dragNode);
-    else if (dragging && !moved) { /* click empty = deselect handled below */ }
+    if (dragNode && !moved) {
+      if (IS_TOUCH && e) {
+        var cands = nodesAt(e.clientX, e.clientY);
+        if (cands.length > 1) showNodeChooser(cands.slice(0, 5), e.clientX, e.clientY);
+        else select(dragNode);
+      } else select(dragNode);
+    }
     if (dragNode) dragNode.fixed = false;
     dragNode = null; dragging = false; graph.classList.remove("grabbing");
   }
@@ -1011,7 +1154,16 @@
       .catch(function () { player.innerHTML = '<div class="pvnote">Preview unavailable \u2014 try Open in Spotify.</div>'; });
   }
 
-  function select(n) { if (!n) return; selected = n; selectAnim = (performance.now() - t0) / 1000; if (viewMode === "graph") splash(n.x, n.y, colourOf(n)); openPanel(n); if (viewMode === "graph") centerOn(n); if (window.BeatGenomeOnSelect) { try { window.BeatGenomeOnSelect(n); } catch (e) {} } }
+  function select(n) {
+    if (!n) return; selected = n; selectAnim = (performance.now() - t0) / 1000;
+    if (IS_TOUCH && MX && MX.layoutMode && MX.layoutMode.indexOf("phone") === 0 && !userSetFocus) focusMode = "related"; // spec 04 - phone default
+    try { if (IS_TOUCH && document.activeElement === searchIn) searchIn.blur(); } catch (e2) {}
+    syncFocusChips();
+    if (viewMode === "graph") splash(n.x, n.y, colourOf(n));
+    openPanel(n);
+    if (viewMode === "graph") centerOn(n);
+    if (window.BeatGenomeOnSelect) { try { window.BeatGenomeOnSelect(n); } catch (e) {} }
+  }
 
   // ---- search ----
   var resIdx = -1, resList = [];
@@ -1209,6 +1361,40 @@
   document.getElementById("shuffleBtn").addEventListener("click", function () {
     select(nodes[Math.floor(Math.random() * nodes.length)]);
   });
+  // ---- V49: focus-mode chips (ALL | FAMILY | RELATED) in the panel head ----
+  function syncFocusChips() {
+    var fc = document.getElementById("focusChips"); if (!fc) return;
+    Array.prototype.forEach.call(fc.querySelectorAll("button"), function (b) {
+      b.setAttribute("aria-pressed", b.dataset.m === focusMode ? "true" : "false");
+    });
+  }
+  (function () {
+    var head = panel && panel.querySelector(".head"); if (!head) return;
+    var fc = document.createElement("div"); fc.className = "focuschips"; fc.id = "focusChips";
+    fc.setAttribute("role", "group"); fc.setAttribute("aria-label", "Graph focus mode");
+    fc.innerHTML = '<span class="fclab">FOCUS</span>' +
+      '<button type="button" data-m="all" aria-pressed="true">ALL</button>' +
+      '<button type="button" data-m="family" aria-pressed="false">FAMILY</button>' +
+      '<button type="button" data-m="related" aria-pressed="false">RELATED</button>';
+    head.appendChild(fc);
+    fc.addEventListener("click", function (e) {
+      var b = e.target.closest && e.target.closest("button"); if (!b) return;
+      focusMode = b.dataset.m; userSetFocus = true; syncFocusChips();
+    });
+    // V49: bottom-sheet drag on phones / portrait tablets - drag the head up = expand, down = collapse/close
+    var sy = 0, on = false;
+    head.addEventListener("pointerdown", function (e) {
+      if (!MX || !/phone|tablet-portrait/.test(MX.layoutMode)) return;
+      if (e.target.closest && e.target.closest("button")) return;
+      on = true; sy = e.clientY;
+    });
+    window.addEventListener("pointerup", function (e) {
+      if (!on) return; on = false;
+      var dy = e.clientY - sy;
+      if (dy < -36) panel.classList.add("tall");
+      else if (dy > 36) { if (panel.classList.contains("tall")) panel.classList.remove("tall"); else if (typeof closePanel === "function") closePanel(); }
+    });
+  })();
   // ---- V40: mobile top-bar menu ----
   (function () {
     var menuBtn = document.getElementById("menuBtn"), topbarEl = document.querySelector(".topbar"), topActions = document.getElementById("topActions");
@@ -1258,7 +1444,7 @@
     btn.addEventListener("click", function (e) { e.stopPropagation(); list.hidden = !list.hidden; wrap.classList.toggle("open", !list.hidden); if (!list.hidden) { var s = list.querySelector(".sel"); if (s) list.scrollTop = Math.max(0, s.offsetTop - 60); } });
     document.addEventListener("click", function (e) { if (!wrap.contains(e.target)) { list.hidden = true; wrap.classList.remove("open"); } });
     wrap.appendChild(btn); wrap.appendChild(list); render();
-    return { el: wrap, get value() { return items[cur] ? items[cur].id : null; } };
+    return { el: wrap, get value() { return items[cur] ? items[cur].id : null; }, set: function (i) { if (i >= 0 && i < items.length) { cur = i; render(); if (onChange) onChange(items[cur].id, cur); } } };
   }
   var cmpEl = null, cmpA = null, cmpB = null;
   function cmpVal(node, field) { return (node && node.d && node.d[field]) ? node.d[field] : "-"; }
@@ -1305,6 +1491,7 @@
     var tsA = themedSelect(items, 0, function (id) { cmpA = byId[id]; renderCompare(); }, "Genre A");
     var tsB = themedSelect(items, Math.min(1, items.length - 1), function (id) { cmpB = byId[id]; renderCompare(); }, "Genre B");
     _selWrap.appendChild(tsA.el); _selWrap.appendChild(tsB.el);
+    _cmpItems = items; _cmpTsA = tsA;
     function upd() { cmpA = byId[tsA.value]; cmpB = byId[tsB.value]; renderCompare(); }
     cmpEl.querySelector("#cmpPlayA").addEventListener("click", function () { if (cmpA && window.BeatGenomeOnSelect) window.BeatGenomeOnSelect(cmpA); });
     cmpEl.querySelector("#cmpPlayB").addEventListener("click", function () { if (cmpB && window.BeatGenomeOnSelect) window.BeatGenomeOnSelect(cmpB); });
@@ -1314,6 +1501,18 @@
     upd();
   }
   function openCompare() { ensureCompare(); cmpEl.classList.add("show"); }
+  var _cmpItems = null, _cmpTsA = null, _mrphItems = null, _mrphTsA = null;
+  function _hubIdFor(n) {
+    if (!n) return null;
+    if (n.level === "Genre") return n.id;
+    for (var k in adj[n.id]) { if (adj[n.id][k] === "child" && byId[k] && byId[k].level === "Genre") return k; }
+    return null;
+  }
+  function openCompareWith(n) {
+    openCompare();
+    var gid = _hubIdFor(n);
+    if (gid && _cmpItems && _cmpTsA) { for (var i = 0; i < _cmpItems.length; i++) { if (_cmpItems[i].id === gid) { _cmpTsA.set(i); break; } } }
+  }
   var compareBtn = document.getElementById("compareBtn"); if (compareBtn) compareBtn.addEventListener("click", openCompare);
   // ---- V45: About Me overlay (replaces the Personal Library) ----
   var aboutEl = null;
@@ -1322,12 +1521,16 @@
     aboutEl = document.createElement("div"); aboutEl.className = "overlay about"; aboutEl.id = "aboutOverlay"; aboutEl.setAttribute("role", "dialog");
     aboutEl.innerHTML = '<div class="aboutsheet"><div class="cmphead"><span>About Me</span><button class="x" id="aboutClose">✕ close</button></div>' +
       '<div class="aboutbody">' +
-      '<div class="aboutpic"><div class="apic-frame"><img src="assets/about-me.jpg?v=47" alt="DJ7 - Wilsonlicioussss" onerror="this.parentNode.classList.add(\'empty\');this.remove()"></div><span class="aname">DJ7 · Wilsonlicioussss</span></div>' +
+      '<div class="aboutpic"><div class="apic-frame"><img src="assets/about-me.jpg?v=49" alt="DJ7 - Wilsonlicioussss" onerror="this.parentNode.classList.add(\'empty\');this.remove()"></div><span class="aname">DJ7 · Wilsonlicioussss</span></div>' +
       '<div class="aboutsec"><h4>★ Things I Love</h4><p>Thoughtful spaces, quiet details, electronic music, new technology and ideas that feel slightly ahead of their time.</p></div>' +
       '<div class="aboutsec"><h4>Always Learning</h4><p>Everything begins with curiosity. I explore how design, data, people and culture connect.</p></div>' +
       '<div class="aboutsec"><h4>I DJ</h4><p>A personal journey through electronic music — from high-energy moments to deeper, melodic and atmospheric sounds.</p></div>' +
       '<div class="aboutsec"><h4>I Produce</h4><p>Exploring rhythm, emotion and the technology behind sound, while creating tools that make electronic music easier to understand.</p></div>' +
       '<div class="aboutsec"><h4>Currently Exploring</h4><p>The spaces I design, the tools I build, the music I listen to and the ideas currently occupying my mind.</p></div>' +
+      '<div class="aboutsec"><h4>Come say hi</h4><div class="aboutlinks">' +
+        '<a class="alink" href="https://www.instagram.com/wilsonlicioussss/" target="_blank" rel="noopener">Instagram ↗</a>' +
+        '<a class="alink" href="https://harbingermsc.blogspot.com/" target="_blank" rel="noopener">Blog ↗</a>' +
+      '</div></div>' +
       '</div></div>';
     document.body.appendChild(aboutEl);
     aboutEl.querySelector("#aboutClose").addEventListener("click", function () { aboutEl.classList.remove("show"); });
@@ -1368,6 +1571,7 @@
     var tsA = themedSelect(items, 0, function (id) { morphA = byId[id]; onAB(); }, "Genre A");
     var tsB = themedSelect(items, Math.min(1, items.length - 1), function (id) { morphB = byId[id]; onAB(); }, "Genre B");
     _mSel.appendChild(tsA.el); _mSel.appendChild(tsB.el);
+    _mrphItems = items; _mrphTsA = tsA;
     function setAB() { morphA = byId[tsA.value]; morphB = byId[tsB.value]; onAB(); }
     rg.addEventListener("input", function () { morphT = (parseInt(rg.value, 10) || 0) / 100; applyMorph(); });
     morphEl.querySelector("#mrphStop").addEventListener("click", function () { if (window.BeatGenomeAudio) window.BeatGenomeAudio.stop(); });
@@ -1376,6 +1580,11 @@
     setAB();
   }
   function openMorph() { ensureMorph(); morphEl.classList.add("show"); }
+  function openMorphWith(n) {
+    openMorph();
+    var gid = _hubIdFor(n);
+    if (gid && _mrphItems && _mrphTsA) { for (var i = 0; i < _mrphItems.length; i++) { if (_mrphItems[i].id === gid) { _mrphTsA.set(i); break; } } }
+  }
   var morphBtn = document.getElementById("morphBtn"); if (morphBtn) morphBtn.addEventListener("click", openMorph);
   // ---- meta line ----
   document.getElementById("metaLine").textContent = "By [DJ7]-[AOC] //Wilsonlicioussss";
@@ -1397,10 +1606,49 @@
   // warm the simulation before revealing
   for (var w = 0; w < 220; w++) tick();
   buildTimeline();
-  if (viewMode === "dna") { fitDNA(); } else { cam.scale = 0.9; cam.x = 0; cam.y = 0; }
+  if (viewMode === "dna") { fitDNA(); } else { cam.scale = (MX && MX.initialZoom) || 0.9; cam.x = 0; cam.y = 0; }
+  // ---- V49: mobile shell - reset view, one-time touch hint, rotate advice, live layout updates ----
+  (function () {
+    var rb = document.createElement("button");
+    rb.id = "resetView"; rb.className = "resetview"; rb.type = "button"; rb.textContent = "\u2316 FIT";
+    rb.setAttribute("aria-label", "Reset view");
+    rb.addEventListener("click", function () {
+      if (viewMode === "dna") { fitDNA(); return; }
+      var tz = (MX && MX.initialZoom) || 0.9, sx0 = cam.x, sy0 = cam.y, ss = cam.scale, t = 0;
+      (function step() {
+        t += 0.09; var e2 = t < 1 ? 1 - Math.pow(1 - t, 3) : 1;
+        cam.x = sx0 * (1 - e2); cam.y = sy0 * (1 - e2); cam.scale = ss + (tz - ss) * e2;
+        if (t < 1) requestAnimationFrame(step);
+      })();
+    });
+    document.body.appendChild(rb);
+    if (MX && MX.layoutMode.indexOf("phone") === 0 && !store("bg_hint49")) {
+      var tst = document.createElement("div"); tst.className = "bg-toast";
+      tst.innerHTML = "<b>Drag</b> to explore \u00B7 <b>Pinch</b> to zoom \u00B7 <b>Tap</b> a genre";
+      document.body.appendChild(tst);
+      var killT = function () { if (tst.parentNode) tst.parentNode.removeChild(tst); store("bg_hint49", "1"); };
+      tst.addEventListener("click", killT); setTimeout(killT, 6000);
+    }
+    var rot = null;
+    function rotCheck(m) {
+      var need = m && m.layoutMode === "phone-landscape" && !window.__bgRotOk;
+      if (need && !rot) {
+        rot = document.createElement("div"); rot.className = "rotbar";
+        rot.innerHTML = '<span>BeatGenome is optimised for portrait \u2014 rotate for the best experience.</span><button type="button">CONTINUE</button>';
+        rot.querySelector("button").addEventListener("click", function () { window.__bgRotOk = true; rotCheck(MX); });
+        document.body.appendChild(rot);
+      } else if (!need && rot) { rot.parentNode.removeChild(rot); rot = null; }
+    }
+    rotCheck(MX);
+    if (LM) LM.onChange(function (m) {
+      MX = m; QUALITY = m.renderQuality; NODE_SCALE = m.nodeScale; LABEL_SCALE = m.typographyScale;
+      DPR = Math.max(1, Math.min(2, m.pixelRatio || 1));
+      resize(); sizePanelScope(); rotCheck(m);
+    });
+  })();
   requestAnimationFrame(frame);
   setTimeout(function () { document.getElementById("loading").classList.add("done"); }, Math.max(300, 900 - (performance.now() - loadStart)));
 
   // expose for quick console poking / tests
-  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, version: "V47" };
+  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, version: "V49" };
 })();
