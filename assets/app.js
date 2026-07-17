@@ -32,12 +32,12 @@
       for (var k = 0; k < olds.length; k++) { if (olds[k].parentNode) olds[k].parentNode.removeChild(olds[k]); }
       var link = document.createElement("link");
       link.rel = "icon"; link.type = "image/png"; link.setAttribute("sizes", "48x48");
-      link.href = "assets/icons/favicon-" + col + "-48.png?v=50";
+      link.href = "assets/icons/favicon-" + col + "-48.png?v=53";
       document.head.appendChild(link);
     } catch (e) {}
     try {
       var badge = document.querySelector(".badge");
-      if (badge) badge.style.backgroundImage = 'url("assets/icons/product-' + col + '-216.png?v=50")';
+      if (badge) badge.style.backgroundImage = 'url("assets/icons/product-' + col + '-216.png?v=53")';
     } catch (e) {}
   }
   function applyChannel(i) {
@@ -273,7 +273,7 @@
       var shape = glyphFor(nd);
       if (nd === selected) { var se = nowS - selectAnim; if (se >= 0 && se < 0.85) r *= 1 + 0.55 * Math.exp(-7 * se) * Math.cos(16 * se); }
       if (RS && RS.playing && nd === selected && !reduceMotion) r *= 1 + RS.kick * 0.28 + RS.bass * 0.05;
-      var baseA = dim ? 0.12 : dimF ? 0.18 : (focus && !isFocus ? 0.28 : 1);
+      var baseA = dim ? (IS_TOUCH ? 0.35 : 0.12) : dimF ? 0.18 : (focus && !isFocus ? 0.28 : 1);
       // hub beat-ring — a square outline expanding once per beat
       if (isHub && !dim) {
         var rr = r + beat * (r0 * 2.4);
@@ -587,9 +587,29 @@
   }
 
   // ---- main loop ----
-  var _fN = 0, _fAcc = 0, _fLast = performance.now();
+  // V51: the render loop must survive any exception - one device-specific error
+  // previously killed requestAnimationFrame forever (frozen app = "touch not detected").
+  var _errN = 0;
+  function __bgErr(err) {
+    _errN++;
+    try { console.error("BeatGenome recovered from:", err); } catch (e0) {}
+    if (_errN <= 3) {
+      try {
+        var et = document.createElement("div"); et.className = "bg-toast bg-err";
+        et.textContent = "Recovered from a glitch: " + ((err && err.message) ? String(err.message).slice(0, 80) : "unknown error");
+        document.body.appendChild(et);
+        setTimeout(function () { if (et.parentNode) et.parentNode.removeChild(et); }, 7000);
+      } catch (e1) {}
+    }
+  }
+  window.addEventListener("error", function (ev) { if (ev && ev.error) __bgErr(ev.error); });
   function frame() {
     if (document.hidden) { setTimeout(function () { requestAnimationFrame(frame); }, 300); return; } // spec 07: idle when hidden
+    try { frameBody(); } catch (err) { __bgErr(err); }
+    requestAnimationFrame(frame);
+  }
+  var _fN = 0, _fAcc = 0, _fLast = performance.now();
+  function frameBody() {
     var _fNow = performance.now(), _fDt = _fNow - _fLast; _fLast = _fNow;
     if (_fDt > 0 && _fDt < 500) {
       _fAcc += _fDt; _fN++;
@@ -609,13 +629,16 @@
       if (_tt >= 1) { var _wasG = trans.toMode === "graph"; viewMode = trans.toMode; hover = null; trans = null; if (_wasG) reheat(0.6); }
     } else if (viewMode === "dna") { drawDNA(); } else { if (!(QUALITY === "reduced" && alpha <= 0.07 && (_fN % 2))) tick(); draw(); }
     if (window.BeatGenomeAudio && window.BeatGenomeAudio.getReactiveState) { var _rs = window.BeatGenomeAudio.getReactiveState(); _rs.kick *= 0.86; _rs.snare *= 0.82; _rs.hat *= 0.75; _rs.bass *= 0.9; _rs.chord *= 0.93; _rs.master *= 0.9; }
-    drawScope(sx, W, 40, focusParams(), false);
+    if (scope.offsetParent !== null) drawScope(sx, W, 40, focusParams(), false); // skipped when hidden on phones
     if (pScopeOn && panel.classList.contains("open")) {
       drawScope(psx, pScope.clientWidth || 380, 46, currentPanelParams(), true);
       updateDrumPlayhead();
     }
-    requestAnimationFrame(frame);
+    // V51: immersive exploring - chrome fades while the user pans/pinches on touch
+    var _xpl = IS_TOUCH && performance.now() < interactingUntil && !panel.classList.contains("open");
+    if (_xpl !== _xplOn) { _xplOn = _xpl; document.body.classList.toggle("exploring", _xpl); }
   }
+  var _xplOn = false;
 
   // ---- hit testing / interaction ----
   function hitR(n) {
@@ -638,8 +661,13 @@
       if (d < hitR(n)) out.push({ n: n, d: d });
     }
     out.sort(function (a, b) { return a.d - b.d; });
-    var seen = {};
-    return out.filter(function (o) { if (seen[o.n.id]) return false; seen[o.n.id] = 1; return true; }).map(function (o) { return o.n; });
+    var seen = {}, uniq = out.filter(function (o) { if (seen[o.n.id]) return false; seen[o.n.id] = 1; return true; });
+    // ambiguity filter: only rivals within ~16 screen-px of the closest hit count
+    if (uniq.length > 1) {
+      var d0 = uniq[0].d, thr = 16 / cam.scale;
+      uniq = uniq.filter(function (o, i) { return i === 0 || (o.d - d0) < thr; });
+    }
+    return uniq.map(function (o) { return o.n; });
   }
   function zoomAt(px, py, k) {
     var w0 = toWorld(px, py);
@@ -698,7 +726,11 @@
   function pinchMid() { var k = Object.keys(pointers), a = pointers[k[0]], b = pointers[k[1]]; return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; }
   graph.addEventListener("pointerdown", function (e) {
     if (trans) return;
-    graph.setPointerCapture(e.pointerId);
+    if (!IS_TOUCH && (e.pointerType === "touch" || e.pointerType === "pen")) {
+      IS_TOUCH = true; // desktop-site / DeX mode lies in media queries; the event tells the truth
+      try { document.documentElement.setAttribute("data-touch", "1"); } catch (e0) {}
+    }
+    try { graph.setPointerCapture(e.pointerId); } catch (e1) {}
     pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
     last = { x: e.clientX, y: e.clientY }; moved = false;
     downX = e.clientX; downY = e.clientY; lpFired = false;
@@ -1063,7 +1095,7 @@
     }
     return null;
   }
-  function closePanel() { panel.classList.remove("open"); panel.setAttribute("aria-hidden", "true"); document.body.classList.remove("panel-open"); pScopeOn = false; selected = null; }
+  function closePanel() { panel.classList.remove("open"); panel.classList.remove("tall"); panel.setAttribute("aria-hidden", "true"); document.body.classList.remove("panel-open"); pScopeOn = false; selected = null; }
   document.getElementById("panelClose").addEventListener("click", closePanel);
   (function () {
     var pb = document.getElementById("pBody");
@@ -1424,7 +1456,21 @@
     else { matchSet = {}; var any = false; for (var k = 0; k < nodes.length; k++) { if (nodeHasMood(nodes[k], activeMood)) { matchSet[nodes[k].id] = 1; any = true; } } if (!any) matchSet = null; }
     if (moodBar) Array.prototype.forEach.call(moodBar.children, function (b, j) { b.setAttribute("aria-pressed", j === activeMood ? "true" : "false"); });
     if (searchIn) searchIn.value = ""; if (results) results.classList.remove("show");
+    updateMoodPill();
     reheat(0.5);
+  }
+  var moodPill = null;
+  function updateMoodPill() {
+    if (activeMood >= 0 && !moodPill) {
+      moodPill = document.createElement("button");
+      moodPill.type = "button"; moodPill.className = "moodpill";
+      moodPill.addEventListener("click", function () { applyMood(activeMood); });
+      document.body.appendChild(moodPill);
+    }
+    if (moodPill) {
+      if (activeMood < 0) { if (moodPill.parentNode) moodPill.parentNode.removeChild(moodPill); moodPill = null; }
+      else { moodPill.textContent = "MOOD: " + MOODS[activeMood][0].toUpperCase() + "  \u2715"; moodPill.setAttribute("aria-label", "Clear mood filter " + MOODS[activeMood][0]); }
+    }
   }
   var moodBar = document.getElementById("moodBar"), moodBtn = document.getElementById("moodBtn"), activeMood = -1;
   if (moodBar && moodBtn) {
@@ -1521,7 +1567,7 @@
     aboutEl = document.createElement("div"); aboutEl.className = "overlay about"; aboutEl.id = "aboutOverlay"; aboutEl.setAttribute("role", "dialog");
     aboutEl.innerHTML = '<div class="aboutsheet"><div class="cmphead"><span>About Me</span><button class="x" id="aboutClose">✕ close</button></div>' +
       '<div class="aboutbody">' +
-      '<div class="aboutpic"><div class="apic-frame"><img src="assets/about-me.jpg?v=50" alt="DJ7 - Wilsonlicioussss" onerror="this.parentNode.classList.add(\'empty\');this.remove()"></div><span class="aname">DJ7 · Wilsonlicioussss</span></div>' +
+      '<div class="aboutpic"><div class="apic-frame"><img src="assets/about-me.jpg?v=53" alt="DJ7 - Wilsonlicioussss" onerror="this.parentNode.classList.add(\'empty\');this.remove()"></div><span class="aname">DJ7 · Wilsonlicioussss</span></div>' +
       '<div class="aboutsec"><h4>★ Things I Love</h4><p>Thoughtful spaces, quiet details, electronic music, new technology and ideas that feel slightly ahead of their time.</p></div>' +
       '<div class="aboutsec"><h4>Always Learning</h4><p>Everything begins with curiosity. I explore how design, data, people and culture connect.</p></div>' +
       '<div class="aboutsec"><h4>I DJ</h4><p>A personal journey through electronic music — from high-energy moments to deeper, melodic and atmospheric sounds.</p></div>' +
@@ -1637,6 +1683,7 @@
         rot.innerHTML = '<span>BeatGenome is optimised for portrait \u2014 rotate for the best experience.</span><button type="button">CONTINUE</button>';
         rot.querySelector("button").addEventListener("click", function () { window.__bgRotOk = true; rotCheck(MX); });
         document.body.appendChild(rot);
+        setTimeout(function () { window.__bgRotOk = true; rotCheck(MX); }, 8000);
       } else if (!need && rot) { rot.parentNode.removeChild(rot); rot = null; }
     }
     rotCheck(MX);
@@ -1650,5 +1697,5 @@
   setTimeout(function () { document.getElementById("loading").classList.add("done"); }, Math.max(300, 900 - (performance.now() - loadStart)));
 
   // expose for quick console poking / tests
-  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, version: "V50" };
+  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, version: "V53" };
 })();

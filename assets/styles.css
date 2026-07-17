@@ -46,7 +46,7 @@ body::before{
 .badge{
   width:42px;height:42px;border-radius:11px;flex:none;
   background:#08080F center/cover no-repeat;
-  background-image:url("icons/product-magenta-216.png?v=50");
+  background-image:url("icons/product-magenta-216.png?v=53");
   box-shadow:0 0 18px color-mix(in srgb,var(--c1) 45%, transparent), inset 0 0 0 1px rgba(255,255,255,.08);
 }
 .title{display:flex;flex-direction:column;line-height:1;min-width:0}
@@ -729,3 +729,66 @@ html[data-layout="phone-landscape"] .panel{ max-height:82dvh; }
 /* visible keyboard focus on primary controls (spec 15) */
 .iconbtn:focus-visible, .bga-btn:focus-visible, .chip:focus-visible, .moodchip:focus-visible,
 .tsel-btn:focus-visible, .resetview:focus-visible{ outline:2px solid var(--lime); outline-offset:2px; }
+
+/* ===================================================================
+   V51 - phone UI overhaul: room to explore + usable landscape + fixes
+   =================================================================== */
+
+/* more graph on phones: drop the scope band entirely */
+html[data-layout="phone-portrait"] #scope, html[data-layout="phone-landscape"] #scope{ display:none; }
+
+/* immersive exploring - chrome fades while panning/pinching (pointer events stay live) */
+.topbar, .bgaudio, .moodbar, .tracksbar, .resetview, .credit{ transition:opacity .25s ease; }
+body.exploring .topbar, body.exploring .bgaudio, body.exploring .moodbar,
+body.exploring .tracksbar, body.exploring .resetview, body.exploring .credit{ opacity:.16; }
+
+/* error-recovery toast */
+.bg-toast.bg-err{ border-color:color-mix(in srgb,#FF3D6E 60%,transparent); color:#FF9DB4; white-space:normal; max-width:88vw; }
+
+/* mood bar: one slim scrollable row on phones instead of a stacked block */
+@media (max-width:640px){
+  .moodbar{ flex-wrap:nowrap; overflow-x:auto; padding:6px 10px; background:rgba(8,8,15,.88); -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+  .moodbar::-webkit-scrollbar{ display:none; }
+  .moodchip{ flex:none; }
+}
+html[data-layout="phone-portrait"] .moodbar{ top:calc(48px + env(safe-area-inset-top,0px)); }
+
+/* phone portrait: slimmer dock frees more graph */
+html[data-layout="phone-portrait"]{ --dockh:calc(52px + env(safe-area-inset-bottom,0px)); }
+html[data-layout="phone-portrait"] .bgaudio{ height:var(--dockh); }
+
+/* ---------- phone landscape: rebuilt to be usable ---------- */
+html[data-layout="phone-landscape"]{ --dockh:calc(44px + env(safe-area-inset-bottom,0px)); }
+html[data-layout="phone-landscape"] .topbar{ padding:4px 10px; gap:8px; }
+html[data-layout="phone-landscape"] .badge{ width:26px; height:26px; }
+html[data-layout="phone-landscape"] .title h1{ font-size:13px; }
+html[data-layout="phone-landscape"] .search input{ padding:6px 10px 6px 30px; font-size:12px; }
+html[data-layout="phone-landscape"] .bgaudio{ height:var(--dockh); padding:0 10px; }
+html[data-layout="phone-landscape"] .bga-chords, html[data-layout="phone-landscape"] .bga-camelot,
+html[data-layout="phone-landscape"] .bga-state{ display:none; }
+html[data-layout="phone-landscape"] .bga-meter{ width:64px; }
+html[data-layout="phone-landscape"] .legend, html[data-layout="phone-landscape"] .hint{ display:none; }
+html[data-layout="phone-landscape"] .credit{ display:none; }
+html[data-layout="phone-landscape"] .moodbar{ top:38px; flex-wrap:nowrap; overflow-x:auto; padding:5px 10px; background:rgba(8,8,15,.88); }
+html[data-layout="phone-landscape"] .tracksbar{ bottom:var(--dockh); }
+/* landscape detail = right-side sheet beside the graph, not on top of it */
+html[data-layout="phone-landscape"] .panel{ top:38px; height:auto; bottom:var(--dockh); width:min(400px,58vw); max-width:58vw; max-height:none; }
+
+/* rotate advisory: small floating pill, not a bar stealing height */
+.rotbar{ left:auto; right:10px; bottom:auto; top:calc(46px + env(safe-area-inset-top,0px));
+  max-width:300px; padding:8px 10px; border:1px solid var(--line); box-shadow:0 16px 40px rgba(0,0,0,.5); }
+.rotbar span{ font-size:9.5px; }
+.rotbar button{ padding:7px 10px; font-size:9.5px; }
+
+/* ---------- V52: merge of the two parallel V51 fix sets ---------- */
+/* active-mood pill: always-visible one-tap clear */
+.moodpill{ position:fixed; top:calc(52px + env(safe-area-inset-top,0px)); left:50%; transform:translateX(-50%); z-index:21;
+  font-family:"Space Mono"; font-size:10.5px; letter-spacing:.6px; color:#08080F; background:var(--lime);
+  border:0; padding:8px 13px; cursor:pointer; box-shadow:0 10px 30px rgba(0,0,0,.45); white-space:nowrap; }
+html[data-layout="phone-portrait"] .moodpill{ top:calc(46px + env(safe-area-inset-top,0px)); }
+/* phone sheet peeks lower - more graph visible behind it */
+@media (max-width:640px){ .panel{ max-height:38dvh; } .panel.tall{ max-height:88dvh; } }
+/* tracks bar steps aside while the sheet is open on phones/portrait tablets */
+@media (max-width:640px){ body.panel-open .tracksbar{ display:none; } }
+html[data-layout="tablet-portrait"] body.panel-open .tracksbar, body.panel-open html[data-layout="tablet-portrait"] .tracksbar{ display:none; }
+html[data-layout="phone-landscape"] .channels{ display:none; }

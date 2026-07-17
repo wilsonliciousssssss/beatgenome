@@ -45,7 +45,7 @@
     var savedVol = parseInt(get(LS.vol), 10);
     if (!isNaN(savedVol)) { elVol.value = savedVol; AUDIO.setVolume(savedVol / 100); }
 
-    function setPlayIcon(playing) { elPlay.textContent = playing ? "⏸" : "▶"; elPlay.setAttribute("aria-pressed", playing ? "true" : "false"); wrap.classList.toggle("playing", playing); }
+    function setPlayIcon(playing) { elPlay.textContent = playing ? "⏸︎" : "▶︎"; elPlay.setAttribute("aria-pressed", playing ? "true" : "false"); wrap.classList.toggle("playing", playing); }
     function setState(txt) { elState.textContent = txt; }
 
     function tapPlay() {

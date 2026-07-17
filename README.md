@@ -46,6 +46,10 @@ Come say hi — I'd love to know what you discovered.
 
 ---
 
+### Install it like an app
+
+BeatGenome is installable on your phone: open the site, then **Android/Chrome or Samsung Internet** → menu → **Add to Home screen** (or "Install app"); **iPhone/Safari** → Share → **Add to Home Screen**. You get the ΛΩ icon, a fullscreen app feel, and it keeps working offline after the first visit.
+
 ### For the curious — run or host it yourself
 
 BeatGenome is a single, self-contained web app (vanilla JavaScript + HTML5 Canvas, no frameworks, no build step). Open `index.html` in any modern browser, or host it free: upload this folder to a public GitHub repo (with `index.html` at the root) and enable **Settings → Pages → Deploy from a branch**. Optional sound is procedural via Tone.js — no audio files, no samples.
