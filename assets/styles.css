@@ -46,7 +46,7 @@ body::before{
 .badge{
   width:42px;height:42px;border-radius:11px;flex:none;
   background:#08080F center/cover no-repeat;
-  background-image:url("icons/product-magenta-216.png?v=53");
+  background-image:url("icons/product-magenta-216.png?v=60");
   box-shadow:0 0 18px color-mix(in srgb,var(--c1) 45%, transparent), inset 0 0 0 1px rgba(255,255,255,.08);
 }
 .title{display:flex;flex-direction:column;line-height:1;min-width:0}
@@ -792,3 +792,140 @@ html[data-layout="phone-portrait"] .moodpill{ top:calc(46px + env(safe-area-inse
 @media (max-width:640px){ body.panel-open .tracksbar{ display:none; } }
 html[data-layout="tablet-portrait"] body.panel-open .tracksbar, body.panel-open html[data-layout="tablet-portrait"] .tracksbar{ display:none; }
 html[data-layout="phone-landscape"] .channels{ display:none; }
+
+/* ===================================================================
+   V54 - stable footer + dedicated phone bottom-bar + tablet split
+   =================================================================== */
+
+/* FOOTER FIX: clicking a node no longer shifts the meter/controls.
+   Meter is pinned left, controls pinned right; the variable Camelot/Chords/
+   genre info flexes and clips in the middle; empty boxes take zero space. */
+.bga-camelot:empty, .bga-chords:empty{ display:none; }
+.bgaudio .bga-meter{ order:1; }
+.bgaudio .bga-camelot{ order:2; }
+.bgaudio .bga-chords{ order:3; }
+.bgaudio .bga-info{ order:4; min-width:0; }
+.bgaudio .bga-ctrls{ order:5; }
+.bgaudio .bga-state{ order:6; }
+.bgaudio .dock-actions{ order:7; }
+
+/* one bottom bar with quick actions (revealed on phones only) */
+.dock-actions{ display:none; align-items:center; gap:6px; flex:none; }
+.dock-act{ width:42px; height:42px; display:grid; place-items:center; flex:none; font-family:"Space Mono";
+  font-size:15px; letter-spacing:.5px; color:var(--ink); background:rgba(255,255,255,.06); border:1px solid var(--line); cursor:pointer; }
+.dock-act:hover{ border-color:color-mix(in srgb,var(--c1) 55%,transparent); color:var(--c1); }
+.dock-act:focus-visible{ outline:2px solid var(--lime); outline-offset:2px; }
+
+/* PHONE PORTRAIT: transport left, genre middle, actions right - a single thumb-zone bar */
+html[data-layout="phone-portrait"] .dock-actions{ display:flex; }
+html[data-layout="phone-portrait"] .bga-ctrls{ order:1; }
+html[data-layout="phone-portrait"] .bga-info{ order:2; }
+html[data-layout="phone-portrait"] .dock-actions{ order:3; }
+html[data-layout="phone-portrait"] .bga-meter,
+html[data-layout="phone-portrait"] .bga-vol{ display:none; }   /* free room for actions; system volume rules on phones */
+
+/* PHONE LANDSCAPE: keep the slim meter, still surface the actions */
+html[data-layout="phone-landscape"] .dock-actions{ display:flex; }
+html[data-layout="phone-landscape"] .bga-vol{ display:none; }
+
+/* TABLET LANDSCAPE: detail is a real side pane; graph stays beside it and the
+   camera offset (JS) keeps the selected node in the visible left region. */
+html[data-layout="tablet-landscape"] .panel{ width:min(420px,36vw); max-width:36vw; box-shadow:-18px 0 44px rgba(0,0,0,.55); }
+html[data-layout="tablet-landscape"] .panel-open .legend{ display:none; }
+
+/* ===================================================================
+   V55 - FIX runaway footer / floating tracks bar.
+   Root cause: .bgaudio height was var(--dockh) while updateDock() derives
+   --dockh from bgaudio.offsetHeight + tracks bar -> a feedback loop that
+   grew the dock (and pushed the tracks bar up-screen) on every node click.
+   Fix: the player dock uses a FIXED --playerh; --dockh (player+tracks) is
+   only for chrome that must clear BOTH; the tracks bar sits on --playerh.
+   =================================================================== */
+:root{ --playerh: calc(56px + env(safe-area-inset-bottom, 0px)); }
+html[data-layout="phone-portrait"]{ --playerh: calc(52px + env(safe-area-inset-bottom, 0px)); }
+html[data-layout="phone-landscape"]{ --playerh: calc(44px + env(safe-area-inset-bottom, 0px)); }
+.bgaudio{ height:var(--playerh); }
+html[data-layout="phone-portrait"] .bgaudio,
+html[data-layout="phone-landscape"] .bgaudio{ height:var(--playerh); }
+.tracksbar{ bottom:var(--playerh); }
+html[data-layout="phone-landscape"] .tracksbar{ bottom:var(--playerh); }
+
+/* ===================================================================
+   V57 - CD jog-wheel: tap L/R to rewind/forward, drag to scrub
+   =================================================================== */
+.pvcd{ cursor:grab; touch-action:none; }
+.pvcd.scrubbing{ cursor:grabbing; animation:none !important; transform:rotate(var(--cdrot,0rad)); }
+.pvcd.cue-l::before, .pvcd.cue-r::before{ content:""; position:absolute; inset:0; border-radius:50% !important; z-index:3; pointer-events:none; animation:pvcue .42s ease-out; }
+.pvcd.cue-l::before{ background:radial-gradient(circle at 22% 50%, rgba(255,255,255,.5), transparent 46%); }
+.pvcd.cue-r::before{ background:radial-gradient(circle at 78% 50%, rgba(255,255,255,.5), transparent 46%); }
+@keyframes pvcue{ 0%{opacity:.95} 100%{opacity:0} }
+
+/* ===================================================================
+   V58 - detail panel = floating, resizable WINDOW on pointer layouts.
+   Phones / tablet-portrait keep the bottom sheet. Content reflows to the
+   window width via container queries; slow auto-scroll on open is JS.
+   =================================================================== */
+html[data-layout="desktop"] .panel,
+html[data-layout="tablet-landscape"] .panel{
+  top:78px; right:auto; bottom:auto; left:auto;
+  width:400px; height:min(72vh, 680px);
+  min-width:300px; min-height:240px; max-width:96vw; max-height:92vh;
+  border:1px solid var(--line);
+  transform:scale(.97); opacity:0; pointer-events:none;
+  transition:opacity .2s ease, transform .2s ease;
+  resize:both; overflow:hidden;
+  box-shadow:0 30px 80px rgba(0,0,0,.62);
+  container-type:inline-size;
+}
+html[data-layout="desktop"] .panel.open,
+html[data-layout="tablet-landscape"] .panel.open{ opacity:1; transform:none; pointer-events:auto; }
+html[data-layout="desktop"] .panel .body,
+html[data-layout="tablet-landscape"] .panel .body{ flex:1 1 auto; min-height:0; overflow:auto; }
+html[data-layout="desktop"] .panel .head,
+html[data-layout="tablet-landscape"] .panel .head{ cursor:move; touch-action:none; }
+.panel .head.dragging{ cursor:grabbing; }
+html[data-layout="desktop"] .panel-open .legend,
+html[data-layout="tablet-landscape"] .panel-open .legend{ right:14px; }   /* window doesn't push the legend */
+/* visible resize grip in the corner */
+html[data-layout="desktop"] .panel::after,
+html[data-layout="tablet-landscape"] .panel::after{
+  content:""; position:absolute; right:2px; bottom:2px; width:15px; height:15px; z-index:4; pointer-events:none; opacity:.55;
+  background:linear-gradient(135deg, transparent 44%, var(--fog) 44%, var(--fog) 52%, transparent 52%, transparent 68%, var(--fog) 68%, var(--fog) 76%, transparent 76%);
+}
+/* content adapts to the WINDOW width, not the viewport (container queries) */
+.panel .head, .panel .body{ min-width:0; }
+@container (max-width: 358px){
+  .panel h2{ font-size:21px; }
+  .metric{ min-width:64px; padding:7px 9px; }
+  .metric .v{ font-size:16px; }
+  .arrseg .ab{ font-size:10px; }
+  .arrseg .an{ font-size:8px; }
+  .field .v{ font-size:12.5px; }
+}
+@container (min-width: 468px){
+  .metric{ min-width:104px; }
+  .panel .body{ padding-left:26px; padding-right:26px; }
+}
+
+/* ===================================================================
+   V59 - signature tracks = continuous TV-ticker marquee (no scrollbar).
+   Content duplicated for a seamless loop; moves left->right, re-enters
+   from the left; pauses on hover/touch so tracks stay clickable.
+   =================================================================== */
+.tb-list{ overflow:hidden; }
+.tb-move{ display:flex; align-items:center; width:max-content; animation:tbmarq 30s linear infinite; will-change:transform; }
+.tb-move .tb-t{ margin-right:7px; }                 /* equal-width halves -> seamless loop */
+.tb-list:hover .tb-move, .tb-list.hold .tb-move{ animation-play-state:paused; }
+@keyframes tbmarq{ from{ transform:translateX(-50%); } to{ transform:translateX(0); } }
+@media (prefers-reduced-motion: reduce){ .tb-move{ animation:none; } .tb-list{ overflow-x:auto; } }
+
+/* ===================================================================
+   V60 - the top-5 signature-tracks ticker is a PERSISTENT fixed bar
+   above the footer: visible while the info window is open AND after you
+   close it with the X (V52 used to hide it whenever the sheet was open).
+   =================================================================== */
+@media (max-width:640px){ body.panel-open .tracksbar{ display:block; } }
+html[data-layout="tablet-portrait"] body.panel-open .tracksbar,
+body.panel-open html[data-layout="tablet-portrait"] .tracksbar{ display:block; }
+/* a hair of channel accent so it reads as its own bar above the footer */
+.tracksbar{ border-top:1px solid color-mix(in srgb, var(--c1) 22%, var(--line)); }

@@ -32,12 +32,12 @@
       for (var k = 0; k < olds.length; k++) { if (olds[k].parentNode) olds[k].parentNode.removeChild(olds[k]); }
       var link = document.createElement("link");
       link.rel = "icon"; link.type = "image/png"; link.setAttribute("sizes", "48x48");
-      link.href = "assets/icons/favicon-" + col + "-48.png?v=53";
+      link.href = "assets/icons/favicon-" + col + "-48.png?v=60";
       document.head.appendChild(link);
     } catch (e) {}
     try {
       var badge = document.querySelector(".badge");
-      if (badge) badge.style.backgroundImage = 'url("assets/icons/product-' + col + '-216.png?v=53")';
+      if (badge) badge.style.backgroundImage = 'url("assets/icons/product-' + col + '-216.png?v=60")';
     } catch (e) {}
   }
   function applyChannel(i) {
@@ -448,8 +448,27 @@
         for (xx = x0; xx <= x1; xx += 9) { ph = (xx / 210) + turn + strand * Math.PI; yy = Math.sin(ph) * R + Math.sin(xx * 3.3 + t * 40 + strand * 2) * gj; if (xx === x0) gx.moveTo(xx, yy); else gx.lineTo(xx, yy); }
         gx.globalAlpha = pres; gx.strokeStyle = "rgba(198,240,0,0.5)"; gx.lineWidth = (9.6 / cam.scale) * (0.35 + 0.65 * pres); gx.stroke();
       }
-      gx.globalAlpha = pres * 0.6; gx.strokeStyle = "rgba(150,226,255,0.8)"; gx.lineWidth = 1.2 / cam.scale;
-      for (xx = x0; xx <= x1; xx += 40) { var pr = (xx / 210) + turn, ya = Math.sin(pr) * R, yb = Math.sin(pr + Math.PI) * R, jj = Math.sin(xx * 3.3 + t * 40) * gj; gx.beginPath(); gx.moveTo(xx, ya + jj); gx.lineTo(xx, yb + jj); gx.stroke(); }
+      // V56: adenine/thymine rungs WARP from straight lines into the DNA electric waveform
+      // wv 0 -> straight glitchy rung (graph side) ; wv 1 -> full DNA wave (matches drawDNA for a seamless handoff)
+      var wv = pres * pres, beatHz2 = cbpm / 60, eframe = Math.floor(t * 26);
+      gx.shadowColor = "rgba(120,210,255,0.85)"; gx.lineCap = "round";
+      gx.setLineDash([0.6 / cam.scale, 5.5 / cam.scale]); gx.lineDashOffset = -(t * beatHz2 * 30) / cam.scale;
+      for (xx = x0; xx <= x1; xx += 40) {
+        var pr = (xx / 210) + turn, ya = Math.sin(pr) * R, yb = Math.sin(pr + Math.PI) * R, dep = Math.cos(pr);
+        var flick = 0.55 + 0.45 * Math.abs(Math.sin(xx * 0.9 + t * 21));
+        gx.globalAlpha = pres * (0.34 + 0.4 * (dep + 1) / 2) * flick;
+        gx.strokeStyle = "rgba(150,226,255,0.95)"; gx.lineWidth = 1.5 / cam.scale; gx.shadowBlur = 5 * pres;
+        gx.beginPath();
+        for (var sw = 0; sw <= 1.0001; sw += 0.06) {
+          var yy2 = ya + (yb - ya) * sw, tap = Math.sin(sw * Math.PI);
+          var wave = Math.sin(sw * Math.PI * 3 + xx * 0.05 - t * beatHz2 * Math.PI * 2);
+          var sd = Math.sin((sw * 57.3 + xx * 3.1 + eframe) * 12.9898) * 43758.5453, jit = (sd - Math.floor(sd)) - 0.5;
+          var off = (wave + jit * 1.1) * tap * (26 + 12 * (dep + 1) / 2) * wv + Math.sin(xx * 3.3 + t * 40) * gj * (1 - wv);
+          if (sw === 0) gx.moveTo(xx + off, yy2); else gx.lineTo(xx + off, yy2);
+        }
+        gx.stroke();
+      }
+      gx.setLineDash([]); gx.lineCap = "butt"; gx.shadowBlur = 0;
       gx.globalAlpha = 1;
     }
     for (var i = 0; i < nodes.length; i++) {
@@ -838,10 +857,17 @@
 
   // centre view on a node (smooth)
   function centerOn(n, targetScale) {
-    var ts = targetScale || Math.max(1.1, cam.scale), sx0 = cam.x, sy0 = cam.y, ss = cam.scale, t = 0;
+    var ts = targetScale || Math.max(1.1, cam.scale);
+    var tx = n.x, ty = n.y;
+    if (panel.classList.contains("open")) {
+      var lm = MX ? MX.layoutMode : "desktop", pr = panel.getBoundingClientRect();
+      if (lm === "phone-portrait" || lm === "tablet-portrait") ty = n.y + (pr.height / 2) / ts; // sheet at bottom -> lift node
+      else tx = n.x + (pr.width / 2) / ts; // right pane -> shift node into the left/visible area
+    }
+    var sx0 = cam.x, sy0 = cam.y, ss = cam.scale, t = 0;
     (function step() {
       t += 0.08; var e = t < 1 ? 1 - Math.pow(1 - t, 3) : 1;
-      cam.x = sx0 + (n.x - sx0) * e; cam.y = sy0 + (n.y - sy0) * e; cam.scale = ss + (ts - ss) * e;
+      cam.x = sx0 + (tx - sx0) * e; cam.y = sy0 + (ty - sy0) * e; cam.scale = ss + (ts - ss) * e;
       if (t < 1) requestAnimationFrame(step);
     })();
   }
@@ -949,7 +975,7 @@
       tbClose = document.getElementById("tbClose");
   function updateDock() {
     var h = 0, pl = document.getElementById("bgaudio"), tb = document.getElementById("tracksBar");
-    if (pl) h += pl.offsetHeight || 56;
+    if (pl) { var _ph = pl.offsetHeight || 56; h += (_ph > 130 ? 60 : _ph); } // guard: dock height is fixed (--playerh), never fed back
     if (tb && !tb.hidden) h += (tb.offsetHeight || 0) + 6;
     document.documentElement.style.setProperty("--dockh", (h + 8) + "px");
   }
@@ -959,8 +985,19 @@
     var d = n.d, html = "";
     for (var k = 1; k <= 5; k++) { var tt = d["Top Track " + k]; if (tt && tt.trim()) html += '<button class="tb-t" data-track="' + esc(tt) + '"><span class="tp">\u25B6</span>' + esc(tt) + "</button>"; }
     if (!html) { tracksBar.hidden = true; updateDock(); return; }
-    tbGenre.textContent = n.name; tbList.innerHTML = html; tracksBar.hidden = false;
+    tbGenre.textContent = n.name;
+    tbList.innerHTML = '<div class="tb-move">' + html + html + '</div>';   // V59: duplicated content = seamless ticker loop
+    tracksBar.hidden = false;
+    if (tbList && !tbList._holdWired) {                                    // pause the ticker while touched/hovered so tracks are clickable
+      tbList._holdWired = true;
+      tbList.addEventListener("pointerdown", function () { tbList.classList.add("hold"); });
+      tbList.addEventListener("pointerup", function () { tbList.classList.remove("hold"); });
+      tbList.addEventListener("pointercancel", function () { tbList.classList.remove("hold"); });
+      tbList.addEventListener("pointerleave", function () { tbList.classList.remove("hold"); });
+    }
     Array.prototype.forEach.call(tbList.querySelectorAll(".tb-t"), function (b) { b.addEventListener("click", function () { openPreview(b.dataset.track); }); });
+    var _mv = tbList.querySelector(".tb-move");
+    if (_mv) { var _half = _mv.scrollWidth / 2; _mv.style.animationDuration = Math.max(8, _half / 70).toFixed(1) + "s"; } // ~70px/s, TV-ticker mid speed
     updateDock();
   }
 
@@ -1075,6 +1112,7 @@
     renderTracks(n);
     panel.classList.add("open"); panel.setAttribute("aria-hidden", "false"); document.body.classList.add("panel-open");
     pScopeOn = true; sizePanelScope();
+    placePanelWindow(); startAutoScroll();
   }
   function metric(k, v) { return '<div class="metric"><div class="k">' + esc(k) + '</div><div class="v">' + esc(v) + "</div></div>"; }
   function chips(val) {
@@ -1095,7 +1133,7 @@
     }
     return null;
   }
-  function closePanel() { panel.classList.remove("open"); panel.classList.remove("tall"); panel.setAttribute("aria-hidden", "true"); document.body.classList.remove("panel-open"); pScopeOn = false; selected = null; }
+  function closePanel() { stopAutoScroll(); panel.classList.remove("open"); panel.classList.remove("tall"); panel.setAttribute("aria-hidden", "true"); document.body.classList.remove("panel-open"); pScopeOn = false; selected = null; }
   document.getElementById("panelClose").addEventListener("click", closePanel);
   (function () {
     var pb = document.getElementById("pBody");
@@ -1156,7 +1194,7 @@
           player.innerHTML =
             '<div class="pvcd" style="--cdspin:' + (240 / cdBpm).toFixed(2) + 's">' + (art ? '<img src="' + art + '" alt="">' : "") + '<span class="pvhole"></span></div>' +
             '<div class="pvctrls"><button class="pvplay" aria-label="Play or pause">\u23F8</button><div class="pvbar"><i></i></div><span class="pvtime">0:00 / 0:30</span></div>' +
-            '<div class="pvnote">30-sec preview \u00b7 Apple Music</div>' +
+            '<div class="pvnote">30-sec preview \u00b7 Apple Music \u00b7 tap or spin the disc to seek</div>' +
             '<audio src="' + hit.previewUrl + '" autoplay></audio>';
           previewAudio = player.querySelector("audio");
           (function () {
@@ -1166,6 +1204,44 @@
             function sync() { var pl = previewAudio && !previewAudio.paused; if (cd) cd.classList.toggle("spinning", pl); if (pb) pb.textContent = pl ? "\u23F8" : "\u25B6"; }
             if (pb) pb.addEventListener("click", function () { if (!previewAudio) return; if (previewAudio.paused) previewAudio.play(); else previewAudio.pause(); });
             if (bar) bar.addEventListener("click", function (e) { if (!previewAudio) return; var rc = bar.getBoundingClientRect(); previewAudio.currentTime = (e.clientX - rc.left) / rc.width * (previewAudio.duration || 30); });
+            // V57: CD jog-wheel - tap left/right to rewind/forward 5s, drag around the disc to scrub like a turntable
+            if (cd) {
+              cd.style.touchAction = "none";
+              var scr = null;
+              var cdAngle = function (ev) { var rc = cd.getBoundingClientRect(); return Math.atan2(ev.clientY - (rc.top + rc.height / 2), ev.clientX - (rc.left + rc.width / 2)); };
+              var cdEnd = function (ev) {
+                if (!scr) return;
+                var ux = (ev.clientX == null ? scr.x : ev.clientX), uy = (ev.clientY == null ? scr.y : ev.clientY);
+                var mv = Math.abs(ux - scr.x) + Math.abs(uy - scr.y);
+                if (mv < 8 && previewAudio) {
+                  var rc = cd.getBoundingClientRect(), dur = previewAudio.duration || 30, left = (scr.x - rc.left) < rc.width / 2;
+                  previewAudio.currentTime = Math.max(0, Math.min(dur, (previewAudio.currentTime || 0) + (left ? -5 : 5)));
+                  cd.classList.remove("cue-l", "cue-r"); void cd.offsetWidth; cd.classList.add(left ? "cue-l" : "cue-r");
+                  setTimeout(function () { cd.classList.remove("cue-l", "cue-r"); }, 420);
+                }
+                if (scr.wasPlaying && previewAudio && previewAudio.paused) { var pp = previewAudio.play(); if (pp && pp.catch) pp.catch(function () {}); }
+                cd.classList.remove("scrubbing"); cd.style.removeProperty("--cdrot"); scr = null;
+              };
+              cd.addEventListener("pointerdown", function (ev) {
+                if (!previewAudio) return;
+                try { cd.setPointerCapture(ev.pointerId); } catch (e0) {}
+                scr = { a: cdAngle(ev), x: ev.clientX, y: ev.clientY, rot: 0, wasPlaying: !previewAudio.paused, paused: false };
+                cd.classList.add("scrubbing"); ev.preventDefault();
+              });
+              cd.addEventListener("pointermove", function (ev) {
+                if (!scr || !previewAudio) return;
+                var a = cdAngle(ev), da = a - scr.a;
+                if (da > Math.PI) da -= 2 * Math.PI; else if (da < -Math.PI) da += 2 * Math.PI;
+                scr.a = a; scr.rot += da;
+                var mv = Math.abs(ev.clientX - scr.x) + Math.abs(ev.clientY - scr.y);
+                if (mv > 8 && !scr.paused) { scr.paused = true; if (!previewAudio.paused) previewAudio.pause(); }
+                var dur = previewAudio.duration || 30;
+                previewAudio.currentTime = Math.max(0, Math.min(dur, (previewAudio.currentTime || 0) + (da / (2 * Math.PI)) * 9)); // one full turn ~= 9s
+                cd.style.setProperty("--cdrot", scr.rot.toFixed(3) + "rad");
+              });
+              cd.addEventListener("pointerup", cdEnd);
+              cd.addEventListener("pointercancel", cdEnd);
+            }
             if (previewAudio) {
               previewAudio.addEventListener("play", sync);
               previewAudio.addEventListener("pause", sync);
@@ -1567,7 +1643,7 @@
     aboutEl = document.createElement("div"); aboutEl.className = "overlay about"; aboutEl.id = "aboutOverlay"; aboutEl.setAttribute("role", "dialog");
     aboutEl.innerHTML = '<div class="aboutsheet"><div class="cmphead"><span>About Me</span><button class="x" id="aboutClose">✕ close</button></div>' +
       '<div class="aboutbody">' +
-      '<div class="aboutpic"><div class="apic-frame"><img src="assets/about-me.jpg?v=53" alt="DJ7 - Wilsonlicioussss" onerror="this.parentNode.classList.add(\'empty\');this.remove()"></div><span class="aname">DJ7 · Wilsonlicioussss</span></div>' +
+      '<div class="aboutpic"><div class="apic-frame"><img src="assets/about-me.jpg?v=60" alt="DJ7 - Wilsonlicioussss" onerror="this.parentNode.classList.add(\'empty\');this.remove()"></div><span class="aname">DJ7 · Wilsonlicioussss</span></div>' +
       '<div class="aboutsec"><h4>★ Things I Love</h4><p>Thoughtful spaces, quiet details, electronic music, new technology and ideas that feel slightly ahead of their time.</p></div>' +
       '<div class="aboutsec"><h4>Always Learning</h4><p>Everything begins with curiosity. I explore how design, data, people and culture connect.</p></div>' +
       '<div class="aboutsec"><h4>I DJ</h4><p>A personal journey through electronic music — from high-energy moments to deeper, melodic and atmospheric sounds.</p></div>' +
@@ -1697,5 +1773,79 @@
   setTimeout(function () { document.getElementById("loading").classList.add("done"); }, Math.max(300, 900 - (performance.now() - loadStart)));
 
   // expose for quick console poking / tests
-  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, version: "V53" };
+  // ---- V54: phone quick-actions folded into the one bottom dock (thumb zone) ----
+  (function () {
+    (function build() {
+      var dock = document.getElementById("bgaudio");
+      var player = dock && (dock.querySelector(".bga-player") || dock);
+      if (!player) return void setTimeout(build, 120);
+      if (player.querySelector(".dock-actions")) return;
+      var nav = document.createElement("div");
+      nav.className = "dock-actions"; nav.setAttribute("role", "group"); nav.setAttribute("aria-label", "Quick actions");
+      nav.innerHTML =
+        '<button type="button" class="dock-act" data-a="search" aria-label="Search genres">\u2315</button>' +
+        '<button type="button" class="dock-act" data-a="moods" aria-label="Filter by mood">\u25A4</button>' +
+        '<button type="button" class="dock-act" data-a="about" aria-label="About BeatGenome">\u039B\u03A9</button>';
+      player.appendChild(nav);
+      nav.addEventListener("click", function (e) {
+        var b = e.target.closest && e.target.closest("button"); if (!b) return;
+        var a = b.dataset.a;
+        if (a === "search") { try { searchIn.focus(); searchIn.select(); } catch (e2) {} }
+        else if (a === "moods" && moodBar) { moodBar.hidden = !moodBar.hidden; if (moodBtn) moodBtn.setAttribute("aria-pressed", moodBar.hidden ? "false" : "true"); }
+        else if (a === "about" && typeof openAbout === "function") { openAbout(); }
+      });
+    })();
+  })();
+  // ---- V58: detail panel as a floating, resizable window (pointer layouts) + slow auto-scroll on open ----
+  function _isWindowMode() { return MX && (MX.layoutMode === "desktop" || MX.layoutMode === "tablet-landscape"); }
+  var _autoRAF = 0;
+  function stopAutoScroll() { if (_autoRAF) cancelAnimationFrame(_autoRAF); _autoRAF = 0; }
+  function startAutoScroll() {
+    stopAutoScroll();
+    if (!_isWindowMode() || reduceMotion) return;          // phones/tablet-portrait use manual drag; respect reduced motion
+    var body = document.getElementById("pBody"); if (!body) return;
+    body.scrollTop = 0;
+    var acc = 0, last = performance.now(), speed = 30;      // px/sec - unhurried reading pace
+    _autoRAF = requestAnimationFrame(function step(now) {
+      var dt = Math.min(0.05, (now - last) / 1000); last = now;
+      if (body.scrollTop + body.clientHeight >= body.scrollHeight - 1) { stopAutoScroll(); return; }
+      acc += speed * dt; body.scrollTop = acc;
+      _autoRAF = requestAnimationFrame(step);
+    });
+  }
+  function placePanelWindow() {
+    if (!_isWindowMode()) { panel.style.left = ""; panel.style.top = ""; panel.style.width = ""; panel.style.height = ""; return; }
+    if (!panel.style.left) {                                 // first open: dock to the top-right; keep user placement after
+      var w = parseInt(getComputedStyle(panel).width, 10) || 400;
+      panel.style.left = Math.max(12, window.innerWidth - w - 24) + "px";
+      panel.style.top = "78px";
+    }
+    var r = panel.getBoundingClientRect();
+    if (r.left + r.width > window.innerWidth) panel.style.left = Math.max(12, window.innerWidth - r.width - 12) + "px";
+    if (r.top < 60) panel.style.top = "60px";
+  }
+  (function () {
+    var head = panel && panel.querySelector(".head"); if (!head) return;
+    var body = document.getElementById("pBody");
+    if (body) ["wheel", "touchstart", "pointerdown", "keydown"].forEach(function (ev) { body.addEventListener(ev, stopAutoScroll, { passive: true }); });
+    var dg = null;
+    head.addEventListener("pointerdown", function (e) {
+      if (!_isWindowMode()) return;                          // window drag only on pointer layouts
+      if (e.target.closest && e.target.closest("button")) return;
+      var r = panel.getBoundingClientRect();
+      dg = { dx: e.clientX - r.left, dy: e.clientY - r.top };
+      try { head.setPointerCapture(e.pointerId); } catch (e0) {}
+      head.classList.add("dragging"); e.preventDefault();
+    });
+    head.addEventListener("pointermove", function (e) {
+      if (!dg) return;
+      var w = panel.offsetWidth, h = panel.offsetHeight;
+      panel.style.left = Math.max(6, Math.min(window.innerWidth - w - 6, e.clientX - dg.dx)) + "px";
+      panel.style.top = Math.max(56, Math.min(window.innerHeight - 40, e.clientY - dg.dy)) + "px";
+    });
+    function endDrag() { dg = null; head.classList.remove("dragging"); }
+    head.addEventListener("pointerup", endDrag);
+    head.addEventListener("pointercancel", endDrag);
+  })();
+  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, version: "V60" };
 })();
