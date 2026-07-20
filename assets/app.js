@@ -32,12 +32,12 @@
       for (var k = 0; k < olds.length; k++) { if (olds[k].parentNode) olds[k].parentNode.removeChild(olds[k]); }
       var link = document.createElement("link");
       link.rel = "icon"; link.type = "image/png"; link.setAttribute("sizes", "48x48");
-      link.href = "assets/icons/favicon-" + col + "-48.png?v=69";
+      link.href = "assets/icons/favicon-" + col + "-48.png?v=75";
       document.head.appendChild(link);
     } catch (e) {}
     try {
       var badge = document.querySelector(".badge");
-      if (badge) badge.style.backgroundImage = 'url("assets/icons/product-' + col + '-216.png?v=69")';
+      if (badge) badge.style.backgroundImage = 'url("assets/icons/product-' + col + '-216.png?v=75")';
     } catch (e) {}
   }
   function applyChannel(i) {
@@ -99,6 +99,10 @@
   function radius(n) {
     return (n.level === "Genre" ? 7 + (n.energy || 5) * 0.7 : 3.5 + (n.energy || 5) * 0.28) * NODE_SCALE;
   }
+  // V75: past ZREF zoom, shrink glyphs in world-space so their ON-SCREEN size stays fixed
+  // (positions still spread with zoom, so zooming in declutters instead of magnifying the pile)
+  var ZREF = 1.0;
+  function zc() { return cam.scale > ZREF ? ZREF / cam.scale : 1; }
   // node colour: by family (data) or by Camelot key (harmonic-mixing wheel)
   function camelotColour(nd) {
     var m = (nd.camelot || "").match(/(\d+)\s*([ABab])/);
@@ -261,7 +265,7 @@
     // nodes — glyph by family; hubs get glitch-split + bold square frame (V19)
     var nowS = (performance.now() - t0) / 1000;
     for (i = 0; i < nodes.length; i++) {
-      var nd = nodes[i], r0 = radius(nd);
+      var nd = nodes[i], r0 = radius(nd) * zc();
       var dim = matchSet && !matchSet[nd.id];
       var dimF = fset && !fset[nd.id];
       var isFocus = focus && (nd === focus || adj[focus.id][nd.id]);
@@ -383,7 +387,7 @@
   }
 
   // ================= V20: DNA timeline view + bpm/bar glitch =================
-  var viewMode = (store("edm_view") === "dna") ? "dna" : "graph";
+  var _sv0 = store("edm_view"); var viewMode = (_sv0 === "dna" || _sv0 === "orbit" || _sv0 === "metro") ? _sv0 : "graph";
   var trans = null;
   var dnaPending = null;
   var DNA = { width: 2600, minY: 1970, maxY: 2025, genres: [] };
@@ -568,7 +572,7 @@
       var dim = matchSet && !matchSet[m.id];
       var rel = focus && ((focus === m) || (focus.family === m.family));
       var mbeat = (t * (m.bpm || 120) / 60) % 1, mthump = Math.pow(1 - mbeat, 3);
-      var r = radius(m) * 1.12 * (1 + 0.22 * mthump);
+      var r = radius(m) * zc() * 1.12 * (1 + 0.22 * mthump);
       plotGlyph(m, m._dx, m._dy, r, dim ? 0.12 : (focus && !rel ? 0.4 : 0.82), false, focus === m);
       if (rel) {
         gx.globalAlpha = 1; gx.font = "400 " + (10 / cam.scale) + "px 'Space Grotesk',sans-serif"; gx.fillStyle = focus === m ? "#fff" : "rgba(236,236,244,0.82)"; gx.textAlign = "center";
@@ -579,7 +583,7 @@
       var sc = 0.62 + 0.38 * (n._dep + 1) / 2, dim = matchSet && !matchSet[n.id];
       var rel = focus && (n === focus || focus.family === n.family);
       var nbeat = (t * (n.bpm || 120) / 60) % 1, nthump = Math.pow(1 - nbeat, 3);
-      var r = radius(n) * 1.25 * sc * (1 + 0.22 * nthump);
+      var r = radius(n) * zc() * 1.25 * sc * (1 + 0.22 * nthump);
       plotGlyph(n, n._dx, n._dy, r, dim ? 0.16 : 1, true, rel);
       gx.globalAlpha = dim ? 0.2 : (0.55 + 0.45 * (n._dep + 1) / 2);
       gx.font = "600 " + (11 / cam.scale) + "px 'Space Grotesk',sans-serif"; gx.fillStyle = rel ? "#fff" : "rgba(236,236,244,0.85)"; gx.textAlign = "center";
@@ -591,10 +595,282 @@
     var w = toWorld(px, py), best = null, bd = 1e9, pool = DNA.genres.concat(DNA.subs);
     for (var i = 0; i < pool.length; i++) {
       var n = pool[i]; if (n._dx == null) continue;
-      var dx = n._dx - w.x, dy = n._dy - w.y, d = dx * dx + dy * dy, rr = radius(n) * 1.4 + 8 / cam.scale;
+      var dx = n._dx - w.x, dy = n._dy - w.y, d = dx * dx + dy * dy, rr = radius(n) * zc() * 1.4 + 8 / cam.scale;
       if (d < rr * rr && d < bd) { bd = d; best = n; }
     }
     return best;
+  }
+  // ---- V70: Camelot Orbit scene (harmonic-mixing solar system) ----
+  // Main genres are planets placed on the Camelot wheel (A = minor inner ring, B = major
+  // outer ring, 12 at the top clockwise); their subgenres orbit them as moons. Hub/orphan
+  // glyph design is preserved (planets = hub glitch+frame, moons = orphan glyphs).
+  var ORBIT = { rA: 300, rB: 780, sun: 165, rIn: 255, rOut: 780, rings: [], genres: [], subs: [] };
+  function buildOrbit() {
+    var gen = nodes.filter(function (n) { return n.level === "Genre"; });
+    var slot = {}, es = [];
+    gen.forEach(function (g) {
+      var m = (g.camelot || "").match(/(\d+)\s*([ABab])/);
+      g._cn = m ? (((parseInt(m[1], 10) - 1) % 12) + 1) : 0;
+      g._cl = m ? m[2].toUpperCase() : "?";
+      es.push(g.energy || 5);
+      (slot[g._cn] = slot[g._cn] || []).push(g);                          // group by key NUMBER = angular sector
+    });
+    var eMin = Math.min.apply(null, es), eMax = Math.max.apply(null, es); if (eMax <= eMin) eMax = eMin + 1;
+    Object.keys(slot).forEach(function (kn) {
+      var arr = slot[kn]; arr.sort(function (a, b) { return ((a.energy || 5) - (b.energy || 5)) || (a._cl < b._cl ? -1 : 1); });
+      var total = arr.length;
+      arr.forEach(function (g, idx) {
+        var base = ((g._cn % 12) / 12) * Math.PI * 2 - Math.PI / 2;       // 12 at top, clockwise
+        var fanW = Math.min(0.5, 0.12 * total);                          // busy keys fan wider across their sector
+        g._oa = base + (total > 1 ? (idx / (total - 1) - 0.5) * fanW : 0);
+        var tE = ((g.energy || 5) - eMin) / (eMax - eMin);               // energy -> orbital distance (inner calm .. outer intense)
+        var bias = g._cl === "A" ? -0.08 : g._cl === "B" ? 0.08 : 0;      // minor pulled inner, major pushed outer
+        var frac = Math.max(0.02, Math.min(0.98, tE * 0.84 + 0.09 + bias));
+        var jit = (seededF(idx * 7 + g._cn, 5) - 0.5) * 46;              // de-collide same-energy planets on a ring
+        g._or = ORBIT.rIn + frac * (ORBIT.rOut - ORBIT.rIn) + jit;
+      });
+    });
+    ORBIT.rings = []; for (var ri = 0; ri < 6; ri++) ORBIT.rings.push(ORBIT.rIn + (ORBIT.rOut - ORBIT.rIn) * (ri / 5));
+    var subs = nodes.filter(function (n) { return n.level !== "Genre"; });
+    subs.forEach(function (s, i) {
+      var p = null;
+      for (var k in adj[s.id]) { if (adj[s.id][k] === "child" && byId[k] && byId[k].level === "Genre") { p = byId[k]; break; } }
+      if (!p) { var fam = gen.filter(function (g) { return g.family === s.family; }); p = fam[0] || gen[0]; }
+      s._parentG = p; s._moonI = i;
+    });
+    gen.forEach(function (g) { g._moons = subs.filter(function (s) { return s._parentG === g; }); });
+    subs.forEach(function (s) {
+      var p = s._parentG, mi = p._moons.indexOf(s), mt = p._moons.length;
+      s._moonR = radius(p) * 1.7 + 15 + (mi % 4) * 12;                     // moon orbit radius (a few rings)
+      s._moonPh = (mt > 1 ? (mi / mt) * Math.PI * 2 : 0) + seededF(s._moonI, 3) * 0.7;
+      s._moonSp = (0.1 + seededF(s._moonI, 4) * 0.14) * ((mi % 2) ? 1 : -1); // orbital speed + direction
+    });
+    ORBIT.genres = gen; ORBIT.subs = subs;
+  }
+  function fitOrbit() { cam.x = 0; cam.y = 0; var need = (ORBIT.rB + 130) * 2; cam.scale = Math.max(0.22, Math.min(1.0, Math.min(W, H) * 0.92 / need)); }
+  function nodeAtOrbit(px, py) {
+    var w = toWorld(px, py), best = null, bd = 1e9, pool = ORBIT.subs.concat(ORBIT.genres);
+    for (var i = 0; i < pool.length; i++) { var n = pool[i]; if (n._dx == null) continue; var dx = n._dx - w.x, dy = n._dy - w.y, d = dx * dx + dy * dy, rr = radius(n) * zc() * 1.7 + 10 / cam.scale; if (d < rr * rr && d < bd) { bd = d; best = n; } }
+    return best;
+  }
+  function sceneNodeAt(px, py) { return viewMode === "orbit" ? nodeAtOrbit(px, py) : viewMode === "metro" ? nodeAtMetro(px, py) : nodeAtDNA(px, py); }
+  // ---- V71: Mood Metro scene (subway map of genres by emotion/mood) ----
+  // Each mood is a coloured line; genres matching a mood are stations on it (ordered by BPM). A genre
+  // on several moods gets interchange rings + a dashed transfer link between its stations; its subgenres
+  // sit as small stops below its home station. Hub/orphan glyph design preserved.
+  var MOOD_COL = ["#8A63FF", "#FFC24B", "#FF3D6E", "#2FE6FF", "#B6FF3C", "#FF7A29", "#5C8CFF", "#FF3D9A"];
+  var METRO = { lines: [], genres: [], subs: [], stations: [], H: 150, X0: -880, X1: 880, cy: 0 };
+  function buildMetro() {
+    var gen = nodes.filter(function (n) { return n.level === "Genre"; });
+    METRO.lines = []; METRO.lineByMood = {};
+    gen.forEach(function (g) { g._metro = {}; g._metroLines = []; });
+    MOODS.forEach(function (m, mi) {
+      var mem = gen.filter(function (g) { return nodeHasMood(g, mi); }).sort(function (a, b) { return ((a.bpm || 120) - (b.bpm || 120)) || a.name.localeCompare(b.name); });
+      var y = (mi - (MOODS.length - 1) / 2) * METRO.H;
+      var spd = (0.02 + 0.006 * (mi % 3)) * ((mi % 2) ? 1 : -1);           // each line scrolls; adjacent lines opposite ways
+      mem.forEach(function (g, j) { g._metro[mi] = { u: (mem.length > 1 ? j / mem.length : 0.5), y: y }; g._metroLines.push(mi); });
+      var ln = { mood: mi, y: y, members: mem, spd: spd }; METRO.lines.push(ln); METRO.lineByMood[mi] = ln;
+    });
+    var noMood = gen.filter(function (g) { return g._metroLines.length === 0; });
+    if (noMood.length) {
+      var yy = (MOODS.length - (MOODS.length - 1) / 2) * METRO.H;
+      noMood.sort(function (a, b) { return (a.bpm || 120) - (b.bpm || 120); });
+      noMood.forEach(function (g, j) { g._metro[-1] = { u: (noMood.length > 1 ? j / noMood.length : 0.5), y: yy }; g._metroLines.push(-1); });
+      var ln2 = { mood: -1, y: yy, members: noMood, spd: 0.016 }; METRO.lines.push(ln2); METRO.lineByMood[-1] = ln2;
+    }
+    gen.forEach(function (g) { g._homeMood = g._metroLines[0]; g._metroP = g._metro[g._homeMood]; });
+    var subs = nodes.filter(function (n) { return n.level !== "Genre"; }), perP = {};
+    subs.forEach(function (s) {
+      var p = null; for (var k in adj[s.id]) { if (adj[s.id][k] === "child" && byId[k] && byId[k].level === "Genre") { p = byId[k]; break; } }
+      if (!p) { var fam = gen.filter(function (g) { return g.family === s.family; }); p = fam[0] || gen[0]; }
+      s._metroParent = p; (perP[p.id] = perP[p.id] || []).push(s);
+    });
+    subs.forEach(function (s) { var arr = perP[s._metroParent.id], j = arr.indexOf(s); s._ox = ((j % 3) - 1) * 20; s._oy = 30 + Math.floor(j / 3) * 17; });
+    METRO.genres = gen; METRO.subs = subs;
+    METRO.cy = (METRO.lines[0].y + METRO.lines[METRO.lines.length - 1].y) / 2;
+  }
+  function metroLiveX(u, ln, t) { var uu = u + t * ln.spd; uu = uu - Math.floor(uu); return METRO.X0 + uu * (METRO.X1 - METRO.X0); }  // travel + loop
+  function metroPos(g, mi, t) { var b = g._metro[mi]; return { x: metroLiveX(b.u, METRO.lineByMood[mi], t), y: b.y }; }
+  function metroSubPos(s, t) { var p = s._metroParent, hp = metroPos(p, p._homeMood, t); return { x: hp.x + s._ox, y: hp.y + s._oy }; }
+  function metroShort(nm) { return nm.split(/\s*[\/(]/)[0].trim() || nm; }
+  function fitMetro() { cam.x = 0; cam.y = METRO.cy; var w = (METRO.X1 - METRO.X0) + 280, h = (METRO.lines.length + 1.6) * METRO.H; cam.scale = Math.max(0.18, Math.min(0.95, Math.min(W / w, H / h) * 0.96)); }
+  function nodeAtMetro(px, py) {
+    var w = toWorld(px, py), t = (performance.now() - t0) / 1000, best = null, bd = 1e9;
+    for (var gi = 0; gi < METRO.genres.length; gi++) { var g = METRO.genres[gi]; for (var li = 0; li < g._metroLines.length; li++) { var p = metroPos(g, g._metroLines[li], t), dx = p.x - w.x, dy = p.y - w.y, d = dx * dx + dy * dy, rr = radius(g) * zc() * 1.6 + 10 / cam.scale; if (d < rr * rr && d < bd) { bd = d; best = g; } } }
+    for (var si = 0; si < METRO.subs.length; si++) { var s = METRO.subs[si], sp = metroSubPos(s, t), ex = sp.x - w.x, ey = sp.y - w.y, e = ex * ex + ey * ey, r2 = radius(s) * 1.6 + 10 / cam.scale; if (e < r2 * r2 && e < bd) { bd = e; best = s; } }
+    return best;
+  }
+  function drawMetro() {
+    gx.clearRect(0, 0, W, H); gx.save(); gx.translate(W / 2, H / 2); gx.scale(cam.scale, cam.scale); gx.translate(-cam.x, -cam.y);
+    var iv = 1 / cam.scale, focus = hover || selected, t = (performance.now() - t0) / 1000;
+    var RS = (window.BeatGenomeAudio && window.BeatGenomeAudio.getReactiveState) ? window.BeatGenomeAudio.getReactiveState() : null;
+    gx.lineCap = "round"; gx.lineJoin = "round";
+    METRO.lines.forEach(function (ln) {                                    // static track + mood label
+      var col = ln.mood >= 0 ? MOOD_COL[ln.mood] : "#9A9AB6";
+      var faded = focus && !(focus._metroLines && focus._metroLines.indexOf(ln.mood) >= 0);
+      gx.globalAlpha = faded ? 0.16 : 0.7; gx.strokeStyle = col; gx.lineWidth = 6 * iv;
+      gx.beginPath(); gx.moveTo(METRO.X0, ln.y); gx.lineTo(METRO.X1, ln.y); gx.stroke();
+      gx.globalAlpha = faded ? 0.3 : 1; gx.fillStyle = col; gx.font = "600 " + (13 * iv) + "px 'Space Mono',monospace"; gx.textAlign = "right"; gx.textBaseline = "middle";
+      gx.fillText(ln.mood >= 0 ? MOODS[ln.mood][0].toUpperCase() : "OTHER", METRO.X0 - 16 * iv, ln.y);
+    });
+    gx.globalAlpha = 1; gx.lineCap = "butt"; gx.lineJoin = "miter"; gx.textBaseline = "alphabetic";
+    METRO.genres.forEach(function (g) {                                    // interchange transfer links (live)
+      if (g._metroLines.length < 2) return;
+      var pts = g._metroLines.map(function (mi) { return metroPos(g, mi, t); }).sort(function (a, b) { return a.y - b.y; });
+      var hot = focus && (focus === g || focus._metroParent === g);
+      gx.globalAlpha = hot ? 0.28 : 0.06; gx.strokeStyle = "#fff"; gx.lineWidth = 1.4 * iv; gx.setLineDash([3 * iv, 3 * iv]);
+      gx.beginPath(); pts.forEach(function (p, i) { if (i === 0) gx.moveTo(p.x, p.y); else gx.lineTo(p.x, p.y); }); gx.stroke(); gx.setLineDash([]); gx.globalAlpha = 1;
+    });
+    METRO.subs.forEach(function (s, si) {                                  // orphans travel with their parent
+      var sp = metroSubPos(s, t); s._dx = sp.x; s._dy = sp.y;
+      var dim = matchSet && !matchSet[s.id], rel = focus && (focus === s || focus === s._metroParent);
+      var r = radius(s) * zc() * 1.02, col = colourOf(s), sh = glyphFor(s);
+      var tw = reduceMotion ? 1 : (0.72 + 0.28 * Math.sin(t * 2.6 + si));
+      gx.globalAlpha = (dim ? 0.1 : (focus && !rel ? 0.26 : 0.68)) * tw; gx.fillStyle = col; gx.strokeStyle = col;
+      if (QUALITY !== "reduced" && rel) { gx.shadowColor = col; gx.shadowBlur = focus === s ? 14 : 5; }
+      drawGlyph(gx, sh, sp.x, sp.y, r); gx.shadowBlur = 0;
+    });
+    gx.globalAlpha = 1;
+    METRO.genres.forEach(function (g) {                                    // interchange rings on non-home lines (live)
+      var dim = matchSet && !matchSet[g.id], rel = focus && (focus === g || focus._metroParent === g);
+      g._metroLines.forEach(function (mi) {
+        if (mi === g._homeMood) return;
+        var p = metroPos(g, mi, t), c = mi >= 0 ? MOOD_COL[mi] : "#9A9AB6", rr = radius(g) * zc() * 0.7 + 2.5;
+        gx.globalAlpha = dim ? 0.14 : (focus && !rel ? 0.32 : 1); gx.fillStyle = "#0a0a12"; gx.strokeStyle = c; gx.lineWidth = 2 * iv;
+        gx.beginPath(); gx.arc(p.x, p.y, rr, 0, 6.2832); gx.fill(); gx.stroke(); gx.globalAlpha = 1;
+      });
+    });
+    METRO.genres.forEach(function (g) {                                    // home hub (travels) + vertical label from the top
+      var hp = metroPos(g, g._homeMood, t);
+      var dim = matchSet && !matchSet[g.id], rel = focus && (focus === g || focus._metroParent === g);
+      var thump = (RS && RS.playing && !reduceMotion) ? Math.pow(1 - ((t * (g.bpm || 120) / 60) % 1), 3) : 0;
+      var r = radius(g) * zc() * 1.35 * (1 + 0.12 * thump);
+      plotGlyph(g, hp.x, hp.y, r, dim ? 0.16 : (focus && !rel ? 0.4 : 1), true, focus === g);
+      if (!dim && (cam.scale > 0.4 || g === focus)) {
+        gx.save(); gx.globalAlpha = focus && !rel ? 0.35 : 1; gx.translate(hp.x, hp.y - r - 5 * iv); gx.rotate(-Math.PI / 2);
+        gx.font = "600 " + (10 * iv) + "px 'Space Grotesk',sans-serif"; gx.fillStyle = g === focus ? "#fff" : "rgba(236,236,244,0.82)"; gx.textAlign = "left"; gx.textBaseline = "middle";
+        gx.fillText(g === focus ? g.name : metroShort(g.name), 0, 0); gx.restore(); gx.globalAlpha = 1;
+      }
+    });
+    gx.restore();
+  }
+  function metroTrain(ln, f) {
+    var mem = ln.members; if (mem.length < 2) return null;
+    var idx = f * (mem.length - 1), i0 = Math.floor(idx), fr = idx - i0; if (i0 >= mem.length - 1) { i0 = mem.length - 2; fr = 1; }
+    var p0 = mem[i0]._metro[ln.mood], p1 = mem[i0 + 1]._metro[ln.mood];
+    return { x: p0.x + (p1.x - p0.x) * fr, y: p0.y + (p1.y - p0.y) * fr };
+  }
+  // ---- V72: generic scene morph so hubs/orphans glide between ANY two scenes ----
+  function scenePos(n, mode) {
+    var isHub = n.level === "Genre";
+    if (mode === "dna") { if (isHub) { var ph = (n._hx / 210) + n._strand * Math.PI; return [n._hx, Math.sin(ph) * DNA_R]; } return [n._fx, n._fyBase]; }
+    if (mode === "orbit") { if (isHub) return [Math.cos(n._oa) * n._or, Math.sin(n._oa) * n._or]; var p = n._parentG; if (!p) return [0, 0]; return [Math.cos(p._oa) * p._or + Math.cos(n._moonPh) * n._moonR, Math.sin(p._oa) * p._or + Math.sin(n._moonPh) * n._moonR]; }
+    if (mode === "metro") { var tt = (performance.now() - t0) / 1000; if (isHub) { var hp = metroPos(n, n._homeMood, tt); return [hp.x, hp.y]; } var sp = metroSubPos(n, tt); return [sp.x, sp.y]; }
+    return [n.x, n.y];
+  }
+  function sceneCam(mode) {
+    if (mode === "dna") { var sw = (W * 0.92) / DNA.width, sh = (H * 0.88) / (2 * (DNA_R + 190)); return { x: 0, y: 0, scale: Math.max(0.24, Math.min(1.1, Math.min(sw, sh))) }; }
+    if (mode === "orbit") { var need = (ORBIT.rB + 130) * 2; return { x: 0, y: 0, scale: Math.max(0.22, Math.min(1.0, Math.min(W, H) * 0.92 / need)) }; }
+    if (mode === "metro") { var w = (METRO.X1 - METRO.X0) + 280, h = (METRO.lines.length + 1.6) * METRO.H; return { x: 0, y: METRO.cy, scale: Math.max(0.18, Math.min(0.95, Math.min(W / w, H / h) * 0.96)) }; }
+    return { x: 0, y: 0, scale: (MX && MX.initialZoom) || 0.9 };
+  }
+  function startSceneMorph(toMode) {
+    var fromMode = viewMode;
+    for (var i = 0; i < nodes.length; i++) {
+      var n = nodes[i];
+      if (fromMode === "graph") { n._mx0 = n.x; n._my0 = n.y; } else { n._mx0 = (n._dx != null ? n._dx : n.x); n._my0 = (n._dy != null ? n._dy : n.y); }
+      var tp = scenePos(n, toMode); n._mtx = tp[0]; n._mty = tp[1];
+    }
+    trans = { t0: (performance.now() - t0) / 1000, dur: reduceMotion ? 0.55 : 1.15, from: { x: cam.x, y: cam.y, scale: cam.scale }, to: sceneCam(toMode), toMode: toMode, fromMode: fromMode };
+  }
+  function drawSceneMorph(e, toMode) {
+    gx.clearRect(0, 0, W, H); gx.save();
+    gx.translate(W / 2, H / 2); gx.scale(cam.scale, cam.scale); gx.translate(-cam.x, -cam.y);
+    var t = (performance.now() - t0) / 1000, iv = 1 / cam.scale;
+    gx.globalAlpha = e * 0.9;                                          // target scene forms / fades in
+    if (toMode === "orbit") {
+      gx.lineWidth = 1.3 * iv; gx.strokeStyle = "rgba(120,200,255,0.2)"; gx.beginPath(); gx.arc(0, 0, ORBIT.rA, 0, 6.2832); gx.stroke();
+      gx.strokeStyle = "rgba(255,200,60,0.2)"; gx.beginPath(); gx.arc(0, 0, ORBIT.rB, 0, 6.2832); gx.stroke();
+    } else if (toMode === "metro") {
+      gx.lineCap = "round"; gx.lineWidth = 6 * iv;
+      METRO.lines.forEach(function (ln) { gx.strokeStyle = ln.mood >= 0 ? MOOD_COL[ln.mood] : "#9A9AB6"; gx.beginPath(); gx.moveTo(METRO.X0, ln.y); gx.lineTo(METRO.X1, ln.y); gx.stroke(); }); gx.lineCap = "butt";
+    } else if (toMode === "dna") {
+      var R = DNA_R, x0 = mapX(DNA.minY) - 30, x1 = mapX(DNA.maxY) + 30, turn = t * 0.85, gj = reduceMotion ? 0 : (1 - e) * 20;
+      for (var strand = 0; strand < 2; strand++) { gx.beginPath(); for (var xx = x0; xx <= x1; xx += 9) { var ph = (xx / 210) + turn + strand * Math.PI, yy = Math.sin(ph) * R + Math.sin(xx * 3.3 + t * 40 + strand * 2) * gj; if (xx === x0) gx.moveTo(xx, yy); else gx.lineTo(xx, yy); } gx.strokeStyle = "rgba(198,240,0,0.5)"; gx.lineWidth = (9.6 * iv) * (0.35 + 0.65 * e); gx.stroke(); }
+    } else {
+      gx.lineWidth = 0.6 * iv; gx.strokeStyle = "rgba(198,240,0,0.1)"; gx.beginPath();
+      for (var li = 0; li < links.length; li++) { if (links[li].k !== "child") continue; var na = byId[links[li].s], nb = byId[links[li].t]; if (na && nb) { gx.moveTo(na._mtx, na._mty); gx.lineTo(nb._mtx, nb._mty); } } gx.stroke();
+    }
+    gx.globalAlpha = 1;
+    var gj2 = reduceMotion ? 0 : (1 - e) * (1 - e) * 24;              // warp jitter that settles
+    for (var i = 0; i < nodes.length; i++) {
+      var n = nodes[i];
+      var x = n._mx0 + (n._mtx - n._mx0) * e + (gj2 ? Math.sin(i * 3.3 + t * 42) * gj2 : 0);
+      var y = n._my0 + (n._mty - n._my0) * e + (gj2 ? Math.cos(i * 2.7 + t * 42) * gj2 : 0);
+      var isHub = n.level === "Genre", r = radius(n) * zc() * (isHub ? 1.35 : 1.1);
+      if (isHub) plotGlyph(n, x, y, r, 1, true, false);
+      else { var col = colourOf(n), sh = glyphFor(n); gx.globalAlpha = 0.82; gx.fillStyle = col; gx.strokeStyle = col; drawGlyph(gx, sh, x, y, r); gx.globalAlpha = 1; }
+    }
+    gx.restore();
+  }
+  function drawOrbit() {
+    gx.clearRect(0, 0, W, H);
+    gx.save();
+    gx.translate(W / 2, H / 2); gx.scale(cam.scale, cam.scale); gx.translate(-cam.x, -cam.y);
+    var t = (performance.now() - t0) / 1000;
+    var RS = (window.BeatGenomeAudio && window.BeatGenomeAudio.getReactiveState) ? window.BeatGenomeAudio.getReactiveState() : null;
+    var iv = 1 / cam.scale;
+    var half = Math.PI / 12;
+    for (var k = 1; k <= 12; k++) {                                      // V73: light background highlight per Camelot key
+      var a = ((k % 12) / 12) * Math.PI * 2 - Math.PI / 2, hue = ((k - 1) / 12) * 360;
+      gx.fillStyle = "hsla(" + hue + ",78%,60%," + (0.05 + (k % 2 ? 0.022 : 0)).toFixed(3) + ")";
+      gx.beginPath(); gx.arc(0, 0, ORBIT.rOut + 70, a - half, a + half); gx.arc(0, 0, ORBIT.sun + 20, a + half, a - half, true); gx.closePath(); gx.fill();
+    }
+    gx.fillStyle = "rgba(198,240,0,0.06)"; gx.beginPath(); gx.arc(0, 0, ORBIT.sun, 0, 6.2832); gx.fill();  // sun core
+    gx.lineWidth = 1 * iv;
+    ORBIT.rings.forEach(function (rr, ri) { gx.strokeStyle = "rgba(180,205,255," + (0.05 + 0.03 * (1 - ri / 6)).toFixed(3) + ")"; gx.beginPath(); gx.arc(0, 0, rr, 0, 6.2832); gx.stroke(); });  // concentric orbits
+    if (!reduceMotion) {                                                 // energy dots gliding along two orbits
+      var qa = t * 0.14, qb = -t * 0.1, ra = ORBIT.rings[1], rb = ORBIT.rings[4];
+      if (QUALITY !== "reduced") { gx.shadowColor = "rgba(150,210,255,0.9)"; gx.shadowBlur = 12; }
+      gx.fillStyle = "rgba(150,210,255,0.9)"; gx.beginPath(); gx.arc(Math.cos(qa) * ra, Math.sin(qa) * ra, 5, 0, 6.2832); gx.fill();
+      gx.fillStyle = "rgba(255,205,80,0.9)"; gx.beginPath(); gx.arc(Math.cos(qb) * rb, Math.sin(qb) * rb, 5, 0, 6.2832); gx.fill(); gx.shadowBlur = 0;
+    }
+    gx.textAlign = "center"; gx.textBaseline = "middle"; gx.font = "700 " + (14 * iv) + "px 'Space Mono',monospace";
+    for (var k2 = 1; k2 <= 12; k2++) {                                   // spokes + coloured key numbers on the rim
+      var a2 = ((k2 % 12) / 12) * Math.PI * 2 - Math.PI / 2, hue2 = ((k2 - 1) / 12) * 360;
+      gx.strokeStyle = "rgba(255,255,255,0.045)"; gx.lineWidth = 1 * iv;
+      gx.beginPath(); gx.moveTo(Math.cos(a2) * (ORBIT.sun + 20), Math.sin(a2) * (ORBIT.sun + 20)); gx.lineTo(Math.cos(a2) * (ORBIT.rOut + 44), Math.sin(a2) * (ORBIT.rOut + 44)); gx.stroke();
+      gx.fillStyle = "hsl(" + hue2 + ",80%,68%)"; gx.fillText(k2 + "", Math.cos(a2) * (ORBIT.rOut + 66), Math.sin(a2) * (ORBIT.rOut + 66));
+    }
+    gx.font = (11 * iv) + "px 'Space Mono',monospace";
+    gx.fillStyle = "rgba(150,210,255,0.5)"; gx.fillText("A · minor", 0, -(ORBIT.rIn - 6));
+    gx.fillStyle = "rgba(255,205,80,0.5)"; gx.fillText("B · major", 0, -(ORBIT.rOut - 4));
+    gx.fillStyle = "rgba(236,236,244,0.5)"; gx.font = "600 " + (15 * iv) + "px 'Space Grotesk',sans-serif";
+    gx.fillText("MIX IN", 0, -10 * iv); gx.fillText("HARMONY", 0, 10 * iv);
+    gx.textBaseline = "alphabetic";
+    var focus = hover || selected;
+    ORBIT.genres.forEach(function (g) { g._dx = Math.cos(g._oa) * g._or; g._dy = Math.sin(g._oa) * g._or; });
+    ORBIT.subs.forEach(function (s) { var p = s._parentG; if (!p) { s._dx = s._dy = null; return; } var ang = s._moonPh + t * s._moonSp; s._dx = p._dx + Math.cos(ang) * s._moonR; s._dy = p._dy + Math.sin(ang) * s._moonR; });
+    var fp = focus ? (focus.level === "Genre" ? focus : focus._parentG) : null;
+    if (fp) { gx.strokeStyle = "rgba(198,240,0,0.16)"; gx.lineWidth = 0.8 * iv; (fp._moons || []).forEach(function (s) { gx.beginPath(); gx.arc(fp._dx, fp._dy, s._moonR, 0, 6.2832); gx.stroke(); }); }
+    ORBIT.subs.forEach(function (s) {
+      if (s._dx == null) return;
+      var dim = matchSet && !matchSet[s.id], rel = focus && (focus === s || focus === s._parentG);
+      var r = radius(s) * zc() * 1.15, col = colourOf(s), sh = glyphFor(s);
+      gx.globalAlpha = (dim ? 0.12 : (focus && !rel ? 0.4 : 0.82)) * (reduceMotion ? 1 : (0.78 + 0.22 * Math.sin(t * 2.5 + (s._moonI || 0))));
+      gx.fillStyle = col; gx.strokeStyle = col;
+      if (QUALITY !== "reduced" && (rel || focus === s)) { gx.shadowColor = col; gx.shadowBlur = (focus === s ? 16 : 6); }
+      drawGlyph(gx, sh, s._dx, s._dy, r); gx.shadowBlur = 0;
+    });
+    gx.globalAlpha = 1;
+    ORBIT.genres.forEach(function (g) {
+      var dim = matchSet && !matchSet[g.id], rel = focus && (focus === g || focus._parentG === g);
+      var thump = (RS && RS.playing && !reduceMotion) ? Math.pow(1 - ((t * (g.bpm || 120) / 60) % 1), 3) : 0;
+      var r = radius(g) * zc() * 1.5 * (1 + 0.14 * thump);
+      plotGlyph(g, g._dx, g._dy, r, dim ? 0.18 : (focus && !rel ? 0.5 : 1), true, focus === g);
+      if (!dim && (cam.scale > 0.4 || g === focus)) { gx.globalAlpha = focus && !rel ? 0.4 : 1; gx.font = "600 " + (11 * iv) + "px 'Space Grotesk',sans-serif"; gx.fillStyle = g === focus ? "#fff" : "rgba(236,236,244,0.85)"; gx.textAlign = "center"; gx.fillText(g.name, g._dx, g._dy - r - 7 * iv); gx.globalAlpha = 1; }
+    });
+    gx.restore();
   }
   function updateGlitch() {
     if (reduceMotion) { document.documentElement.style.setProperty("--glitch", "0"); return; }
@@ -643,10 +919,10 @@
       var _tt = ((performance.now() - t0) / 1000 - trans.t0) / trans.dur; if (_tt > 1) _tt = 1;
       var _e = _tt < 0.5 ? 4 * _tt * _tt * _tt : 1 - Math.pow(-2 * _tt + 2, 3) / 2;
       cam.x = trans.from.x + (trans.to.x - trans.from.x) * _e; cam.y = trans.from.y + (trans.to.y - trans.from.y) * _e; cam.scale = trans.from.scale + (trans.to.scale - trans.from.scale) * _e;
-      drawMorph(_e, trans.toDNA);
+      drawSceneMorph(_e, trans.toMode);
       document.documentElement.style.setProperty("--glitch", (Math.sin(_tt * Math.PI) * 0.5).toFixed(3));
       if (_tt >= 1) { var _wasG = trans.toMode === "graph"; viewMode = trans.toMode; hover = null; trans = null; if (_wasG) reheat(0.6); }
-    } else if (viewMode === "dna") { drawDNA(); } else { if (!(QUALITY === "reduced" && alpha <= 0.07 && (_fN % 2))) tick(); draw(); }
+    } else if (viewMode === "dna") { drawDNA(); } else if (viewMode === "orbit") { drawOrbit(); } else if (viewMode === "metro") { drawMetro(); } else { if (!(QUALITY === "reduced" && alpha <= 0.07 && (_fN % 2))) tick(); draw(); }
     if (window.BeatGenomeAudio && window.BeatGenomeAudio.getReactiveState) { var _rs = window.BeatGenomeAudio.getReactiveState(); _rs.kick *= 0.86; _rs.snare *= 0.82; _rs.hat *= 0.75; _rs.bass *= 0.9; _rs.chord *= 0.93; _rs.master *= 0.9; }
     if (scope.offsetParent !== null) drawScope(sx, W, 40, focusParams(), false); // skipped when hidden on phones
     if (pScopeOn && panel.classList.contains("open")) {
@@ -661,7 +937,7 @@
 
   // ---- hit testing / interaction ----
   function hitR(n) {
-    var vis = radius(n);
+    var vis = radius(n) * zc();
     return IS_TOUCH ? Math.max(vis + 10 / cam.scale, 22 / cam.scale) : vis + 6 / cam.scale;
   }
   function nodeAt(px, py) {
@@ -757,7 +1033,7 @@
     if (IS_TOUCH && Object.keys(pointers).length === 1) {
       lpTimer = setTimeout(function () {
         if (pinch || moved) return;
-        var lpN = viewMode === "dna" ? nodeAtDNA(downX, downY) : nodeAt(downX, downY);
+        var lpN = viewMode !== "graph" ? sceneNodeAt(downX, downY) : nodeAt(downX, downY);
         if (lpN) { lpFired = true; showQuickActions(lpN, downX, downY); }
       }, 550);
     }
@@ -768,7 +1044,7 @@
       pinch = { d: pinchDist(), scale: cam.scale, pmid: pinchMid() };
       return;
     }
-    if (viewMode === "dna") { dnaPending = nodeAtDNA(e.clientX, e.clientY); dragging = true; graph.classList.add("grabbing"); return; }
+    if (viewMode !== "graph") { dnaPending = sceneNodeAt(e.clientX, e.clientY); dragging = true; graph.classList.add("grabbing"); return; }
     var n = nodeAt(e.clientX, e.clientY);
     if (n) { dragNode = n; n.fixed = true; } else { dragging = true; graph.classList.add("grabbing"); }
   });
@@ -786,9 +1062,9 @@
       cam.x += w0.x - w1.x; cam.y += w0.y - w1.y;
       interactingUntil = performance.now() + 350; clearTimeout(lpTimer); moved = true; return;
     }
-    if (viewMode === "dna") {
+    if (viewMode !== "graph") {
       if (dragging) { cam.x -= (e.clientX - last.x) / cam.scale; cam.y -= (e.clientY - last.y) / cam.scale; last = { x: e.clientX, y: e.clientY }; interactingUntil = performance.now() + 350; if (movedFar(e)) { moved = true; dnaPending = null; clearTimeout(lpTimer); } }
-      else { var hd = nodeAtDNA(e.clientX, e.clientY); if (hd !== hover) { hover = hd; graph.style.cursor = hd ? "pointer" : "grab"; } }
+      else { var hd = sceneNodeAt(e.clientX, e.clientY); if (hd !== hover) { hover = hd; graph.style.cursor = hd ? "pointer" : "grab"; } }
       return;
     }
     if (dragNode) {
@@ -832,7 +1108,7 @@
       }
       lastTap = { t: nowT, x: e.clientX, y: e.clientY };
     }
-    if (viewMode === "dna") { if (dnaPending && !moved) select(dnaPending); dnaPending = null; dragging = false; graph.classList.remove("grabbing"); return; }
+    if (viewMode !== "graph") { if (dnaPending && !moved) select(dnaPending); dnaPending = null; dragging = false; graph.classList.remove("grabbing"); return; }
     if (dragNode && !moved) {
       if (IS_TOUCH && e) {
         var cands = nodesAt(e.clientX, e.clientY);
@@ -1447,16 +1723,15 @@
 
   // ---- view toggle: force-graph <-> DNA timeline ----
   var viewBtn = document.getElementById("viewBtn");
-  function updViewBtn() { if (!viewBtn) return; viewBtn.textContent = viewMode === "dna" ? "⋉ GRAPH" : "◇ DNA"; viewBtn.setAttribute("aria-pressed", viewMode === "dna" ? "true" : "false"); }
-  if (viewBtn) {
-    updViewBtn();
-    viewBtn.addEventListener("click", function () {
-      var toMode = viewMode === "dna" ? "graph" : "dna";
-      store("edm_view", toMode);
-      viewBtn.textContent = toMode === "dna" ? "⋉ GRAPH" : "◇ DNA"; viewBtn.setAttribute("aria-pressed", toMode === "dna" ? "true" : "false");
-      startViewTransition(toMode);
-    });
+  var SCENES = ["graph", "dna", "orbit", "metro"], SCENE_LBL = { graph: "⋉ GRAPH", dna: "◇ DNA", orbit: "☉ ORBIT", metro: "☰ METRO" };
+  function sceneAfter(m) { return SCENES[(SCENES.indexOf(m) + 1) % SCENES.length]; }
+  function updViewBtn() { if (!viewBtn) return; viewBtn.textContent = SCENE_LBL[sceneAfter(viewMode)]; viewBtn.setAttribute("aria-pressed", viewMode !== "graph" ? "true" : "false"); }
+  function switchScene(toMode) {
+    store("edm_view", toMode);
+    if (viewBtn) { viewBtn.textContent = SCENE_LBL[sceneAfter(toMode)]; viewBtn.setAttribute("aria-pressed", toMode !== "graph" ? "true" : "false"); }
+    if (toMode !== viewMode) startSceneMorph(toMode);                  // every scene switch morphs the nodes into place
   }
+  if (viewBtn) { updViewBtn(); viewBtn.addEventListener("click", function () { switchScene(sceneAfter(viewMode)); }); }
 
   // ---- global keys ----
   document.addEventListener("keydown", function (e) {
@@ -1658,7 +1933,7 @@
     aboutEl = document.createElement("div"); aboutEl.className = "overlay about"; aboutEl.id = "aboutOverlay"; aboutEl.setAttribute("role", "dialog");
     aboutEl.innerHTML = '<div class="aboutsheet"><div class="cmphead"><span>About Me</span><button class="x" id="aboutClose">✕ close</button></div>' +
       '<div class="aboutbody">' +
-      '<div class="aboutpic"><div class="apic-frame"><img src="assets/about-me.jpg?v=69" alt="DJ7 - Wilsonlicioussss" onerror="this.parentNode.classList.add(\'empty\');this.remove()"></div><span class="aname">DJ7 · Wilsonlicioussss</span></div>' +
+      '<div class="aboutpic"><div class="apic-frame"><img src="assets/about-me.jpg?v=75" alt="DJ7 - Wilsonlicioussss" onerror="this.parentNode.classList.add(\'empty\');this.remove()"></div><span class="aname">DJ7 · Wilsonlicioussss</span></div>' +
       '<div class="aboutsec"><h4>★ Things I Love</h4><p>Thoughtful spaces, quiet details, electronic music, new technology and ideas that feel slightly ahead of their time.</p></div>' +
       '<div class="aboutsec"><h4>Always Learning</h4><p>Everything begins with curiosity. I explore how design, data, people and culture connect.</p></div>' +
       '<div class="aboutsec"><h4>I DJ</h4><p>A personal journey through electronic music — from high-energy moments to deeper, melodic and atmospheric sounds.</p></div>' +
@@ -1743,7 +2018,9 @@
   // warm the simulation before revealing
   for (var w = 0; w < 220; w++) tick();
   buildTimeline();
-  if (viewMode === "dna") { fitDNA(); } else { cam.scale = (MX && MX.initialZoom) || 0.9; cam.x = 0; cam.y = 0; }
+  buildOrbit();
+  buildMetro();
+  if (viewMode === "dna") { fitDNA(); } else if (viewMode === "orbit") { fitOrbit(); } else if (viewMode === "metro") { fitMetro(); } else { cam.scale = (MX && MX.initialZoom) || 0.9; cam.x = 0; cam.y = 0; }
   // ---- V49: mobile shell - reset view, one-time touch hint, rotate advice, live layout updates ----
   (function () {
     var rb = document.createElement("button");
@@ -1751,6 +2028,8 @@
     rb.setAttribute("aria-label", "Reset view");
     rb.addEventListener("click", function () {
       if (viewMode === "dna") { fitDNA(); return; }
+      if (viewMode === "orbit") { fitOrbit(); return; }
+      if (viewMode === "metro") { fitMetro(); return; }
       var tz = (MX && MX.initialZoom) || 0.9, sx0 = cam.x, sy0 = cam.y, ss = cam.scale, t = 0;
       (function step() {
         t += 0.09; var e2 = t < 1 ? 1 - Math.pow(1 - t, 3) : 1;
@@ -1910,5 +2189,5 @@
     if (!_scAC || !_scGain) return;
     try { _scGain.gain.setTargetAtTime(0, _scAC.currentTime, 0.05); } catch (e) {}
   }
-  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, version: "V69" };
+  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, version: "V75" };
 })();
