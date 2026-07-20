@@ -1,7 +1,7 @@
 # BeatGenome 🧬🎛️
-
+https://wilsonliciousssssss.github.io/beatgenome/
 **Learn and explore Electronic Music Culture — one genre at a time.**
-By DJ7 · Wilsonlicioussss
+By DJ7 · Wilsonlicioussss 
 
 Hey — I'm Wilson, and BeatGenome is my love letter to electronic music culture, shared with everyone.
 
