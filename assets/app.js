@@ -32,12 +32,12 @@
       for (var k = 0; k < olds.length; k++) { if (olds[k].parentNode) olds[k].parentNode.removeChild(olds[k]); }
       var link = document.createElement("link");
       link.rel = "icon"; link.type = "image/png"; link.setAttribute("sizes", "48x48");
-      link.href = "assets/icons/favicon-" + col + "-48.png?v=62";
+      link.href = "assets/icons/favicon-" + col + "-48.png?v=64";
       document.head.appendChild(link);
     } catch (e) {}
     try {
       var badge = document.querySelector(".badge");
-      if (badge) badge.style.backgroundImage = 'url("assets/icons/product-' + col + '-216.png?v=62")';
+      if (badge) badge.style.backgroundImage = 'url("assets/icons/product-' + col + '-216.png?v=64")';
     } catch (e) {}
   }
   function applyChannel(i) {
@@ -1211,6 +1211,7 @@
               var cdAngle = function (ev) { var rc = cd.getBoundingClientRect(); return Math.atan2(ev.clientY - (rc.top + rc.height / 2), ev.clientX - (rc.left + rc.width / 2)); };
               var cdEnd = function (ev) {
                 if (!scr) return;
+                scratchStop();
                 var ux = (ev.clientX == null ? scr.x : ev.clientX), uy = (ev.clientY == null ? scr.y : ev.clientY);
                 var mv = Math.abs(ux - scr.x) + Math.abs(uy - scr.y);
                 if (mv < 8 && previewAudio) {
@@ -1238,6 +1239,7 @@
                 var dur = previewAudio.duration || 30;
                 previewAudio.currentTime = Math.max(0, Math.min(dur, (previewAudio.currentTime || 0) + (da / (2 * Math.PI)) * 9)); // one full turn ~= 9s
                 cd.style.setProperty("--cdrot", scr.rot.toFixed(3) + "rad");
+                if (mv > 8) scratchUpdate(da);   // vinyl-scratch SFX follows the spin
               });
               cd.addEventListener("pointerup", cdEnd);
               cd.addEventListener("pointercancel", cdEnd);
@@ -1530,7 +1532,7 @@
     activeMood = (activeMood === i) ? -1 : i;
     if (activeMood < 0) { matchSet = null; }
     else { matchSet = {}; var any = false; for (var k = 0; k < nodes.length; k++) { if (nodeHasMood(nodes[k], activeMood)) { matchSet[nodes[k].id] = 1; any = true; } } if (!any) matchSet = null; }
-    if (moodBar) Array.prototype.forEach.call(moodBar.children, function (b, j) { b.setAttribute("aria-pressed", j === activeMood ? "true" : "false"); });
+    if (moodBar) Array.prototype.forEach.call(moodBar.querySelectorAll(".moodchip"), function (b) { b.setAttribute("aria-pressed", (parseInt(b.getAttribute("data-mood"), 10) === activeMood) ? "true" : "false"); });
     if (searchIn) searchIn.value = ""; if (results) results.classList.remove("show");
     updateMoodPill();
     reheat(0.5);
@@ -1550,8 +1552,21 @@
   }
   var moodBar = document.getElementById("moodBar"), moodBtn = document.getElementById("moodBtn"), activeMood = -1;
   if (moodBar && moodBtn) {
-    MOODS.forEach(function (m, i) { var b = document.createElement("button"); b.className = "moodchip"; b.textContent = m[0]; b.setAttribute("aria-pressed", "false"); b.addEventListener("click", function () { applyMood(i); }); moodBar.appendChild(b); });
-    moodBtn.addEventListener("click", function () { moodBar.hidden = !moodBar.hidden; moodBtn.setAttribute("aria-pressed", moodBar.hidden ? "false" : "true"); });
+    // V63: mood chips as a left->right marquee below the header (like the tracks ticker)
+    var moodMove = document.createElement("div"); moodMove.className = "mood-move";
+    function _mkMood(m, i) { var b = document.createElement("button"); b.type = "button"; b.className = "moodchip"; b.textContent = m[0]; b.setAttribute("data-mood", i); b.setAttribute("aria-pressed", "false"); return b; }
+    MOODS.forEach(function (m, i) { moodMove.appendChild(_mkMood(m, i)); });
+    MOODS.forEach(function (m, i) { moodMove.appendChild(_mkMood(m, i)); });   // duplicate => seamless loop
+    moodBar.appendChild(moodMove);
+    moodBar.addEventListener("click", function (e) { var b = e.target.closest && e.target.closest(".moodchip"); if (b) applyMood(parseInt(b.getAttribute("data-mood"), 10)); });
+    moodBar.addEventListener("pointerdown", function () { moodBar.classList.add("hold"); });     // pause while touched so chips are tappable
+    moodBar.addEventListener("pointerup", function () { moodBar.classList.remove("hold"); });
+    moodBar.addEventListener("pointercancel", function () { moodBar.classList.remove("hold"); });
+    moodBar.addEventListener("pointerleave", function () { moodBar.classList.remove("hold"); });
+    moodBtn.addEventListener("click", function () {
+      moodBar.hidden = !moodBar.hidden; moodBtn.setAttribute("aria-pressed", moodBar.hidden ? "false" : "true");
+      if (!moodBar.hidden) { var hw = moodMove.scrollWidth / 2; moodMove.style.animationDuration = Math.max(10, hw / 60).toFixed(1) + "s"; }  // consistent ~60px/s
+    });
   }
   // ---- V34: Compare Mode (two genres side by side + A/B playback) ----
   function themedSelect(items, selIndex, onChange, ariaLabel) {
@@ -1643,7 +1658,7 @@
     aboutEl = document.createElement("div"); aboutEl.className = "overlay about"; aboutEl.id = "aboutOverlay"; aboutEl.setAttribute("role", "dialog");
     aboutEl.innerHTML = '<div class="aboutsheet"><div class="cmphead"><span>About Me</span><button class="x" id="aboutClose">✕ close</button></div>' +
       '<div class="aboutbody">' +
-      '<div class="aboutpic"><div class="apic-frame"><img src="assets/about-me.jpg?v=62" alt="DJ7 - Wilsonlicioussss" onerror="this.parentNode.classList.add(\'empty\');this.remove()"></div><span class="aname">DJ7 · Wilsonlicioussss</span></div>' +
+      '<div class="aboutpic"><div class="apic-frame"><img src="assets/about-me.jpg?v=64" alt="DJ7 - Wilsonlicioussss" onerror="this.parentNode.classList.add(\'empty\');this.remove()"></div><span class="aname">DJ7 · Wilsonlicioussss</span></div>' +
       '<div class="aboutsec"><h4>★ Things I Love</h4><p>Thoughtful spaces, quiet details, electronic music, new technology and ideas that feel slightly ahead of their time.</p></div>' +
       '<div class="aboutsec"><h4>Always Learning</h4><p>Everything begins with curiosity. I explore how design, data, people and culture connect.</p></div>' +
       '<div class="aboutsec"><h4>I DJ</h4><p>A personal journey through electronic music — from high-energy moments to deeper, melodic and atmospheric sounds.</p></div>' +
@@ -1847,5 +1862,40 @@
     head.addEventListener("pointerup", endDrag);
     head.addEventListener("pointercancel", endDrag);
   })();
-  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, version: "V62" };
+  // ---- V64: synthesized vinyl-scratch SFX driven by the CD spin velocity ----
+  // (the iTunes preview is cross-origin so it can't be Web-Audio-processed; this is a
+  //  turntable-style scratch whose pitch/volume follow how fast/which way you spin.)
+  var _scAC = null, _scNoise = null, _scBP = null, _scGain = null, _scIdle = 0;
+  function _scEnsure() {
+    if (_scAC) return _scAC;
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null;
+      _scAC = new AC();
+      var len = Math.floor(_scAC.sampleRate * 2), buf = _scAC.createBuffer(1, len, _scAC.sampleRate), ch = buf.getChannelData(0), last = 0;
+      for (var i = 0; i < len; i++) { var w = Math.random() * 2 - 1; last = (last + 0.02 * w) / 1.02; ch[i] = last * 3.2; } // brown-ish groove noise
+      _scNoise = _scAC.createBufferSource(); _scNoise.buffer = buf; _scNoise.loop = true;
+      _scBP = _scAC.createBiquadFilter(); _scBP.type = "bandpass"; _scBP.frequency.value = 1200; _scBP.Q.value = 1.3;
+      _scGain = _scAC.createGain(); _scGain.gain.value = 0;
+      _scNoise.connect(_scBP); _scBP.connect(_scGain); _scGain.connect(_scAC.destination);
+      _scNoise.start(0);
+    } catch (e) { _scAC = null; }
+    return _scAC;
+  }
+  function scratchUpdate(vel) {                 // vel = signed angular delta of the spin
+    var ac = _scEnsure(); if (!ac) return;
+    if (ac.state === "suspended") { try { ac.resume(); } catch (e) {} }
+    var now = ac.currentTime, mag = Math.min(1, Math.abs(vel) * 2.4);
+    var rate = Math.max(0.25, Math.min(3.6, 1 + vel * 3.6));       // forward -> up, backward -> down
+    try {
+      _scGain.gain.setTargetAtTime(mag * 0.32, now, 0.015);
+      _scNoise.playbackRate.setTargetAtTime(rate, now, 0.015);
+      _scBP.frequency.setTargetAtTime(700 + mag * 2100 + vel * 700, now, 0.02);
+    } catch (e) {}
+    clearTimeout(_scIdle); _scIdle = setTimeout(scratchStop, 80);  // fade out if the spin pauses
+  }
+  function scratchStop() {
+    if (!_scAC || !_scGain) return;
+    try { _scGain.gain.setTargetAtTime(0, _scAC.currentTime, 0.05); } catch (e) {}
+  }
+  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, version: "V64" };
 })();

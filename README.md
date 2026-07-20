@@ -3,7 +3,7 @@
 **Learn and explore Electronic Music Culture — one genre at a time.**
 By DJ7 · Wilsonlicioussss
 
-Hey — I'm Wilson, and BeatGenome is my love letter to electronic music culture, shared with everyone.
+Hey — I'm Wilson, and BeatGenome is my love letter to electronic music culture, shared with everyone. Here is the link to experience it https://wilsonliciousssssss.github.io/beatgenome/
 
 Electronic music is so much more than a sound. It's decades of culture: warehouse parties and festival mainstages, pirate radio and bedroom producers, scenes born in Detroit, Chicago, Berlin, London and Goa that grew into hundreds of genres — each with its own tempo, mood and story. If you've ever wondered how techno relates to house, what actually separates drum & bass from dubstep, or why a great DJ set feels like a journey, BeatGenome was made for you.
 
