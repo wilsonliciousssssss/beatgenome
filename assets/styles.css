@@ -46,7 +46,7 @@ body::before{
 .badge{
   width:42px;height:42px;border-radius:11px;flex:none;
   background:#08080F center/cover no-repeat;
-  background-image:url("icons/product-magenta-216.png?v=66");
+  background-image:url("icons/product-magenta-216.png?v=69");
   box-shadow:0 0 18px color-mix(in srgb,var(--c1) 45%, transparent), inset 0 0 0 1px rgba(255,255,255,.08);
 }
 .title{display:flex;flex-direction:column;line-height:1;min-width:0}
@@ -988,3 +988,12 @@ html[data-layout="tablet-portrait"] .panel .body{ flex:1 1 auto; min-height:0; }
 .moodbar:hover .mood-move, .moodbar.hold .mood-move{ animation-play-state:paused; }
 @keyframes moodmarq{ from{ transform:translateX(-50%); } to{ transform:translateX(0); } }
 @media (prefers-reduced-motion: reduce){ .mood-move{ animation:none; } .moodbar{ overflow-x:auto; } }
+
+/* ===================================================================
+   V68 - colour the compared genre names to match their A/B bars so it's
+   obvious which genre is which: A = cyan (.cba), B = magenta (.cbb).
+   =================================================================== */
+.cmpr.cmphdr .ca{ color:#2FE6FF; }
+.cmpr.cmphdr .cb{ color:#FF3D9A; }
+.cmpsel .tsel:first-child .tsel-btn{ color:#2FE6FF; border-color:color-mix(in srgb,#2FE6FF 42%, var(--line)); }
+.cmpsel .tsel:last-child .tsel-btn{ color:#FF3D9A; border-color:color-mix(in srgb,#FF3D9A 42%, var(--line)); }

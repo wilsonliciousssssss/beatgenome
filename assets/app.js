@@ -32,12 +32,12 @@
       for (var k = 0; k < olds.length; k++) { if (olds[k].parentNode) olds[k].parentNode.removeChild(olds[k]); }
       var link = document.createElement("link");
       link.rel = "icon"; link.type = "image/png"; link.setAttribute("sizes", "48x48");
-      link.href = "assets/icons/favicon-" + col + "-48.png?v=66";
+      link.href = "assets/icons/favicon-" + col + "-48.png?v=69";
       document.head.appendChild(link);
     } catch (e) {}
     try {
       var badge = document.querySelector(".badge");
-      if (badge) badge.style.backgroundImage = 'url("assets/icons/product-' + col + '-216.png?v=66")';
+      if (badge) badge.style.backgroundImage = 'url("assets/icons/product-' + col + '-216.png?v=69")';
     } catch (e) {}
   }
   function applyChannel(i) {
@@ -1227,7 +1227,7 @@
                 if (!previewAudio) return;
                 try { cd.setPointerCapture(ev.pointerId); } catch (e0) {}
                 scr = { a: cdAngle(ev), x: ev.clientX, y: ev.clientY, rot: 0, wasPlaying: !previewAudio.paused, paused: false };
-                cd.classList.add("scrubbing"); ev.preventDefault();
+                cd.classList.add("scrubbing"); scratchGrab(); ev.preventDefault();
               });
               cd.addEventListener("pointermove", function (ev) {
                 if (!scr || !previewAudio) return;
@@ -1658,7 +1658,7 @@
     aboutEl = document.createElement("div"); aboutEl.className = "overlay about"; aboutEl.id = "aboutOverlay"; aboutEl.setAttribute("role", "dialog");
     aboutEl.innerHTML = '<div class="aboutsheet"><div class="cmphead"><span>About Me</span><button class="x" id="aboutClose">✕ close</button></div>' +
       '<div class="aboutbody">' +
-      '<div class="aboutpic"><div class="apic-frame"><img src="assets/about-me.jpg?v=66" alt="DJ7 - Wilsonlicioussss" onerror="this.parentNode.classList.add(\'empty\');this.remove()"></div><span class="aname">DJ7 · Wilsonlicioussss</span></div>' +
+      '<div class="aboutpic"><div class="apic-frame"><img src="assets/about-me.jpg?v=69" alt="DJ7 - Wilsonlicioussss" onerror="this.parentNode.classList.add(\'empty\');this.remove()"></div><span class="aname">DJ7 · Wilsonlicioussss</span></div>' +
       '<div class="aboutsec"><h4>★ Things I Love</h4><p>Thoughtful spaces, quiet details, electronic music, new technology and ideas that feel slightly ahead of their time.</p></div>' +
       '<div class="aboutsec"><h4>Always Learning</h4><p>Everything begins with curiosity. I explore how design, data, people and culture connect.</p></div>' +
       '<div class="aboutsec"><h4>I DJ</h4><p>A personal journey through electronic music — from high-energy moments to deeper, melodic and atmospheric sounds.</p></div>' +
@@ -1884,18 +1884,31 @@
   function scratchUpdate(vel) {                 // vel = signed angular delta of the spin
     var ac = _scEnsure(); if (!ac) return;
     if (ac.state === "suspended") { try { ac.resume(); } catch (e) {} }
-    var now = ac.currentTime, mag = Math.min(1, Math.abs(vel) * 2.4);
-    var rate = Math.max(0.25, Math.min(3.6, 1 + vel * 3.6));       // forward -> up, backward -> down
+    var now = ac.currentTime, sp = Math.abs(vel);
+    var mag = Math.min(1, 0.2 + sp * 2.8);                        // baseline 0.2 so even a slow drag hisses
+    var rate = Math.max(0.2, Math.min(3.9, 1 + vel * 3.9));       // forward -> up, backward -> down
     try {
-      _scGain.gain.setTargetAtTime(mag * 0.32, now, 0.015);
-      _scNoise.playbackRate.setTargetAtTime(rate, now, 0.015);
-      _scBP.frequency.setTargetAtTime(700 + mag * 2100 + vel * 700, now, 0.02);
+      _scGain.gain.setTargetAtTime(mag * 0.46, now, 0.012);       // louder / more present
+      _scNoise.playbackRate.setTargetAtTime(rate, now, 0.012);
+      _scBP.frequency.setTargetAtTime(650 + mag * 2400 + vel * 900, now, 0.018);
     } catch (e) {}
-    clearTimeout(_scIdle); _scIdle = setTimeout(scratchStop, 80);  // fade out if the spin pauses
+    clearTimeout(_scIdle); _scIdle = setTimeout(scratchStop, 95);  // fade out if the spin pauses
+  }
+  function scratchGrab() {                        // brief contact "chirp" the moment the disc is touched (cd selected)
+    var ac = _scEnsure(); if (!ac) return;
+    if (ac.state === "suspended") { try { ac.resume(); } catch (e) {} } // resume on the touch gesture (iOS-reliable)
+    var now = ac.currentTime;
+    try {
+      _scNoise.playbackRate.setValueAtTime(0.75, now);
+      _scBP.frequency.setValueAtTime(950, now);
+      _scGain.gain.cancelScheduledValues(now);
+      _scGain.gain.setValueAtTime(0.3, now);
+      _scGain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+    } catch (e) {}
   }
   function scratchStop() {
     if (!_scAC || !_scGain) return;
     try { _scGain.gain.setTargetAtTime(0, _scAC.currentTime, 0.05); } catch (e) {}
   }
-  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, version: "V66" };
+  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, version: "V69" };
 })();
