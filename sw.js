@@ -1,11 +1,11 @@
 /* BeatGenome service worker (V53) - network-first with offline fallback */
-var CACHE = "beatgenome-v64";
+var CACHE = "beatgenome-v66";
 var CORE = [
   "./", "./index.html",
-  "./assets/styles.css?v=64", "./assets/data.js?v=64", "./assets/layout-manager.js?v=64",
-  "./assets/app.js?v=64", "./assets/audio-profiles.js?v=64", "./assets/audio-engine.js?v=64",
-  "./assets/audio-ui.js?v=64", "./assets/about-me.jpg?v=64",
-  "./assets/icons/icon-192.png", "./assets/icons/icon-512.png", "./assets/icons/apple-touch-icon.png?v=64"
+  "./assets/styles.css?v=66", "./assets/data.js?v=66", "./assets/layout-manager.js?v=66",
+  "./assets/app.js?v=66", "./assets/audio-profiles.js?v=66", "./assets/audio-engine.js?v=66",
+  "./assets/audio-ui.js?v=66", "./assets/about-me.jpg?v=66",
+  "./assets/icons/icon-192.png", "./assets/icons/icon-512.png", "./assets/icons/apple-touch-icon.png?v=66"
 ];
 self.addEventListener("install", function (e) {
   e.waitUntil(caches.open(CACHE).then(function (c) {
