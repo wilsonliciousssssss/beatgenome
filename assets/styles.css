@@ -46,7 +46,7 @@ body::before{
 .badge{
   width:42px;height:42px;border-radius:11px;flex:none;
   background:#08080F center/cover no-repeat;
-  background-image:url("icons/product-magenta-216.png?v=60");
+  background-image:url("icons/product-magenta-216.png?v=62");
   box-shadow:0 0 18px color-mix(in srgb,var(--c1) 45%, transparent), inset 0 0 0 1px rgba(255,255,255,.08);
 }
 .title{display:flex;flex-direction:column;line-height:1;min-width:0}
@@ -929,3 +929,51 @@ html[data-layout="tablet-portrait"] body.panel-open .tracksbar,
 body.panel-open html[data-layout="tablet-portrait"] .tracksbar{ display:block; }
 /* a hair of channel accent so it reads as its own bar above the footer */
 .tracksbar{ border-top:1px solid color-mix(in srgb, var(--c1) 22%, var(--line)); }
+
+/* ===================================================================
+   V61 - info window OVERLAPS the footer when open (covers footer + ticker),
+   with a solid background so nothing bleeds through. The top-5 ticker is
+   hidden while the window is open and returns the moment you close it with
+   the X (this removes the V60 collision and the confusing 2nd X). Only ONE
+   X is visible while the window is open, and it closes the window cleanly.
+   =================================================================== */
+@media (max-width:640px){
+  .panel{ bottom:0; background:#10101c; }
+  body.panel-open .tracksbar{ display:none; }
+}
+html[data-layout="tablet-portrait"] .panel{ bottom:0; background:#10101c; }
+html[data-layout="tablet-portrait"] body.panel-open .tracksbar,
+body.panel-open html[data-layout="tablet-portrait"] .tracksbar{ display:none; }
+
+/* ===================================================================
+   V62 - mobile info window fills the area BETWEEN the header and footer
+   with a slight offset (a floating card), replacing the footer overlap.
+   Top clears the header, bottom clears the player dock, small inset all
+   round; body scrolls inside. Ticker still hidden while open, back on close.
+   =================================================================== */
+@media (max-width:640px){
+  .panel{
+    top: calc(56px + env(safe-area-inset-top,0px) + 8px);
+    bottom: calc(var(--playerh) + 8px);
+    left: 8px; right: 8px;
+    width:auto; max-width:none; height:auto; max-height:none;
+    background:var(--panel);
+    border:1px solid var(--line);
+    box-shadow:0 22px 60px rgba(0,0,0,.6);
+    transform:translateY(120%);
+  }
+  .panel.open{ transform:none; }
+  .panel .body{ flex:1 1 auto; min-height:0; }
+}
+html[data-layout="tablet-portrait"] .panel{
+  top: calc(58px + env(safe-area-inset-top,0px) + 10px);
+  bottom: calc(var(--playerh) + 10px);
+  left: 12px; right: 12px;
+  width:auto; max-width:none; height:auto; max-height:none;
+  background:var(--panel);
+  border:1px solid var(--line);
+  box-shadow:0 22px 60px rgba(0,0,0,.6);
+  transform:translateY(120%);
+}
+html[data-layout="tablet-portrait"] .panel.open{ transform:none; }
+html[data-layout="tablet-portrait"] .panel .body{ flex:1 1 auto; min-height:0; }
