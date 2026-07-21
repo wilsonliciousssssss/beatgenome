@@ -32,12 +32,12 @@
       for (var k = 0; k < olds.length; k++) { if (olds[k].parentNode) olds[k].parentNode.removeChild(olds[k]); }
       var link = document.createElement("link");
       link.rel = "icon"; link.type = "image/png"; link.setAttribute("sizes", "48x48");
-      link.href = "assets/icons/favicon-" + col + "-48.png?v=75";
+      link.href = "assets/icons/favicon-" + col + "-48.png?v=82";
       document.head.appendChild(link);
     } catch (e) {}
     try {
       var badge = document.querySelector(".badge");
-      if (badge) badge.style.backgroundImage = 'url("assets/icons/product-' + col + '-216.png?v=75")';
+      if (badge) badge.style.backgroundImage = 'url("assets/icons/product-' + col + '-216.png?v=82")';
     } catch (e) {}
   }
   function applyChannel(i) {
@@ -103,6 +103,8 @@
   // (positions still spread with zoom, so zooming in declutters instead of magnifying the pile)
   var ZREF = 1.0;
   function zc() { return cam.scale > ZREF ? ZREF / cam.scale : 1; }
+  // V79: line thickness that scales with zoom (thinner out, thicker in), clamped so it never goes hairline/huge
+  function lineW(px, mn, mx) { var s = Math.max(mn, Math.min(mx, px * cam.scale)); return s / cam.scale; }
   // node colour: by family (data) or by Camelot key (harmonic-mixing wheel)
   function camelotColour(nd) {
     var m = (nd.camelot || "").match(/(\d+)\s*([ABab])/);
@@ -130,6 +132,9 @@
 
   // ---- view transform ----
   var cam = { x: 0, y: 0, scale: 0.9 }, W = 0, H = 0;
+  var orbitRot = 0, orbitVel = 0, orbitDragAng = 0, orbitTouchedAt = 0;   // V81/V82: master wheel-rotation + idle-drift clock
+  var MINKEY = ["", "G#m", "D#m", "A#m", "Fm", "Cm", "Gm", "Dm", "Am", "Em", "Bm", "F#m", "C#m"];   // Camelot number -> minor key (A ring)
+  var MAJKEY = ["", "B", "F#", "Db", "Ab", "Eb", "Bb", "F", "C", "G", "D", "A", "E"];               // -> relative major (B ring)
   function resize() {
     W = window.innerWidth; H = window.innerHeight;
     [graph].forEach(function (cv) {
@@ -527,7 +532,7 @@
     for (var strand = 0; strand < 2; strand++) {
       gx.beginPath();
       for (var xx = x0; xx <= x1; xx += 9) { var ph = (xx / 210) + turn + strand * Math.PI, yy = Math.sin(ph) * R; if (xx === x0) gx.moveTo(xx, yy); else gx.lineTo(xx, yy); }
-      gx.strokeStyle = "rgba(198,240,0,0.5)"; gx.lineWidth = 9.6 / cam.scale; gx.stroke();
+      gx.strokeStyle = "rgba(198,240,0,0.5)"; gx.lineWidth = lineW(14, 4, 22); gx.stroke();
     }
     var eframe = Math.floor(t * 26);
     var dashDot = 0.6 / cam.scale, dashGap = 5.5 / cam.scale, dashOff = -(t * beatHz * 30) / cam.scale;
@@ -648,6 +653,16 @@
     ORBIT.genres = gen; ORBIT.subs = subs;
   }
   function fitOrbit() { cam.x = 0; cam.y = 0; var need = (ORBIT.rB + 130) * 2; cam.scale = Math.max(0.22, Math.min(1.0, Math.min(W, H) * 0.92 / need)); }
+  function orbitScreenAngle(px, py) { var ox = W / 2 - cam.x * cam.scale, oy = H / 2 - cam.y * cam.scale; return Math.atan2(py - oy, px - ox); }
+  function orbitKick(dir) { orbitVel = dir * 0.052; orbitTouchedAt = performance.now(); interactingUntil = performance.now() + 350; }   // ~one 30-deg sector
+  function stepOrbitRotation() {
+    var st = Math.PI / 6;                                               // 30-deg sectors
+    if (reduceMotion) { orbitVel = 0; var tg0 = Math.round(orbitRot / st) * st; orbitRot += (tg0 - orbitRot) * 0.5; if (Math.abs(tg0 - orbitRot) < 0.002) orbitRot = tg0; return; }
+    if (Math.abs(orbitVel) > 0.0006) { orbitRot += orbitVel; orbitVel *= 0.9; return; }   // inertia
+    orbitVel = 0;
+    if (performance.now() - orbitTouchedAt > 1600) { orbitRot += 0.0011; }   // V82: slow idle drift of the whole chart around the sun
+    else { var tg = Math.round(orbitRot / st) * st, d = tg - orbitRot; if (Math.abs(d) > 0.0012) orbitRot += d * 0.14; else orbitRot = tg; }   // soft snap after a manual rotate
+  }
   function nodeAtOrbit(px, py) {
     var w = toWorld(px, py), best = null, bd = 1e9, pool = ORBIT.subs.concat(ORBIT.genres);
     for (var i = 0; i < pool.length; i++) { var n = pool[i]; if (n._dx == null) continue; var dx = n._dx - w.x, dy = n._dy - w.y, d = dx * dx + dy * dy, rr = radius(n) * zc() * 1.7 + 10 / cam.scale; if (d < rr * rr && d < bd) { bd = d; best = n; } }
@@ -685,7 +700,7 @@
       if (!p) { var fam = gen.filter(function (g) { return g.family === s.family; }); p = fam[0] || gen[0]; }
       s._metroParent = p; (perP[p.id] = perP[p.id] || []).push(s);
     });
-    subs.forEach(function (s) { var arr = perP[s._metroParent.id], j = arr.indexOf(s); s._ox = ((j % 3) - 1) * 20; s._oy = 30 + Math.floor(j / 3) * 17; });
+    subs.forEach(function (s) { var arr = perP[s._metroParent.id], j = arr.indexOf(s); s._ox = 0; s._oy = 46 + j * 24; });
     METRO.genres = gen; METRO.subs = subs;
     METRO.cy = (METRO.lines[0].y + METRO.lines[METRO.lines.length - 1].y) / 2;
   }
@@ -693,7 +708,13 @@
   function metroPos(g, mi, t) { var b = g._metro[mi]; return { x: metroLiveX(b.u, METRO.lineByMood[mi], t), y: b.y }; }
   function metroSubPos(s, t) { var p = s._metroParent, hp = metroPos(p, p._homeMood, t); return { x: hp.x + s._ox, y: hp.y + s._oy }; }
   function metroShort(nm) { return nm.split(/\s*[\/(]/)[0].trim() || nm; }
-  function fitMetro() { cam.x = 0; cam.y = METRO.cy; var w = (METRO.X1 - METRO.X0) + 280, h = (METRO.lines.length + 1.6) * METRO.H; cam.scale = Math.max(0.18, Math.min(0.95, Math.min(W / w, H / h) * 0.96)); }
+  function metroCam() {                                                  // V76: phones fit by height (readable) + pan the width; desktop fits whole
+    var h = (METRO.lines.length + 1.6) * METRO.H, y = METRO.cy;
+    if (W < 680) { var sc = Math.max(0.3, Math.min(0.6, (H / h) * 0.9)); return { x: METRO.X0 + (W / 2) / sc - 30, y: y, scale: sc }; }
+    var w = (METRO.X1 - METRO.X0) + 280, sc2 = Math.max(0.18, Math.min(0.95, Math.min(W / w, H / h) * 0.96));
+    return { x: 0, y: y, scale: sc2 };
+  }
+  function fitMetro() { var c = metroCam(); cam.x = c.x; cam.y = c.y; cam.scale = c.scale; }
   function nodeAtMetro(px, py) {
     var w = toWorld(px, py), t = (performance.now() - t0) / 1000, best = null, bd = 1e9;
     for (var gi = 0; gi < METRO.genres.length; gi++) { var g = METRO.genres[gi]; for (var li = 0; li < g._metroLines.length; li++) { var p = metroPos(g, g._metroLines[li], t), dx = p.x - w.x, dy = p.y - w.y, d = dx * dx + dy * dy, rr = radius(g) * zc() * 1.6 + 10 / cam.scale; if (d < rr * rr && d < bd) { bd = d; best = g; } } }
@@ -708,7 +729,7 @@
     METRO.lines.forEach(function (ln) {                                    // static track + mood label
       var col = ln.mood >= 0 ? MOOD_COL[ln.mood] : "#9A9AB6";
       var faded = focus && !(focus._metroLines && focus._metroLines.indexOf(ln.mood) >= 0);
-      gx.globalAlpha = faded ? 0.16 : 0.7; gx.strokeStyle = col; gx.lineWidth = 6 * iv;
+      gx.globalAlpha = faded ? 0.16 : 0.7; gx.strokeStyle = col; gx.lineWidth = lineW(10, 3, 16);
       gx.beginPath(); gx.moveTo(METRO.X0, ln.y); gx.lineTo(METRO.X1, ln.y); gx.stroke();
       gx.globalAlpha = faded ? 0.3 : 1; gx.fillStyle = col; gx.font = "600 " + (13 * iv) + "px 'Space Mono',monospace"; gx.textAlign = "right"; gx.textBaseline = "middle";
       gx.fillText(ln.mood >= 0 ? MOODS[ln.mood][0].toUpperCase() : "OTHER", METRO.X0 - 16 * iv, ln.y);
@@ -729,6 +750,10 @@
       gx.globalAlpha = (dim ? 0.1 : (focus && !rel ? 0.26 : 0.68)) * tw; gx.fillStyle = col; gx.strokeStyle = col;
       if (QUALITY !== "reduced" && rel) { gx.shadowColor = col; gx.shadowBlur = focus === s ? 14 : 5; }
       drawGlyph(gx, sh, sp.x, sp.y, r); gx.shadowBlur = 0;
+      if (!dim && (cam.scale > 0.72 || rel)) {                              // subgenre label (appears as you zoom in)
+        gx.globalAlpha = focus && !rel ? 0.34 : 0.72; gx.fillStyle = "rgba(236,236,244,0.9)"; gx.font = (15 * iv) + "px 'Space Grotesk',sans-serif"; gx.textAlign = "left"; gx.textBaseline = "middle";
+        gx.fillText(metroShort(s.name), sp.x + r + 8 * iv, sp.y); gx.globalAlpha = 1;
+      }
     });
     gx.globalAlpha = 1;
     METRO.genres.forEach(function (g) {                                    // interchange rings on non-home lines (live)
@@ -738,6 +763,13 @@
         var p = metroPos(g, mi, t), c = mi >= 0 ? MOOD_COL[mi] : "#9A9AB6", rr = radius(g) * zc() * 0.7 + 2.5;
         gx.globalAlpha = dim ? 0.14 : (focus && !rel ? 0.32 : 1); gx.fillStyle = "#0a0a12"; gx.strokeStyle = c; gx.lineWidth = 2 * iv;
         gx.beginPath(); gx.arc(p.x, p.y, rr, 0, 6.2832); gx.fill(); gx.stroke(); gx.globalAlpha = 1;
+        if (!dim && (cam.scale > 0.4 || rel)) {                            // V78: label the interchange circle
+          var mc = Math.max(4, Math.floor(0.82 * METRO.H * cam.scale / 11));
+          var ml = metroShort(g.name); if (ml.length > mc) ml = ml.slice(0, Math.max(3, mc - 1)) + "\u2026";
+          gx.save(); gx.globalAlpha = focus && !rel ? 0.3 : 0.85; gx.translate(p.x, p.y - rr - 9 * iv); gx.rotate(-Math.PI / 2);
+          gx.font = "600 " + (18 * iv) + "px 'Space Grotesk',sans-serif"; gx.fillStyle = c; gx.textAlign = "left"; gx.textBaseline = "middle";
+          gx.fillText(ml, 0, 0); gx.restore(); gx.globalAlpha = 1;
+        }
       });
     });
     METRO.genres.forEach(function (g) {                                    // home hub (travels) + vertical label from the top
@@ -747,9 +779,11 @@
       var r = radius(g) * zc() * 1.35 * (1 + 0.12 * thump);
       plotGlyph(g, hp.x, hp.y, r, dim ? 0.16 : (focus && !rel ? 0.4 : 1), true, focus === g);
       if (!dim && (cam.scale > 0.4 || g === focus)) {
-        gx.save(); gx.globalAlpha = focus && !rel ? 0.35 : 1; gx.translate(hp.x, hp.y - r - 5 * iv); gx.rotate(-Math.PI / 2);
-        gx.font = "600 " + (10 * iv) + "px 'Space Grotesk',sans-serif"; gx.fillStyle = g === focus ? "#fff" : "rgba(236,236,244,0.82)"; gx.textAlign = "left"; gx.textBaseline = "middle";
-        gx.fillText(g === focus ? g.name : metroShort(g.name), 0, 0); gx.restore(); gx.globalAlpha = 1;
+        var maxC = Math.max(4, Math.floor(0.82 * METRO.H * cam.scale / 11));  // clip so a label can't reach the line above
+        var lbl = g === focus ? g.name : metroShort(g.name); if (lbl.length > maxC) lbl = lbl.slice(0, Math.max(3, maxC - 1)) + "\u2026";
+        gx.save(); gx.globalAlpha = focus && !rel ? 0.35 : 1; gx.translate(hp.x, hp.y - r - 11 * iv); gx.rotate(-Math.PI / 2);
+        gx.font = "600 " + (20 * iv) + "px 'Space Grotesk',sans-serif"; gx.fillStyle = g === focus ? "#fff" : "rgba(236,236,244,0.82)"; gx.textAlign = "left"; gx.textBaseline = "middle";
+        gx.fillText(lbl, 0, 0); gx.restore(); gx.globalAlpha = 1;
       }
     });
     gx.restore();
@@ -771,7 +805,7 @@
   function sceneCam(mode) {
     if (mode === "dna") { var sw = (W * 0.92) / DNA.width, sh = (H * 0.88) / (2 * (DNA_R + 190)); return { x: 0, y: 0, scale: Math.max(0.24, Math.min(1.1, Math.min(sw, sh))) }; }
     if (mode === "orbit") { var need = (ORBIT.rB + 130) * 2; return { x: 0, y: 0, scale: Math.max(0.22, Math.min(1.0, Math.min(W, H) * 0.92 / need)) }; }
-    if (mode === "metro") { var w = (METRO.X1 - METRO.X0) + 280, h = (METRO.lines.length + 1.6) * METRO.H; return { x: 0, y: METRO.cy, scale: Math.max(0.18, Math.min(0.95, Math.min(W / w, H / h) * 0.96)) }; }
+    if (mode === "metro") { return metroCam(); }
     return { x: 0, y: 0, scale: (MX && MX.initialZoom) || 0.9 };
   }
   function startSceneMorph(toMode) {
@@ -792,11 +826,11 @@
       gx.lineWidth = 1.3 * iv; gx.strokeStyle = "rgba(120,200,255,0.2)"; gx.beginPath(); gx.arc(0, 0, ORBIT.rA, 0, 6.2832); gx.stroke();
       gx.strokeStyle = "rgba(255,200,60,0.2)"; gx.beginPath(); gx.arc(0, 0, ORBIT.rB, 0, 6.2832); gx.stroke();
     } else if (toMode === "metro") {
-      gx.lineCap = "round"; gx.lineWidth = 6 * iv;
+      gx.lineCap = "round"; gx.lineWidth = lineW(10, 3, 16);
       METRO.lines.forEach(function (ln) { gx.strokeStyle = ln.mood >= 0 ? MOOD_COL[ln.mood] : "#9A9AB6"; gx.beginPath(); gx.moveTo(METRO.X0, ln.y); gx.lineTo(METRO.X1, ln.y); gx.stroke(); }); gx.lineCap = "butt";
     } else if (toMode === "dna") {
       var R = DNA_R, x0 = mapX(DNA.minY) - 30, x1 = mapX(DNA.maxY) + 30, turn = t * 0.85, gj = reduceMotion ? 0 : (1 - e) * 20;
-      for (var strand = 0; strand < 2; strand++) { gx.beginPath(); for (var xx = x0; xx <= x1; xx += 9) { var ph = (xx / 210) + turn + strand * Math.PI, yy = Math.sin(ph) * R + Math.sin(xx * 3.3 + t * 40 + strand * 2) * gj; if (xx === x0) gx.moveTo(xx, yy); else gx.lineTo(xx, yy); } gx.strokeStyle = "rgba(198,240,0,0.5)"; gx.lineWidth = (9.6 * iv) * (0.35 + 0.65 * e); gx.stroke(); }
+      for (var strand = 0; strand < 2; strand++) { gx.beginPath(); for (var xx = x0; xx <= x1; xx += 9) { var ph = (xx / 210) + turn + strand * Math.PI, yy = Math.sin(ph) * R + Math.sin(xx * 3.3 + t * 40 + strand * 2) * gj; if (xx === x0) gx.moveTo(xx, yy); else gx.lineTo(xx, yy); } gx.strokeStyle = "rgba(198,240,0,0.5)"; gx.lineWidth = lineW(14, 4, 22) * (0.35 + 0.65 * e); gx.stroke(); }
     } else {
       gx.lineWidth = 0.6 * iv; gx.strokeStyle = "rgba(198,240,0,0.1)"; gx.beginPath();
       for (var li = 0; li < links.length; li++) { if (links[li].k !== "child") continue; var na = byId[links[li].s], nb = byId[links[li].t]; if (na && nb) { gx.moveTo(na._mtx, na._mty); gx.lineTo(nb._mtx, nb._mty); } } gx.stroke();
@@ -820,13 +854,20 @@
     var t = (performance.now() - t0) / 1000;
     var RS = (window.BeatGenomeAudio && window.BeatGenomeAudio.getReactiveState) ? window.BeatGenomeAudio.getReactiveState() : null;
     var iv = 1 / cam.scale;
+    if (!(dragging && viewMode === "orbit")) stepOrbitRotation();
     var half = Math.PI / 12;
     for (var k = 1; k <= 12; k++) {                                      // V73: light background highlight per Camelot key
-      var a = ((k % 12) / 12) * Math.PI * 2 - Math.PI / 2, hue = ((k - 1) / 12) * 360;
+      var a = ((k % 12) / 12) * Math.PI * 2 - Math.PI / 2 + orbitRot, hue = ((k - 1) / 12) * 360;
       gx.fillStyle = "hsla(" + hue + ",78%,60%," + (0.05 + (k % 2 ? 0.022 : 0)).toFixed(3) + ")";
       gx.beginPath(); gx.arc(0, 0, ORBIT.rOut + 70, a - half, a + half); gx.arc(0, 0, ORBIT.sun + 20, a + half, a - half, true); gx.closePath(); gx.fill();
     }
-    gx.fillStyle = "rgba(198,240,0,0.06)"; gx.beginPath(); gx.arc(0, 0, ORBIT.sun, 0, 6.2832); gx.fill();  // sun core
+    var sunR = ORBIT.sun;                                                // V82: glowing, rippling sun
+    if (QUALITY !== "reduced") { var sg = gx.createRadialGradient(0, 0, sunR * 0.2, 0, 0, sunR * 1.85); sg.addColorStop(0, "rgba(255,210,90,0.34)"); sg.addColorStop(0.5, "rgba(255,150,40,0.13)"); sg.addColorStop(1, "rgba(255,120,20,0)"); gx.fillStyle = sg; gx.beginPath(); gx.arc(0, 0, sunR * 1.85, 0, 6.2832); gx.fill(); }
+    if (!reduceMotion) { for (var rp = 0; rp < 3; rp++) { var rph = ((t * 0.34) + rp / 3) % 1, rrr = sunR * (1 + rph * 0.5), ral = (1 - rph) * 0.3; gx.strokeStyle = "rgba(255,190,70," + ral.toFixed(3) + ")"; gx.lineWidth = 2 / cam.scale; gx.beginPath(); gx.arc(0, 0, rrr, 0, 6.2832); gx.stroke(); } }
+    var cr = sunR * (reduceMotion ? 0.9 : (0.88 + 0.03 * Math.sin(t * 1.6)));
+    var cg2 = gx.createRadialGradient(0, 0, cr * 0.1, 0, 0, cr); cg2.addColorStop(0, "rgba(255,238,175,0.96)"); cg2.addColorStop(0.62, "rgba(255,178,58,0.55)"); cg2.addColorStop(1, "rgba(205,115,28,0.2)"); gx.fillStyle = cg2; gx.beginPath(); gx.arc(0, 0, cr, 0, 6.2832); gx.fill();
+    gx.strokeStyle = "rgba(255,200,90,0.5)"; gx.lineWidth = 1.4 / cam.scale; gx.beginPath(); gx.arc(0, 0, sunR, 0, 6.2832); gx.stroke();
+    if (!reduceMotion && QUALITY !== "reduced") { gx.strokeStyle = "rgba(255,205,95,0.3)"; gx.lineWidth = 1.4 / cam.scale; for (var ry = 0; ry < 16; ry++) { var ra = (ry / 16) * 6.2832 + t * 0.12, r0 = sunR * 1.03, r1 = sunR * (1.11 + 0.05 * Math.sin(t * 2 + ry)); gx.beginPath(); gx.moveTo(Math.cos(ra) * r0, Math.sin(ra) * r0); gx.lineTo(Math.cos(ra) * r1, Math.sin(ra) * r1); gx.stroke(); } }
     gx.lineWidth = 1 * iv;
     ORBIT.rings.forEach(function (rr, ri) { gx.strokeStyle = "rgba(180,205,255," + (0.05 + 0.03 * (1 - ri / 6)).toFixed(3) + ")"; gx.beginPath(); gx.arc(0, 0, rr, 0, 6.2832); gx.stroke(); });  // concentric orbits
     if (!reduceMotion) {                                                 // energy dots gliding along two orbits
@@ -837,22 +878,27 @@
     }
     gx.textAlign = "center"; gx.textBaseline = "middle"; gx.font = "700 " + (14 * iv) + "px 'Space Mono',monospace";
     for (var k2 = 1; k2 <= 12; k2++) {                                   // spokes + coloured key numbers on the rim
-      var a2 = ((k2 % 12) / 12) * Math.PI * 2 - Math.PI / 2, hue2 = ((k2 - 1) / 12) * 360;
+      var a2 = ((k2 % 12) / 12) * Math.PI * 2 - Math.PI / 2 + orbitRot, hue2 = ((k2 - 1) / 12) * 360;
       gx.strokeStyle = "rgba(255,255,255,0.045)"; gx.lineWidth = 1 * iv;
       gx.beginPath(); gx.moveTo(Math.cos(a2) * (ORBIT.sun + 20), Math.sin(a2) * (ORBIT.sun + 20)); gx.lineTo(Math.cos(a2) * (ORBIT.rOut + 44), Math.sin(a2) * (ORBIT.rOut + 44)); gx.stroke();
-      gx.fillStyle = "hsl(" + hue2 + ",80%,68%)"; gx.fillText(k2 + "", Math.cos(a2) * (ORBIT.rOut + 66), Math.sin(a2) * (ORBIT.rOut + 66));
+      gx.font = "700 " + (16 * iv) + "px 'Space Mono',monospace"; gx.fillStyle = "hsl(" + hue2 + ",82%,70%)"; gx.fillText(k2 + "", Math.cos(a2) * (ORBIT.rOut + 58), Math.sin(a2) * (ORBIT.rOut + 58));
+      gx.font = (11 * iv) + "px 'Space Mono',monospace"; gx.fillStyle = "rgba(236,236,244,0.66)"; gx.fillText(MINKEY[k2] + " \u00b7 " + MAJKEY[k2], Math.cos(a2) * (ORBIT.rOut + 82), Math.sin(a2) * (ORBIT.rOut + 82));
     }
     gx.font = (11 * iv) + "px 'Space Mono',monospace";
     gx.fillStyle = "rgba(150,210,255,0.5)"; gx.fillText("A · minor", 0, -(ORBIT.rIn - 6));
     gx.fillStyle = "rgba(255,205,80,0.5)"; gx.fillText("B · major", 0, -(ORBIT.rOut - 4));
-    gx.fillStyle = "rgba(236,236,244,0.5)"; gx.font = "600 " + (15 * iv) + "px 'Space Grotesk',sans-serif";
-    gx.fillText("MIX IN", 0, -10 * iv); gx.fillText("HARMONY", 0, 10 * iv);
+    gx.font = "700 " + (15 * iv) + "px 'Space Grotesk',sans-serif";
+    if (QUALITY !== "reduced") { gx.shadowColor = "rgba(255,224,140,0.9)"; gx.shadowBlur = 8; }
+    gx.fillStyle = "rgba(34,20,4,0.92)"; gx.fillText("MIX IN", 0, -10 * iv); gx.fillText("HARMONY", 0, 10 * iv); gx.shadowBlur = 0;
     gx.textBaseline = "alphabetic";
     var focus = hover || selected;
-    ORBIT.genres.forEach(function (g) { g._dx = Math.cos(g._oa) * g._or; g._dy = Math.sin(g._oa) * g._or; });
+    var selG = (selected && selected.level === "Genre" && selected.camelot) ? selected : null, compat = null;
+    ORBIT.genres.forEach(function (g) { g._dx = Math.cos(g._oa + orbitRot) * g._or; g._dy = Math.sin(g._oa + orbitRot) * g._or; });
+    if (selG) { compat = {}; for (var ci = 0; ci < ORBIT.genres.length; ci++) { var g2 = ORBIT.genres[ci]; if (g2 === selG) continue; var mv = orbitMove(selG.camelot, g2.camelot); if (mv) compat[g2.id] = mv; } }
     ORBIT.subs.forEach(function (s) { var p = s._parentG; if (!p) { s._dx = s._dy = null; return; } var ang = s._moonPh + t * s._moonSp; s._dx = p._dx + Math.cos(ang) * s._moonR; s._dy = p._dy + Math.sin(ang) * s._moonR; });
     var fp = focus ? (focus.level === "Genre" ? focus : focus._parentG) : null;
-    if (fp) { gx.strokeStyle = "rgba(198,240,0,0.16)"; gx.lineWidth = 0.8 * iv; (fp._moons || []).forEach(function (s) { gx.beginPath(); gx.arc(fp._dx, fp._dy, s._moonR, 0, 6.2832); gx.stroke(); }); }
+    gx.lineWidth = 0.6 * iv;                                              // V77: a thin orbit line for every moon
+    ORBIT.subs.forEach(function (s) { var p = s._parentG; if (!p || p._dx == null) return; var mrel = focus && (focus === s || focus === p); gx.strokeStyle = mrel ? "rgba(198,240,0,0.24)" : "rgba(150,170,210,0.06)"; gx.beginPath(); gx.arc(p._dx, p._dy, s._moonR, 0, 6.2832); gx.stroke(); });
     ORBIT.subs.forEach(function (s) {
       if (s._dx == null) return;
       var dim = matchSet && !matchSet[s.id], rel = focus && (focus === s || focus === s._parentG);
@@ -861,16 +907,50 @@
       gx.fillStyle = col; gx.strokeStyle = col;
       if (QUALITY !== "reduced" && (rel || focus === s)) { gx.shadowColor = col; gx.shadowBlur = (focus === s ? 16 : 6); }
       drawGlyph(gx, sh, s._dx, s._dy, r); gx.shadowBlur = 0;
+      if (!dim && (cam.scale > 0.95 || rel)) {                             // subgenre label (appears as you zoom in / on focus)
+        gx.globalAlpha = focus && !rel ? 0.34 : 0.72; gx.fillStyle = "rgba(236,236,244,0.9)"; gx.font = (14 * iv) + "px 'Space Grotesk',sans-serif"; gx.textAlign = "left"; gx.textBaseline = "middle";
+        gx.fillText(metroShort(s.name), s._dx + r + 7 * iv, s._dy); gx.globalAlpha = 1;
+      }
     });
     gx.globalAlpha = 1;
+    if (selG) {                                                          // V80: harmonic-mixing connectors to compatible keys
+      var sa = reduceMotion ? 1 : Math.max(0, Math.min(1, (t - selectAnim) / 0.45));
+      for (var cj = 0; cj < ORBIT.genres.length; cj++) {
+        var g3 = ORBIT.genres[cj], mv3 = compat[g3.id]; if (!mv3 || mv3 === "perfect") continue;   // same-key stays on its spoke; ring only, no connector
+        var col3 = MOVECOL[mv3], ex = selG._dx + (g3._dx - selG._dx) * sa, ey = selG._dy + (g3._dy - selG._dy) * sa;
+        gx.globalAlpha = mv3 === "energy" ? 0.42 : 0.72; gx.strokeStyle = col3; gx.lineWidth = lineW(mv3 === "energy" ? 1.4 : 2.4, 1, 5);
+        if (mv3 === "energy") gx.setLineDash([5 * iv, 5 * iv]);
+        gx.beginPath(); gx.moveTo(selG._dx, selG._dy); gx.lineTo(ex, ey); gx.stroke(); gx.setLineDash([]);
+        var ang3 = Math.atan2(g3._dy - selG._dy, g3._dx - selG._dx), ah = 10 * iv;
+        gx.beginPath(); gx.moveTo(ex, ey); gx.lineTo(ex - Math.cos(ang3 - 0.42) * ah, ey - Math.sin(ang3 - 0.42) * ah); gx.lineTo(ex - Math.cos(ang3 + 0.42) * ah, ey - Math.sin(ang3 + 0.42) * ah); gx.closePath(); gx.fillStyle = col3; gx.fill();
+        gx.globalAlpha = 1;
+      }
+    }
     ORBIT.genres.forEach(function (g) {
       var dim = matchSet && !matchSet[g.id], rel = focus && (focus === g || focus._parentG === g);
       var thump = (RS && RS.playing && !reduceMotion) ? Math.pow(1 - ((t * (g.bpm || 120) / 60) % 1), 3) : 0;
       var r = radius(g) * zc() * 1.5 * (1 + 0.14 * thump);
-      plotGlyph(g, g._dx, g._dy, r, dim ? 0.18 : (focus && !rel ? 0.5 : 1), true, focus === g);
-      if (!dim && (cam.scale > 0.4 || g === focus)) { gx.globalAlpha = focus && !rel ? 0.4 : 1; gx.font = "600 " + (11 * iv) + "px 'Space Grotesk',sans-serif"; gx.fillStyle = g === focus ? "#fff" : "rgba(236,236,244,0.85)"; gx.textAlign = "center"; gx.fillText(g.name, g._dx, g._dy - r - 7 * iv); gx.globalAlpha = 1; }
+      var hi = !selG || g === selG || (compat && compat[g.id]);
+      plotGlyph(g, g._dx, g._dy, r, dim ? 0.18 : (selG ? (hi ? 1 : 0.24) : (focus && !rel ? 0.5 : 1)), true, focus === g || g === selG);
+      if (selG && compat && compat[g.id]) {                              // V80: harmonic highlight ring in the move colour
+        var mc = MOVECOL[compat[g.id]], fr2 = r + Math.max(3, r * 0.95);
+        gx.globalAlpha = 0.95; gx.strokeStyle = mc; gx.lineWidth = lineW(2.6, 1.4, 6); gx.strokeRect(g._dx - fr2, g._dy - fr2, fr2 * 2, fr2 * 2); gx.globalAlpha = 1;
+      }
+      if (!dim && (cam.scale > 0.4 || g === focus || (selG && hi))) { gx.globalAlpha = selG ? (hi ? 1 : 0.3) : (focus && !rel ? 0.4 : 1); gx.font = "600 " + (11 * iv) + "px 'Space Grotesk',sans-serif"; gx.fillStyle = (g === focus || g === selG) ? "#fff" : "rgba(236,236,244,0.85)"; gx.textAlign = "center"; gx.fillText(g.name, g._dx, g._dy - r - 7 * iv); gx.globalAlpha = 1; }
     });
     gx.restore();
+    if (selG) {                                                          // V80: harmonic HUD readout + legend (screen space)
+      var nb = camelotNbr(selG.camelot), safe = [nb[0], selG.camelot, nb[1], nb[2]].filter(Boolean), en = orbitEnergyKeys(selG.camelot);
+      var hx = 22, hy = 98;
+      gx.textAlign = "left"; gx.textBaseline = "alphabetic";
+      gx.font = "700 11px 'Space Mono',monospace"; gx.fillStyle = "rgba(236,236,244,0.5)"; gx.fillText("CURRENT TRACK", hx, hy);
+      gx.font = "700 20px 'Space Grotesk',sans-serif"; gx.fillStyle = "#fff"; gx.fillText(selG.camelot + "   " + selG.name, hx, hy + 24);
+      gx.font = "700 11px 'Space Mono',monospace"; gx.fillStyle = "rgba(236,236,244,0.5)"; gx.fillText("SAFE NEXT", hx, hy + 48);
+      gx.font = "700 16px 'Space Mono',monospace"; gx.fillStyle = "#C6F000"; gx.fillText(safe.join("   \u00b7   "), hx, hy + 68);
+      gx.font = "700 11px 'Space Mono',monospace"; gx.fillStyle = "rgba(255,205,80,0.72)"; gx.fillText("ENERGY (advanced)   " + en.join("  \u00b7  "), hx, hy + 90);
+      var lg = ["perfect", "smooth", "mood", "energy"], lx = hx, ly = hy + 116;
+      for (var li2 = 0; li2 < lg.length; li2++) { var kk = lg[li2]; gx.fillStyle = MOVECOL[kk]; gx.fillRect(lx, ly - 9, 11, 11); gx.font = "600 11px 'Space Mono',monospace"; gx.fillStyle = "rgba(236,236,244,0.72)"; gx.fillText(MOVELBL[kk], lx + 16, ly); lx += 16 + gx.measureText(MOVELBL[kk]).width + 24; }
+    }
   }
   function updateGlitch() {
     if (reduceMotion) { document.documentElement.style.setProperty("--glitch", "0"); return; }
@@ -1044,7 +1124,7 @@
       pinch = { d: pinchDist(), scale: cam.scale, pmid: pinchMid() };
       return;
     }
-    if (viewMode !== "graph") { dnaPending = sceneNodeAt(e.clientX, e.clientY); dragging = true; graph.classList.add("grabbing"); return; }
+    if (viewMode !== "graph") { dnaPending = sceneNodeAt(e.clientX, e.clientY); dragging = true; graph.classList.add("grabbing"); if (viewMode === "orbit") { orbitVel = 0; orbitDragAng = orbitScreenAngle(e.clientX, e.clientY); orbitTouchedAt = performance.now(); } return; }
     var n = nodeAt(e.clientX, e.clientY);
     if (n) { dragNode = n; n.fixed = true; } else { dragging = true; graph.classList.add("grabbing"); }
   });
@@ -1063,7 +1143,11 @@
       interactingUntil = performance.now() + 350; clearTimeout(lpTimer); moved = true; return;
     }
     if (viewMode !== "graph") {
-      if (dragging) { cam.x -= (e.clientX - last.x) / cam.scale; cam.y -= (e.clientY - last.y) / cam.scale; last = { x: e.clientX, y: e.clientY }; interactingUntil = performance.now() + 350; if (movedFar(e)) { moved = true; dnaPending = null; clearTimeout(lpTimer); } }
+      if (dragging) {
+        if (viewMode === "orbit") { var _oa = orbitScreenAngle(e.clientX, e.clientY), _od = _oa - orbitDragAng; if (_od > Math.PI) _od -= 6.2832; else if (_od < -Math.PI) _od += 6.2832; _od = Math.max(-0.35, Math.min(0.35, _od)); orbitRot += _od; orbitVel = _od; orbitDragAng = _oa; orbitTouchedAt = performance.now(); }
+        else { cam.x -= (e.clientX - last.x) / cam.scale; cam.y -= (e.clientY - last.y) / cam.scale; last = { x: e.clientX, y: e.clientY }; }
+        interactingUntil = performance.now() + 350; if (movedFar(e)) { moved = true; dnaPending = null; clearTimeout(lpTimer); }
+      }
       else { var hd = sceneNodeAt(e.clientX, e.clientY); if (hd !== hover) { hover = hd; graph.style.cursor = hd ? "pointer" : "grab"; } }
       return;
     }
@@ -1300,6 +1384,17 @@
     var cells = grid.querySelectorAll("i");
     for (var i = 0; i < cells.length; i++) cells[i].classList.toggle("play", parseInt(cells[i].getAttribute("data-step"), 10) === step);
   }
+  function orbitMove(fromCam, toCam) {                                  // V80: Camelot move type between two keys
+    var a = (fromCam || "").match(/(\d+)\s*([ABab])/), b = (toCam || "").match(/(\d+)\s*([ABab])/); if (!a || !b) return null;
+    var an = ((parseInt(a[1], 10) - 1) % 12) + 1, al = a[2].toUpperCase(), bn = ((parseInt(b[1], 10) - 1) % 12) + 1, bl = b[2].toUpperCase();
+    if (an === bn && al === bl) return "perfect";
+    if (an === bn && al !== bl) return "mood";
+    if (al === bl) { var d = (bn - an + 12) % 12; if (d === 1 || d === 11) return "smooth"; if (d === 2 || d === 10) return "energy"; }
+    return null;
+  }
+  function orbitEnergyKeys(cam) { var m = (cam || "").match(/(\d+)\s*([ABab])/); if (!m) return []; var n = ((parseInt(m[1], 10) - 1) % 12) + 1, L = m[2].toUpperCase(); return [(((n + 1) % 12) + 1) + L, (((n + 9) % 12) + 1) + L]; }
+  var MOVECOL = { perfect: "#C6F000", smooth: "#2FE6FF", mood: "#FF3D9A", energy: "#FFC24B" };
+  var MOVELBL = { perfect: "PERFECT BLEND", smooth: "SMOOTH MOVE", mood: "MOOD SWITCH", energy: "ENERGY MOVE" };
   function keyRel(x, y) { if (!x || !y) return "energy blend"; if (x === y) return "same key"; var px = x.match(/(\d+)([ABab])/), py = y.match(/(\d+)([ABab])/); if (!px || !py) return "energy blend"; var nx = +px[1], lx = px[2].toUpperCase(), ny = +py[1], ly = py[2].toUpperCase(); if (nx === ny && lx !== ly) return "relative"; if (lx === ly && (Math.abs(nx - ny) === 1 || Math.abs(nx - ny) === 11)) return "adjacent"; return "energy blend"; }
   function compatibleGenres(node) {
     if (!node) return [];
@@ -1723,15 +1818,26 @@
 
   // ---- view toggle: force-graph <-> DNA timeline ----
   var viewBtn = document.getElementById("viewBtn");
+  var sceneFab = document.getElementById("sceneFab");
+  var orbitCtl = document.getElementById("orbitCtl"), orbitLeft = document.getElementById("orbitLeft"), orbitRight = document.getElementById("orbitRight");
   var SCENES = ["graph", "dna", "orbit", "metro"], SCENE_LBL = { graph: "⋉ GRAPH", dna: "◇ DNA", orbit: "☉ ORBIT", metro: "☰ METRO" };
   function sceneAfter(m) { return SCENES[(SCENES.indexOf(m) + 1) % SCENES.length]; }
-  function updViewBtn() { if (!viewBtn) return; viewBtn.textContent = SCENE_LBL[sceneAfter(viewMode)]; viewBtn.setAttribute("aria-pressed", viewMode !== "graph" ? "true" : "false"); }
+  function updViewBtn() { var lbl = SCENE_LBL[sceneAfter(viewMode)]; if (viewBtn) { viewBtn.textContent = lbl; viewBtn.setAttribute("aria-pressed", viewMode !== "graph" ? "true" : "false"); } if (sceneFab) sceneFab.textContent = lbl; }
   function switchScene(toMode) {
     store("edm_view", toMode);
-    if (viewBtn) { viewBtn.textContent = SCENE_LBL[sceneAfter(toMode)]; viewBtn.setAttribute("aria-pressed", toMode !== "graph" ? "true" : "false"); }
+    var lbl = SCENE_LBL[sceneAfter(toMode)]; if (viewBtn) { viewBtn.textContent = lbl; viewBtn.setAttribute("aria-pressed", toMode !== "graph" ? "true" : "false"); } if (sceneFab) sceneFab.textContent = lbl;
+    if (orbitCtl) { orbitCtl.hidden = toMode !== "orbit"; orbitCtl.setAttribute("aria-hidden", toMode === "orbit" ? "false" : "true"); }
     if (toMode !== viewMode) startSceneMorph(toMode);                  // every scene switch morphs the nodes into place
   }
   if (viewBtn) { updViewBtn(); viewBtn.addEventListener("click", function () { switchScene(sceneAfter(viewMode)); }); }
+  if (sceneFab) sceneFab.addEventListener("click", function () { switchScene(sceneAfter(viewMode)); });
+  if (orbitLeft) orbitLeft.addEventListener("click", function () { orbitKick(-1); });
+  if (orbitRight) orbitRight.addEventListener("click", function () { orbitKick(1); });
+  if (orbitCtl) orbitCtl.hidden = viewMode !== "orbit";
+  document.addEventListener("keydown", function (e) {                    // arrow keys rotate the wheel (Orbit only)
+    if (viewMode !== "orbit") return; var tg = (document.activeElement || {}).tagName; if (tg === "INPUT" || tg === "TEXTAREA") return;
+    if (e.key === "ArrowLeft") { e.preventDefault(); orbitKick(-1); } else if (e.key === "ArrowRight") { e.preventDefault(); orbitKick(1); }
+  });
 
   // ---- global keys ----
   document.addEventListener("keydown", function (e) {
@@ -1933,7 +2039,7 @@
     aboutEl = document.createElement("div"); aboutEl.className = "overlay about"; aboutEl.id = "aboutOverlay"; aboutEl.setAttribute("role", "dialog");
     aboutEl.innerHTML = '<div class="aboutsheet"><div class="cmphead"><span>About Me</span><button class="x" id="aboutClose">✕ close</button></div>' +
       '<div class="aboutbody">' +
-      '<div class="aboutpic"><div class="apic-frame"><img src="assets/about-me.jpg?v=75" alt="DJ7 - Wilsonlicioussss" onerror="this.parentNode.classList.add(\'empty\');this.remove()"></div><span class="aname">DJ7 · Wilsonlicioussss</span></div>' +
+      '<div class="aboutpic"><div class="apic-frame"><img src="assets/about-me.jpg?v=82" alt="DJ7 - Wilsonlicioussss" onerror="this.parentNode.classList.add(\'empty\');this.remove()"></div><span class="aname">DJ7 · Wilsonlicioussss</span></div>' +
       '<div class="aboutsec"><h4>★ Things I Love</h4><p>Thoughtful spaces, quiet details, electronic music, new technology and ideas that feel slightly ahead of their time.</p></div>' +
       '<div class="aboutsec"><h4>Always Learning</h4><p>Everything begins with curiosity. I explore how design, data, people and culture connect.</p></div>' +
       '<div class="aboutsec"><h4>I DJ</h4><p>A personal journey through electronic music — from high-energy moments to deeper, melodic and atmospheric sounds.</p></div>' +
@@ -2189,5 +2295,5 @@
     if (!_scAC || !_scGain) return;
     try { _scGain.gain.setTargetAtTime(0, _scAC.currentTime, 0.05); } catch (e) {}
   }
-  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, version: "V75" };
+  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, version: "V82" };
 })();

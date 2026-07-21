@@ -12,17 +12,17 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/styles.css?v=75">
-<link rel="icon" type="image/png" sizes="48x48" href="assets/icons/favicon-magenta-48.png?v=75">
-<link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-magenta-32.png?v=75">
-<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png?v=75">
+<link rel="stylesheet" href="assets/styles.css?v=82">
+<link rel="icon" type="image/png" sizes="48x48" href="assets/icons/favicon-magenta-48.png?v=82">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-magenta-32.png?v=82">
+<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png?v=82">
 <meta name="theme-color" content="#08080F">
 <link rel="manifest" href="app.webmanifest">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BeatGenome">
-<meta property="og:image" content="assets/icons/icon-512.png?v=75">
+<meta property="og:image" content="assets/icons/icon-512.png?v=82">
 </head>
 <body>
 
@@ -77,6 +77,12 @@
 
 <div class="hint"><b>drag</b> to pan · <b>scroll</b> to zoom · <b>click</b> a node · <b>/</b> to search</div>
 <a class="credit" href="https://harbingermsc.blogspot.com/" target="_blank" rel="noopener">◈ DJ7 · Wilsonlicioussss ↗</a>
+<div class="orbitctl" id="orbitCtl" hidden aria-hidden="true" role="group" aria-label="Rotate harmony wheel">
+  <button class="orbitrot" id="orbitLeft" title="Rotate anticlockwise" aria-label="Rotate wheel anticlockwise">&#9668;</button>
+  <span class="orbithint">&#8635; ROTATE WHEEL &middot; EXPLORE KEYS</span>
+  <button class="orbitrot" id="orbitRight" title="Rotate clockwise" aria-label="Rotate wheel clockwise">&#9658;</button>
+</div>
+<button class="scenefab" id="sceneFab" title="Switch scene" aria-label="Switch scene">◇ DNA</button>
 
 <!-- family legend -->
 <aside class="legend" id="legend" aria-label="Genre families">
@@ -112,14 +118,14 @@
   <div class="tb-list" id="tbList"></div>
 </div>
 
-<script src="assets/data.js?v=75"></script>
-<script src="assets/layout-manager.js?v=75"></script>
-<script src="assets/app.js?v=75"></script>
+<script src="assets/data.js?v=82"></script>
+<script src="assets/layout-manager.js?v=82"></script>
+<script src="assets/app.js?v=82"></script>
 <!-- optional interactive audio (Tone.js CDN) — the app works fully without it -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js" crossorigin="anonymous"></script>
-<script src="assets/audio-profiles.js?v=75"></script>
-<script src="assets/audio-engine.js?v=75"></script>
-<script src="assets/audio-ui.js?v=75"></script>
+<script src="assets/audio-profiles.js?v=82"></script>
+<script src="assets/audio-engine.js?v=82"></script>
+<script src="assets/audio-ui.js?v=82"></script>
 <script>
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", function () {

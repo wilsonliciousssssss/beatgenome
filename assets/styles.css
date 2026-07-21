@@ -46,7 +46,7 @@ body::before{
 .badge{
   width:42px;height:42px;border-radius:11px;flex:none;
   background:#08080F center/cover no-repeat;
-  background-image:url("icons/product-magenta-216.png?v=75");
+  background-image:url("icons/product-magenta-216.png?v=82");
   box-shadow:0 0 18px color-mix(in srgb,var(--c1) 45%, transparent), inset 0 0 0 1px rgba(255,255,255,.08);
 }
 .title{display:flex;flex-direction:column;line-height:1;min-width:0}
@@ -520,8 +520,12 @@ body::before{
 /* ---------- V40: mobile top-bar menu ---------- */
 .topactions{display:flex;align-items:center;gap:16px}
 .menubtn{display:none}
+.scenefab{display:none}
 @media(max-width:900px){
   .menubtn{display:inline-flex}
+  .scenefab{display:inline-flex;position:fixed;right:9px;top:50%;transform:translateY(-50%);z-index:24;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);color:var(--ink);font-family:"Space Mono",monospace;font-size:12px;letter-spacing:.03em;padding:9px 11px;border-radius:11px;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+  .scenefab:active{transform:translateY(-50%) scale(.93)}
+  body.panel-open .scenefab{display:none}
   .topactions{position:absolute;top:calc(100% + 6px);right:12px;flex-direction:column;align-items:stretch;gap:5px;background:var(--panel);border:1px solid var(--line);padding:8px;box-shadow:0 20px 50px rgba(0,0,0,.55);z-index:25;display:none;min-width:150px}
   .topbar.menu-open .topactions{display:flex}
   .topactions .iconbtn{width:100%;text-align:left;height:34px}
@@ -997,3 +1001,12 @@ html[data-layout="tablet-portrait"] .panel .body{ flex:1 1 auto; min-height:0; }
 .cmpr.cmphdr .cb{ color:#FF3D9A; }
 .cmpsel .tsel:first-child .tsel-btn{ color:#2FE6FF; border-color:color-mix(in srgb,#2FE6FF 42%, var(--line)); }
 .cmpsel .tsel:last-child .tsel-btn{ color:#FF3D9A; border-color:color-mix(in srgb,#FF3D9A 42%, var(--line)); }
+
+/* ---------- V81: Orbit rotation controls ---------- */
+.orbitctl{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(88px + env(safe-area-inset-bottom,0px));z-index:22;display:flex;align-items:center;gap:12px;background:rgba(16,16,25,.82);border:1px solid var(--line);border-radius:12px;padding:6px 10px;box-shadow:0 12px 34px rgba(0,0,0,.5)}
+.orbitrot{width:44px;height:44px;min-width:44px;display:inline-flex;align-items:center;justify-content:center;background:transparent;border:1px solid var(--line);border-radius:9px;color:var(--ink);font-size:15px;cursor:pointer;-webkit-user-select:none;user-select:none}
+.orbitrot:hover{border-color:var(--line-strong,rgba(255,255,255,.3))}
+.orbitrot:active{transform:scale(.92)}
+.orbithint{font-family:"Space Mono",monospace;font-size:11px;letter-spacing:.05em;color:var(--fog);white-space:nowrap}
+body.panel-open .orbitctl{display:none}
+@media(max-width:600px){ .orbithint{display:none} .orbitctl{bottom:calc(var(--dockh,60px) + 12px);gap:8px;padding:5px 8px} }
