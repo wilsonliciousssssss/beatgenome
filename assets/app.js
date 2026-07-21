@@ -32,12 +32,12 @@
       for (var k = 0; k < olds.length; k++) { if (olds[k].parentNode) olds[k].parentNode.removeChild(olds[k]); }
       var link = document.createElement("link");
       link.rel = "icon"; link.type = "image/png"; link.setAttribute("sizes", "48x48");
-      link.href = "assets/icons/favicon-" + col + "-48.png?v=82";
+      link.href = "assets/icons/favicon-" + col + "-48.png?v=88";
       document.head.appendChild(link);
     } catch (e) {}
     try {
       var badge = document.querySelector(".badge");
-      if (badge) badge.style.backgroundImage = 'url("assets/icons/product-' + col + '-216.png?v=82")';
+      if (badge) badge.style.backgroundImage = 'url("assets/icons/product-' + col + '-216.png?v=88")';
     } catch (e) {}
   }
   function applyChannel(i) {
@@ -655,12 +655,51 @@
   function fitOrbit() { cam.x = 0; cam.y = 0; var need = (ORBIT.rB + 130) * 2; cam.scale = Math.max(0.22, Math.min(1.0, Math.min(W, H) * 0.92 / need)); }
   function orbitScreenAngle(px, py) { var ox = W / 2 - cam.x * cam.scale, oy = H / 2 - cam.y * cam.scale; return Math.atan2(py - oy, px - ox); }
   function orbitKick(dir) { orbitVel = dir * 0.052; orbitTouchedAt = performance.now(); interactingUntil = performance.now() + 350; }   // ~one 30-deg sector
+  var _lastActiveK = -1;
+  function orbitActiveKey() { var s = Math.round(-orbitRot / (Math.PI / 6)), kk = ((s % 12) + 12) % 12; return kk === 0 ? 12 : kk; }   // Camelot number at the top
+  function orbitKeyLabel(k) { return "\u25c4  " + k + " \u00b7 " + MINKEY[k] + " \u00b7 " + MAJKEY[k] + "  \u25ba"; }
+  function rotateGraph(th) {                                            // V87: slow clockwise spin of the whole graph
+    var n0 = nodes.length; if (!n0) return; var cx = 0, cy = 0, i;
+    for (i = 0; i < n0; i++) { cx += nodes[i].x; cy += nodes[i].y; } cx /= n0; cy /= n0;
+    var c = Math.cos(th), s = Math.sin(th);
+    for (i = 0; i < n0; i++) { var nd = nodes[i]; if (nd.fixed) continue; var dx = nd.x - cx, dy = nd.y - cy; nd.x = cx + dx * c - dy * s; nd.y = cy + dx * s + dy * c; }
+  }
+  var hiIdx = { graph: -1, dna: -1, metro: -1 }, matchFromCtl = false, DECADES = [1970, 1980, 1990, 2000, 2010, 2020];
+  function ctlCategory(m) {
+    if (m === "graph") return { n: fams.length, name: function (i) { return fams[i]; }, test: function (i) { var f = fams[i]; return function (nd) { return nd.family === f; }; } };
+    if (m === "metro") { if (!MOODS) return null; return { n: MOODS.length, name: function (i) { return MOODS[i][0].toUpperCase(); }, test: function (i) { return function (nd) { return nodeHasMood(nd, i); }; } }; }
+    if (m === "dna") return { n: DECADES.length, name: function (i) { return DECADES[i] + "s"; }, test: function (i) { var d = DECADES[i]; return function (nd) { return Math.floor((nd._year || 0) / 10) * 10 === d; }; } };
+    return null;
+  }
+  function applyCtlHighlight(m) {                                       // V85: highlight one category (dims the rest)
+    var c = ctlCategory(m), i = c ? hiIdx[m] : -1;
+    if (!c || i < 0) { updSceneCtl(m); return; }
+    var test = c.test(i), ms = {}, any = false;
+    for (var k = 0; k < nodes.length; k++) { if (test(nodes[k])) { ms[nodes[k].id] = 1; any = true; } }
+    matchSet = any ? ms : null; matchFromCtl = true; updSceneCtl(m);
+  }
+  function sceneCtlLabel(m) {
+    m = m || viewMode;
+    if (m === "orbit") return orbitKeyLabel(orbitActiveKey());
+    var c = ctlCategory(m), i = c ? hiIdx[m] : -1, noun = m === "graph" ? "FAMILIES" : m === "dna" ? "ERAS" : "MOODS";
+    if (!c || i < 0) return "◄►  HIGHLIGHT " + noun;
+    return "◄  " + c.name(i) + "  ►";
+  }
+  function sceneNudge(dir) {                                            // orbit rotates; every other scene cycles + highlights a category
+    if (viewMode === "orbit") { orbitKick(dir); return; }
+    var c = ctlCategory(viewMode); if (!c) return;
+    var idx = hiIdx[viewMode] + dir;
+    if (idx >= c.n) idx = -1; else if (idx < -1) idx = c.n - 1;         // pass the end -> a "clear" state
+    hiIdx[viewMode] = idx;
+    if (idx < 0) { if (matchFromCtl) { matchSet = null; matchFromCtl = false; } updSceneCtl(viewMode); } else applyCtlHighlight(viewMode);
+    interactingUntil = performance.now() + 350;
+  }
+  function updSceneCtl(m) { if (!orbitCtl) return; orbitCtl.hidden = false; orbitCtl.setAttribute("aria-hidden", "false"); var _h = orbitCtl.querySelector(".orbithint"); if (_h) _h.textContent = sceneCtlLabel(m); }
   function stepOrbitRotation() {
     var st = Math.PI / 6;                                               // 30-deg sectors
-    if (reduceMotion) { orbitVel = 0; var tg0 = Math.round(orbitRot / st) * st; orbitRot += (tg0 - orbitRot) * 0.5; if (Math.abs(tg0 - orbitRot) < 0.002) orbitRot = tg0; return; }
     if (Math.abs(orbitVel) > 0.0006) { orbitRot += orbitVel; orbitVel *= 0.9; return; }   // inertia
     orbitVel = 0;
-    if (performance.now() - orbitTouchedAt > 1600) { orbitRot += 0.0011; }   // V82: slow idle drift of the whole chart around the sun
+    if (performance.now() - orbitTouchedAt > 1000) { orbitRot += 0.0015; }   // V82/V83: slow continuous drift of the whole chart around the sun
     else { var tg = Math.round(orbitRot / st) * st, d = tg - orbitRot; if (Math.abs(d) > 0.0012) orbitRot += d * 0.14; else orbitRot = tg; }   // soft snap after a manual rotate
   }
   function nodeAtOrbit(px, py) {
@@ -855,19 +894,21 @@
     var RS = (window.BeatGenomeAudio && window.BeatGenomeAudio.getReactiveState) ? window.BeatGenomeAudio.getReactiveState() : null;
     var iv = 1 / cam.scale;
     if (!(dragging && viewMode === "orbit")) stepOrbitRotation();
+    var actK = orbitActiveKey();
+    if (actK !== _lastActiveK) { _lastActiveK = actK; if (orbitCtl) { var _ah = orbitCtl.querySelector(".orbithint"); if (_ah && viewMode === "orbit") _ah.textContent = orbitKeyLabel(actK); } }
     var half = Math.PI / 12;
     for (var k = 1; k <= 12; k++) {                                      // V73: light background highlight per Camelot key
       var a = ((k % 12) / 12) * Math.PI * 2 - Math.PI / 2 + orbitRot, hue = ((k - 1) / 12) * 360;
-      gx.fillStyle = "hsla(" + hue + ",78%,60%," + (0.05 + (k % 2 ? 0.022 : 0)).toFixed(3) + ")";
+      gx.fillStyle = "hsla(" + hue + ",78%,60%," + (k === actK ? 0.22 : (0.05 + (k % 2 ? 0.022 : 0))).toFixed(3) + ")";
       gx.beginPath(); gx.arc(0, 0, ORBIT.rOut + 70, a - half, a + half); gx.arc(0, 0, ORBIT.sun + 20, a + half, a - half, true); gx.closePath(); gx.fill();
     }
-    var sunR = ORBIT.sun;                                                // V82: glowing, rippling sun
-    if (QUALITY !== "reduced") { var sg = gx.createRadialGradient(0, 0, sunR * 0.2, 0, 0, sunR * 1.85); sg.addColorStop(0, "rgba(255,210,90,0.34)"); sg.addColorStop(0.5, "rgba(255,150,40,0.13)"); sg.addColorStop(1, "rgba(255,120,20,0)"); gx.fillStyle = sg; gx.beginPath(); gx.arc(0, 0, sunR * 1.85, 0, 6.2832); gx.fill(); }
-    if (!reduceMotion) { for (var rp = 0; rp < 3; rp++) { var rph = ((t * 0.34) + rp / 3) % 1, rrr = sunR * (1 + rph * 0.5), ral = (1 - rph) * 0.3; gx.strokeStyle = "rgba(255,190,70," + ral.toFixed(3) + ")"; gx.lineWidth = 2 / cam.scale; gx.beginPath(); gx.arc(0, 0, rrr, 0, 6.2832); gx.stroke(); } }
-    var cr = sunR * (reduceMotion ? 0.9 : (0.88 + 0.03 * Math.sin(t * 1.6)));
+    var sunR = ORBIT.sun, br = 1 + 0.09 * Math.sin(t * 1.15);   // V87/V88: the sun always breathes in and out
+    if (QUALITY !== "reduced") { var sgR = sunR * 1.85 * br; var sg = gx.createRadialGradient(0, 0, sunR * 0.2, 0, 0, sgR); sg.addColorStop(0, "rgba(255,210,90,0.36)"); sg.addColorStop(0.5, "rgba(255,150,40,0.14)"); sg.addColorStop(1, "rgba(255,120,20,0)"); gx.fillStyle = sg; gx.beginPath(); gx.arc(0, 0, sgR, 0, 6.2832); gx.fill(); }
+    if (QUALITY !== "reduced") { for (var rp = 0; rp < 3; rp++) { var rph = ((t * 0.34) + rp / 3) % 1, rrr = sunR * br * (1 + rph * 0.55), ral = (1 - rph) * 0.32; gx.strokeStyle = "rgba(255,190,70," + ral.toFixed(3) + ")"; gx.lineWidth = 2 / cam.scale; gx.beginPath(); gx.arc(0, 0, rrr, 0, 6.2832); gx.stroke(); } }
+    var cr = sunR * 0.9 * br;
     var cg2 = gx.createRadialGradient(0, 0, cr * 0.1, 0, 0, cr); cg2.addColorStop(0, "rgba(255,238,175,0.96)"); cg2.addColorStop(0.62, "rgba(255,178,58,0.55)"); cg2.addColorStop(1, "rgba(205,115,28,0.2)"); gx.fillStyle = cg2; gx.beginPath(); gx.arc(0, 0, cr, 0, 6.2832); gx.fill();
-    gx.strokeStyle = "rgba(255,200,90,0.5)"; gx.lineWidth = 1.4 / cam.scale; gx.beginPath(); gx.arc(0, 0, sunR, 0, 6.2832); gx.stroke();
-    if (!reduceMotion && QUALITY !== "reduced") { gx.strokeStyle = "rgba(255,205,95,0.3)"; gx.lineWidth = 1.4 / cam.scale; for (var ry = 0; ry < 16; ry++) { var ra = (ry / 16) * 6.2832 + t * 0.12, r0 = sunR * 1.03, r1 = sunR * (1.11 + 0.05 * Math.sin(t * 2 + ry)); gx.beginPath(); gx.moveTo(Math.cos(ra) * r0, Math.sin(ra) * r0); gx.lineTo(Math.cos(ra) * r1, Math.sin(ra) * r1); gx.stroke(); } }
+    gx.strokeStyle = "rgba(255,200,90,0.5)"; gx.lineWidth = 1.4 / cam.scale; gx.beginPath(); gx.arc(0, 0, sunR * br, 0, 6.2832); gx.stroke();
+    if (QUALITY !== "reduced") { gx.strokeStyle = "rgba(255,205,95,0.3)"; gx.lineWidth = 1.4 / cam.scale; for (var ry = 0; ry < 16; ry++) { var ra = (ry / 16) * 6.2832 + t * 0.12, r0 = sunR * 1.03 * br, r1 = sunR * (1.11 + 0.05 * Math.sin(t * 2 + ry)) * br; gx.beginPath(); gx.moveTo(Math.cos(ra) * r0, Math.sin(ra) * r0); gx.lineTo(Math.cos(ra) * r1, Math.sin(ra) * r1); gx.stroke(); } }
     gx.lineWidth = 1 * iv;
     ORBIT.rings.forEach(function (rr, ri) { gx.strokeStyle = "rgba(180,205,255," + (0.05 + 0.03 * (1 - ri / 6)).toFixed(3) + ")"; gx.beginPath(); gx.arc(0, 0, rr, 0, 6.2832); gx.stroke(); });  // concentric orbits
     if (!reduceMotion) {                                                 // energy dots gliding along two orbits
@@ -881,12 +922,11 @@
       var a2 = ((k2 % 12) / 12) * Math.PI * 2 - Math.PI / 2 + orbitRot, hue2 = ((k2 - 1) / 12) * 360;
       gx.strokeStyle = "rgba(255,255,255,0.045)"; gx.lineWidth = 1 * iv;
       gx.beginPath(); gx.moveTo(Math.cos(a2) * (ORBIT.sun + 20), Math.sin(a2) * (ORBIT.sun + 20)); gx.lineTo(Math.cos(a2) * (ORBIT.rOut + 44), Math.sin(a2) * (ORBIT.rOut + 44)); gx.stroke();
-      gx.font = "700 " + (16 * iv) + "px 'Space Mono',monospace"; gx.fillStyle = "hsl(" + hue2 + ",82%,70%)"; gx.fillText(k2 + "", Math.cos(a2) * (ORBIT.rOut + 58), Math.sin(a2) * (ORBIT.rOut + 58));
+      gx.font = "700 " + ((k2 === actK ? 21 : 16) * iv) + "px 'Space Mono',monospace"; gx.fillStyle = k2 === actK ? "#ffffff" : "hsl(" + hue2 + ",82%,70%)"; gx.fillText(k2 + "", Math.cos(a2) * (ORBIT.rOut + 58), Math.sin(a2) * (ORBIT.rOut + 58));
       gx.font = (11 * iv) + "px 'Space Mono',monospace"; gx.fillStyle = "rgba(236,236,244,0.66)"; gx.fillText(MINKEY[k2] + " \u00b7 " + MAJKEY[k2], Math.cos(a2) * (ORBIT.rOut + 82), Math.sin(a2) * (ORBIT.rOut + 82));
+      gx.font = (11 * iv) + "px 'Space Mono',monospace"; gx.fillStyle = "hsla(" + hue2 + ",70%,68%,0.32)"; for (var rg = 0; rg < ORBIT.rings.length; rg++) { gx.fillText(k2 + "", Math.cos(a2) * ORBIT.rings[rg], Math.sin(a2) * ORBIT.rings[rg]); }
     }
-    gx.font = (11 * iv) + "px 'Space Mono',monospace";
-    gx.fillStyle = "rgba(150,210,255,0.5)"; gx.fillText("A · minor", 0, -(ORBIT.rIn - 6));
-    gx.fillStyle = "rgba(255,205,80,0.5)"; gx.fillText("B · major", 0, -(ORBIT.rOut - 4));
+    // V83: A/B axis legend text removed (keys are repeated at every ring instead)
     gx.font = "700 " + (15 * iv) + "px 'Space Grotesk',sans-serif";
     if (QUALITY !== "reduced") { gx.shadowColor = "rgba(255,224,140,0.9)"; gx.shadowBlur = 8; }
     gx.fillStyle = "rgba(34,20,4,0.92)"; gx.fillText("MIX IN", 0, -10 * iv); gx.fillText("HARMONY", 0, 10 * iv); gx.shadowBlur = 0;
@@ -1002,7 +1042,7 @@
       drawSceneMorph(_e, trans.toMode);
       document.documentElement.style.setProperty("--glitch", (Math.sin(_tt * Math.PI) * 0.5).toFixed(3));
       if (_tt >= 1) { var _wasG = trans.toMode === "graph"; viewMode = trans.toMode; hover = null; trans = null; if (_wasG) reheat(0.6); }
-    } else if (viewMode === "dna") { drawDNA(); } else if (viewMode === "orbit") { drawOrbit(); } else if (viewMode === "metro") { drawMetro(); } else { if (!(QUALITY === "reduced" && alpha <= 0.07 && (_fN % 2))) tick(); draw(); }
+    } else if (viewMode === "dna") { drawDNA(); } else if (viewMode === "orbit") { drawOrbit(); } else if (viewMode === "metro") { drawMetro(); } else { if (!(QUALITY === "reduced" && alpha <= 0.07 && (_fN % 2))) tick(); if (!dragNode && !dragging) rotateGraph(0.0018); draw(); }
     if (window.BeatGenomeAudio && window.BeatGenomeAudio.getReactiveState) { var _rs = window.BeatGenomeAudio.getReactiveState(); _rs.kick *= 0.86; _rs.snare *= 0.82; _rs.hat *= 0.75; _rs.bass *= 0.9; _rs.chord *= 0.93; _rs.master *= 0.9; }
     if (scope.offsetParent !== null) drawScope(sx, W, 40, focusParams(), false); // skipped when hidden on phones
     if (pScopeOn && panel.classList.contains("open")) {
@@ -1654,7 +1694,7 @@
     resList = nodes.filter(function (n) {
       return n.name.toLowerCase().indexOf(query) >= 0 || n.family.toLowerCase().indexOf(query) >= 0;
     }).slice(0, 40);
-    matchSet = {}; resList.forEach(function (n) { matchSet[n.id] = 1; });
+    matchSet = {}; matchFromCtl = false; resList.forEach(function (n) { matchSet[n.id] = 1; });
     if (!resList.length) matchSet = null;
     results.innerHTML = resList.length
       ? resList.map(function (n, i) {
@@ -1826,17 +1866,18 @@
   function switchScene(toMode) {
     store("edm_view", toMode);
     var lbl = SCENE_LBL[sceneAfter(toMode)]; if (viewBtn) { viewBtn.textContent = lbl; viewBtn.setAttribute("aria-pressed", toMode !== "graph" ? "true" : "false"); } if (sceneFab) sceneFab.textContent = lbl;
-    if (orbitCtl) { orbitCtl.hidden = toMode !== "orbit"; orbitCtl.setAttribute("aria-hidden", toMode === "orbit" ? "false" : "true"); }
+    if (matchFromCtl) { matchSet = null; matchFromCtl = false; } hiIdx.graph = hiIdx.dna = hiIdx.metro = -1;
+    updSceneCtl(toMode);
     if (toMode !== viewMode) startSceneMorph(toMode);                  // every scene switch morphs the nodes into place
   }
   if (viewBtn) { updViewBtn(); viewBtn.addEventListener("click", function () { switchScene(sceneAfter(viewMode)); }); }
   if (sceneFab) sceneFab.addEventListener("click", function () { switchScene(sceneAfter(viewMode)); });
-  if (orbitLeft) orbitLeft.addEventListener("click", function () { orbitKick(-1); });
-  if (orbitRight) orbitRight.addEventListener("click", function () { orbitKick(1); });
-  if (orbitCtl) orbitCtl.hidden = viewMode !== "orbit";
-  document.addEventListener("keydown", function (e) {                    // arrow keys rotate the wheel (Orbit only)
-    if (viewMode !== "orbit") return; var tg = (document.activeElement || {}).tagName; if (tg === "INPUT" || tg === "TEXTAREA") return;
-    if (e.key === "ArrowLeft") { e.preventDefault(); orbitKick(-1); } else if (e.key === "ArrowRight") { e.preventDefault(); orbitKick(1); }
+  if (orbitLeft) orbitLeft.addEventListener("click", function () { sceneNudge(-1); });
+  if (orbitRight) orbitRight.addEventListener("click", function () { sceneNudge(1); });
+  updSceneCtl(viewMode);
+  document.addEventListener("keydown", function (e) {                    // arrow keys drive the scene control in every scene
+    var tg = (document.activeElement || {}).tagName; if (tg === "INPUT" || tg === "TEXTAREA") return;
+    if (e.key === "ArrowLeft") { e.preventDefault(); sceneNudge(-1); } else if (e.key === "ArrowRight") { e.preventDefault(); sceneNudge(1); }
   });
 
   // ---- global keys ----
@@ -1912,7 +1953,7 @@
   function applyMood(i) {
     activeMood = (activeMood === i) ? -1 : i;
     if (activeMood < 0) { matchSet = null; }
-    else { matchSet = {}; var any = false; for (var k = 0; k < nodes.length; k++) { if (nodeHasMood(nodes[k], activeMood)) { matchSet[nodes[k].id] = 1; any = true; } } if (!any) matchSet = null; }
+    else { matchSet = {}; matchFromCtl = false; var any = false; for (var k = 0; k < nodes.length; k++) { if (nodeHasMood(nodes[k], activeMood)) { matchSet[nodes[k].id] = 1; any = true; } } if (!any) matchSet = null; }
     if (moodBar) Array.prototype.forEach.call(moodBar.querySelectorAll(".moodchip"), function (b) { b.setAttribute("aria-pressed", (parseInt(b.getAttribute("data-mood"), 10) === activeMood) ? "true" : "false"); });
     if (searchIn) searchIn.value = ""; if (results) results.classList.remove("show");
     updateMoodPill();
@@ -2039,7 +2080,7 @@
     aboutEl = document.createElement("div"); aboutEl.className = "overlay about"; aboutEl.id = "aboutOverlay"; aboutEl.setAttribute("role", "dialog");
     aboutEl.innerHTML = '<div class="aboutsheet"><div class="cmphead"><span>About Me</span><button class="x" id="aboutClose">✕ close</button></div>' +
       '<div class="aboutbody">' +
-      '<div class="aboutpic"><div class="apic-frame"><img src="assets/about-me.jpg?v=82" alt="DJ7 - Wilsonlicioussss" onerror="this.parentNode.classList.add(\'empty\');this.remove()"></div><span class="aname">DJ7 · Wilsonlicioussss</span></div>' +
+      '<div class="aboutpic"><div class="apic-frame"><img src="assets/about-me.jpg?v=88" alt="DJ7 - Wilsonlicioussss" onerror="this.parentNode.classList.add(\'empty\');this.remove()"></div><span class="aname">DJ7 · Wilsonlicioussss</span></div>' +
       '<div class="aboutsec"><h4>★ Things I Love</h4><p>Thoughtful spaces, quiet details, electronic music, new technology and ideas that feel slightly ahead of their time.</p></div>' +
       '<div class="aboutsec"><h4>Always Learning</h4><p>Everything begins with curiosity. I explore how design, data, people and culture connect.</p></div>' +
       '<div class="aboutsec"><h4>I DJ</h4><p>A personal journey through electronic music — from high-energy moments to deeper, melodic and atmospheric sounds.</p></div>' +
@@ -2295,5 +2336,5 @@
     if (!_scAC || !_scGain) return;
     try { _scGain.gain.setTargetAtTime(0, _scAC.currentTime, 0.05); } catch (e) {}
   }
-  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, version: "V82" };
+  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, version: "V88" };
 })();
