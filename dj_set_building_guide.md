@@ -17,6 +17,18 @@ Energy
       Warm-up      Build        Peak        Plateau   Wind-down
 ```
 
+## Warm-up DJ vs main DJ — two different jobs
+
+A night is a **relay, not a race**. The opener and the headliner are handed the same crowd at different points, and their jobs are opposites.
+
+**The warm-up DJ (opener)** fills the room and sets the mood. Lower energy (2–6), slower tempo (~110–124 BPM rising gently), deeper and groovier selection, long patient blends. The skill is **restraint**: build a foundation and *leave headroom* — never peak, and never drop the anthems the headliner needs. Read a sparse early floor and give it somewhere to grow.
+
+**The main DJ (peak-time / headliner)** takes that built energy to the top. Higher energy (6–10), faster tempo (~124–140+ BPM), the anthems, drops and recognisable hooks, tighter punchier mixing and the big moments (double-drops, genre switches). Read a full, hot floor, command it, then manage the plateau and a graceful comedown at the end of the slot.
+
+**The hand-off** is the hinge: the incoming DJ should **match the outgoing energy and BPM, not reset it.** Coming on after a warm-up that reached 6 and dropping back to 2 empties the floor as surely as the warm-up peaking too early would.
+
+Common warm-up mistakes: peaking too soon, playing bangers, going too hard too fast. Common main-DJ mistakes: resetting the energy on arrival, or hammering flat at 10 with no light and shade.
+
 ## Slots, and which genres fit (from the Energy + Set Placement columns)
 
 **Warm-up (energy 1–4, ~110–122 BPM)** — set the mood, don't peak too soon.
