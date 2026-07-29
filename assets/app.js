@@ -32,12 +32,12 @@
       for (var k = 0; k < olds.length; k++) { if (olds[k].parentNode) olds[k].parentNode.removeChild(olds[k]); }
       var link = document.createElement("link");
       link.rel = "icon"; link.type = "image/png"; link.setAttribute("sizes", "48x48");
-      link.href = "assets/icons/favicon-" + col + "-48.png?v=92";
+      link.href = "assets/icons/favicon-" + col + "-48.png?v=93";
       document.head.appendChild(link);
     } catch (e) {}
     try {
       var badge = document.querySelector(".badge");
-      if (badge) badge.style.backgroundImage = 'url("assets/icons/product-' + col + '-216.png?v=92")';
+      if (badge) badge.style.backgroundImage = 'url("assets/icons/product-' + col + '-216.png?v=93")';
     } catch (e) {}
   }
   function applyChannel(i) {
@@ -1933,6 +1933,33 @@
       bs += '<text x="' + bX(0.12).toFixed(1) + '" y="' + (bY(1) - 5).toFixed(1) + '" fill="#FF3D9A" font-family="Space Mono,monospace" font-size="8">OUT lows</text><text x="' + bX(0.72).toFixed(1) + '" y="' + (bY(1) - 5).toFixed(1) + '" fill="#2FE6FF" font-family="Space Mono,monospace" font-size="8">IN lows</text>';
       bs += '<text x="' + bsPl + '" y="' + (bsH - 5) + '" fill="rgba(236,236,244,0.5)" font-family="Space Mono,monospace" font-size="8">time →</text></svg>';
       D.push(["Live technique quick-hits", '<div class="gi"><div class="gi-title">Bass swap — never run two basslines together</div><div class="gi-card">' + bs + '<p class="gi-note">As the new track comes in, cut the outgoing low EQ and bring in the incoming — trade on the phrase boundary so only one kick / bass owns the low end.</p></div></div>']);
+
+      var anaSecs = [["INTRO", 16, "#2FE6FF", "Long-blend entry — start the incoming here, under the outgoing outro", "blend"], ["BUILD", 16, "#C6F000", "Tension rising — a loop-roll build lives here", ""], ["DROP", 28, "#FF3D9A", "Drop-swap / double-drop entry — match keys first, hit the 1", "swap"], ["BREAKDOWN", 16, "#8A63FF", "Breakdown mix — no kick, layer freely; watch the return of the kick", "layer"], ["DROP", 28, "#FF3D9A", "Second drop — big-moment territory", ""], ["OUTRO", 16, "#FF9A3C", "Mix-out / echo-out — blend or wash the exit here", "exit"]];
+      var anaW = 520, anaH = 92, anaGap = 6, anaTot = 0, ai;
+      for (ai = 0; ai < anaSecs.length; ai++) anaTot += anaSecs[ai][1];
+      var anaX = anaGap, ana = '<svg viewBox="0 0 ' + anaW + ' ' + anaH + '" width="100%" style="display:block" aria-hidden="true">';
+      for (ai = 0; ai < anaSecs.length; ai++) { var asg = anaSecs[ai], aw = asg[1] / anaTot * (anaW - anaGap * 2), acx = anaX + aw / 2;
+        ana += '<g data-tip="' + asg[0] + ' — ' + asg[3] + '" style="cursor:pointer"><rect x="' + anaX.toFixed(1) + '" y="34" width="' + (aw - 2).toFixed(1) + '" height="34" rx="4" fill="' + asg[2] + '" opacity="0.82"/><text x="' + acx.toFixed(1) + '" y="55" fill="#08080F" font-family="Space Mono,monospace" font-size="8.5" font-weight="700" text-anchor="middle">' + asg[0] + '</text></g>';
+        if (asg[4]) ana += '<text x="' + acx.toFixed(1) + '" y="20" fill="' + asg[2] + '" font-family="Space Mono,monospace" font-size="8" text-anchor="middle">▼ ' + asg[4] + '</text>';
+        anaX += aw; }
+      ana += '<text x="' + (anaW / 2) + '" y="' + (anaH - 6) + '" fill="rgba(236,236,244,0.5)" font-family="Space Mono,monospace" font-size="8" text-anchor="middle">where you enter shapes the whole transition — hover a section</text></svg>';
+      var mstyles = [["Long blend", "INTRO › OUTRO", "Beatmatch + gradual bass swap, 16–32 bars", "LOW", "#7CE88A"], ["Breakdown mix", "INTO BREAKDOWN", "Layer over the beatless part; align the return of the kick", "LOW", "#7CE88A"], ["Drop swap", "DROP › DROP", "Phrase-perfect, key-match, hard-cut / bass-swap on the 1", "HIGH", "#FF6A6A"], ["Hard cut", "DOWNBEAT / DROP", "Silence outgoing, drop incoming on beat 1 (± spinback)", "MED", "#FFC24B"], ["FX wash-out", "OVER THE TAIL", "Echo 1/1 50–70% on outgoing, pull fader, fade in", "LOW", "#7CE88A"], ["Loop-roll build", "LOOP › RELEASE", "Halve 4→1→½ bar + roll, release on the 1", "MED", "#FFC24B"]];
+      var mcards = '<div class="gd-mix">';
+      mstyles.forEach(function (m) { mcards += '<div class="gd-mixc" data-tip="' + m[0] + ' — enter ' + m[1].toLowerCase() + ': ' + m[2] + '"><div class="gd-mixh"><b>' + m[0] + '</b><span class="gd-risk" style="--rc:' + m[4] + '">' + m[3] + '</span></div><div class="gd-mixe">ENTER · ' + m[1] + '</div><p>' + m[2] + '</p></div>'; });
+      mcards += '</div>';
+      var mxW = 520, mxH = 210, mxPl = 46, mxPb = 30, mxPt = 14;
+      var mxPts = [["Long blend", 0.15, 0.15, "#7CE88A"], ["FX wash-out", 0.3, 0.2, "#7CE88A"], ["Breakdown", 0.42, 0.32, "#7CE88A"], ["Hard cut", 0.55, 0.5, "#FFC24B"], ["Loop-roll", 0.7, 0.55, "#FFC24B"], ["Drop swap", 0.9, 0.9, "#FF6A6A"]];
+      var mxX = function (v) { return mxPl + v * (mxW - mxPl - 16); }, mxY = function (v) { return mxH - mxPb - v * (mxH - mxPb - mxPt); };
+      var mxs = '<svg viewBox="0 0 ' + mxW + ' ' + mxH + '" width="100%" style="display:block" aria-hidden="true">';
+      [0, 0.25, 0.5, 0.75, 1].forEach(function (g) { mxs += '<line x1="' + mxX(g).toFixed(1) + '" y1="' + mxPt + '" x2="' + mxX(g).toFixed(1) + '" y2="' + (mxH - mxPb) + '" stroke="rgba(255,255,255,0.05)"/><line x1="' + mxPl + '" y1="' + mxY(g).toFixed(1) + '" x2="' + (mxW - 16) + '" y2="' + mxY(g).toFixed(1) + '" stroke="rgba(255,255,255,0.05)"/>'; });
+      mxs += '<text x="' + ((mxPl + mxW - 16) / 2) + '" y="' + (mxH - 8) + '" fill="rgba(236,236,244,0.55)" font-family="Space Mono,monospace" font-size="8.5" text-anchor="middle">ENERGY CHANGE  (flat → spike) →</text>';
+      mxs += '<text x="13" y="' + ((mxPt + mxH - mxPb) / 2) + '" fill="rgba(236,236,244,0.55)" font-family="Space Mono,monospace" font-size="8.5" text-anchor="middle" transform="rotate(-90 13 ' + ((mxPt + mxH - mxPb) / 2) + ')">RISK  (low → high) →</text>';
+      mxPts.forEach(function (p) { var x = mxX(p[1]), y = mxY(p[2]), right = p[1] > 0.68, lx = right ? (x - 8) : (x + 8), anch = right ? 'end' : 'start'; mxs += '<g data-tip="' + p[0] + ' — energy ' + Math.round(p[1] * 10) + '/10 · risk ' + Math.round(p[2] * 10) + '/10" style="cursor:pointer"><circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="5" fill="' + p[3] + '"/><text x="' + lx.toFixed(1) + '" y="' + (y + 3).toFixed(1) + '" fill="#ECECF4" font-family="Space Mono,monospace" font-size="8.5" text-anchor="' + anch + '">' + p[0] + '</text></g>'; });
+      mxs += '</svg>';
+      D.push(["Mix entry points", '<div class="gi"><div class="gi-title">Song anatomy — where you can enter</div><div class="gi-card">' + ana + '</div></div>' +
+        '<div class="gi"><div class="gi-title">Six entry styles &amp; how to manage each</div>' + mcards + '</div>' +
+        '<div class="gi"><div class="gi-title">Pick your move — energy vs risk</div><div class="gi-card">' + mxs + '<p class="gi-note">Low-energy entries (long blend, wash-out) forgive loose timing; high-energy entries (drop swap) demand phrase-perfect, key-matched execution.</p></div></div>']);
+
     }
     if (name === "Sources & Method") {
       var W = 520, H = 30, seg = [["Sourced", 0.18, "#7CE88A", "~8 cols", "Beatport taxonomy + documented history"], ["Canonical", 0.22, "#FFCC55", "~10 cols", "expert + web-verified genre classics"], ["Convention", 0.60, "#B0B0C6", "~27 cols", "production norms, not measured per-track"]], x = 0, bar = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block" aria-hidden="true">';
@@ -2293,7 +2320,7 @@
     aboutEl = document.createElement("div"); aboutEl.className = "overlay about"; aboutEl.id = "aboutOverlay"; aboutEl.setAttribute("role", "dialog");
     aboutEl.innerHTML = '<div class="aboutsheet"><div class="cmphead"><span>About Me</span><button class="x" id="aboutClose">✕ close</button></div>' +
       '<div class="aboutbody">' +
-      '<div class="aboutpic"><div class="apic-frame"><img src="assets/about-me.jpg?v=92" alt="DJ7 - Wilsonlicioussss" onerror="this.parentNode.classList.add(\'empty\');this.remove()"></div><span class="aname">DJ7 · Wilsonlicioussss</span></div>' +
+      '<div class="aboutpic"><div class="apic-frame"><img src="assets/about-me.jpg?v=93" alt="DJ7 - Wilsonlicioussss" onerror="this.parentNode.classList.add(\'empty\');this.remove()"></div><span class="aname">DJ7 · Wilsonlicioussss</span></div>' +
       '<div class="aboutsec"><h4>★ Things I Love</h4><p>Thoughtful spaces, quiet details, electronic music, new technology and ideas that feel slightly ahead of their time.</p></div>' +
       '<div class="aboutsec"><h4>Always Learning</h4><p>Everything begins with curiosity. I explore how design, data, people and culture connect.</p></div>' +
       '<div class="aboutsec"><h4>I DJ</h4><p>A personal journey through electronic music — from high-energy moments to deeper, melodic and atmospheric sounds.</p></div>' +
@@ -2549,5 +2576,5 @@
     if (!_scAC || !_scGain) return;
     try { _scGain.gain.setTargetAtTime(0, _scAC.currentTime, 0.05); } catch (e) {}
   }
-  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, version: "V92" };
+  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, version: "V93" };
 })();

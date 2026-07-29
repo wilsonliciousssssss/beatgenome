@@ -46,7 +46,7 @@ body::before{
 .badge{
   width:42px;height:42px;border-radius:11px;flex:none;
   background:#08080F center/cover no-repeat;
-  background-image:url("icons/product-magenta-216.png?v=92");
+  background-image:url("icons/product-magenta-216.png?v=93");
   box-shadow:0 0 18px color-mix(in srgb,var(--c1) 45%, transparent), inset 0 0 0 1px rgba(255,255,255,.08);
 }
 .title{display:flex;flex-direction:column;line-height:1;min-width:0}
@@ -1103,3 +1103,13 @@ svg [data-tip]:hover{filter:brightness(1.28)}
 .gd-pad b{font-family:"Archivo","Space Grotesk",sans-serif;font-size:22px;font-weight:800;line-height:1}
 .gd-pad span{font-family:"Space Mono",monospace;font-size:8.5px;letter-spacing:.06em;color:var(--fog)}
 @media(max-width:600px){.gd-faders{gap:16px}.gd-pads{grid-template-columns:repeat(2,1fr)}}
+
+/* ---------- V93: mix entry points ---------- */
+.gd-mix{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:9px}
+.gd-mixc{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:9px;padding:11px;cursor:pointer;transition:border-color .12s}
+.gd-mixc:hover{border-color:var(--c1)}
+.gd-mixh{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.gd-mixh b{font-family:"Archivo","Space Grotesk",sans-serif;font-weight:700;font-size:13px;color:var(--ink)}
+.gd-risk{font-family:"Space Mono",monospace;font-size:8.5px;font-weight:700;color:var(--rc);border:1px solid var(--rc);border-radius:20px;padding:1px 7px;flex:none}
+.gd-mixe{font-family:"Space Mono",monospace;font-size:9px;letter-spacing:.05em;color:#C6F000;margin:3px 0 5px}
+.gd-mixc p{margin:0;font-size:11.5px;color:var(--fog);line-height:1.4}
