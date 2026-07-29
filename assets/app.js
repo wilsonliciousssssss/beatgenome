@@ -32,12 +32,12 @@
       for (var k = 0; k < olds.length; k++) { if (olds[k].parentNode) olds[k].parentNode.removeChild(olds[k]); }
       var link = document.createElement("link");
       link.rel = "icon"; link.type = "image/png"; link.setAttribute("sizes", "48x48");
-      link.href = "assets/icons/favicon-" + col + "-48.png?v=90";
+      link.href = "assets/icons/favicon-" + col + "-48.png?v=91";
       document.head.appendChild(link);
     } catch (e) {}
     try {
       var badge = document.querySelector(".badge");
-      if (badge) badge.style.backgroundImage = 'url("assets/icons/product-' + col + '-216.png?v=90")';
+      if (badge) badge.style.backgroundImage = 'url("assets/icons/product-' + col + '-216.png?v=91")';
     } catch (e) {}
   }
   function applyChannel(i) {
@@ -1748,19 +1748,22 @@
   legend.querySelector(".tog").addEventListener("click", function () { legend.classList.toggle("collapsed"); });
 
   // ---- V89: Guide Lab infographics (visual hero per guide) ----
-  function giWedge(cx, cy, r0, r1, a0, a1, fill) {
+  function giWedge(cx, cy, r0, r1, a0, a1, fill, attrs) {
     var P = function (r, a) { return (cx + r * Math.cos(a)).toFixed(1) + " " + (cy + r * Math.sin(a)).toFixed(1); };
     var lg = (a1 - a0) > Math.PI ? 1 : 0;
-    return '<path d="M' + P(r1, a0) + ' A' + r1 + ' ' + r1 + ' 0 ' + lg + ' 1 ' + P(r1, a1) + ' L' + P(r0, a1) + ' A' + r0 + ' ' + r0 + ' 0 ' + lg + ' 0 ' + P(r0, a0) + ' Z" fill="' + fill + '"/>';
+    return '<path d="M' + P(r1, a0) + ' A' + r1 + ' ' + r1 + ' 0 ' + lg + ' 1 ' + P(r1, a1) + ' L' + P(r0, a1) + ' A' + r0 + ' ' + r0 + ' 0 ' + lg + ' 0 ' + P(r0, a0) + ' Z" fill="' + fill + '"' + (attrs || "") + '/>';
   }
   function guideHero(name) {
     if (name === "Harmonic Mixing & Camelot") {
       var cx = 150, cy = 150, rIn = 56, rA = 90, rB = 122, sv = '<svg viewBox="0 0 300 300" width="100%" style="max-width:270px;display:block;margin:2px auto 0" aria-hidden="true">';
       for (var k = 1; k <= 12; k++) {
         var a0 = ((k - 1) / 12) * 6.2832 - 1.5708 - 0.2618, a1 = a0 + 0.5236, hue = ((k - 1) / 12) * 360, am = (a0 + a1) / 2;
+        var wtip = k + 'A ' + (MINKEY[k] || "") + ' (minor)  ·  ' + k + 'B ' + (MAJKEY[k] || "") + ' (major)';
+        sv += '<g data-tip="' + wtip + '" style="cursor:pointer">';
         sv += giWedge(cx, cy, rIn + 4, rB, a0 + 0.02, a1 - 0.02, "hsla(" + hue + ",72%,55%,0.16)");
         sv += '<text x="' + (cx + Math.cos(am) * (rB - 9)).toFixed(0) + '" y="' + (cy + Math.sin(am) * (rB - 9) + 4).toFixed(0) + '" fill="hsl(' + hue + ',82%,70%)" font-family="Space Mono,monospace" font-size="12" font-weight="700" text-anchor="middle">' + k + '</text>';
         sv += '<text x="' + (cx + Math.cos(am) * (rA - 14)).toFixed(0) + '" y="' + (cy + Math.sin(am) * (rA - 14) + 3).toFixed(0) + '" fill="rgba(236,236,244,0.5)" font-family="Space Mono,monospace" font-size="7.5" text-anchor="middle">' + (MINKEY[k] || "") + '</text>';
+        sv += '</g>';
       }
       sv += '<circle cx="150" cy="150" r="' + rA + '" fill="none" stroke="rgba(150,200,255,0.22)"/><circle cx="150" cy="150" r="' + rB + '" fill="none" stroke="rgba(255,200,80,0.22)"/>';
       sv += '<circle cx="150" cy="150" r="' + rIn + '" fill="rgba(255,205,90,0.12)" stroke="rgba(255,200,90,0.4)"/>';
@@ -1784,26 +1787,28 @@
       svg += '<path d="' + d + '" fill="none" stroke="#FF3D9A" stroke-width="2.5" stroke-linejoin="round"/>';
       var labs = [["Warm-up", 0.08], ["Build", 0.32], ["Peak", 0.58], ["Plateau", 0.72], ["Wind-down", 0.92]];
       labs.forEach(function (l) { svg += '<text x="' + Xf(l[1]) + '" y="' + (H - 8) + '" fill="rgba(236,236,244,0.6)" font-family="Space Mono,monospace" font-size="9" text-anchor="middle">' + l[0] + '</text>'; });
+      var ez = [["Warm-up", 0, 0.2, "Energy 1–4 · 110–122 BPM · set the mood"], ["Build", 0.2, 0.45, "Energy 4–6 · 120–126 BPM · lift the groove"], ["Peak", 0.45, 0.68, "Energy 7–9 · 126–140 BPM · main room"], ["Plateau", 0.68, 0.8, "Hold the peak · read the floor"], ["Wind-down", 0.8, 1, "Energy 3–5 · release, land the plane"]];
+      ez.forEach(function (z) { svg += '<rect x="' + Xf(z[1]) + '" y="' + pt + '" width="' + (Xf(z[2]) - Xf(z[1])).toFixed(1) + '" height="' + (H - pb - pt) + '" fill="transparent" pointer-events="all" data-tip="' + z[0] + ' — ' + z[3] + '" style="cursor:pointer"/>'; });
       svg += '</svg>';
       var stg = [["Warm-up", "110–122 BPM", 3, "Set the mood, don't peak too soon."], ["Build", "120–126 BPM", 5, "Lift steadily, introduce groove."], ["Peak", "126–140 BPM", 9, "Main room, maximum floor."], ["Hard peak", "140+ BPM", 10, "Bursts only — not for long."], ["Wind-down", "back to 3–5", 4, "Release the tension, land the plane."]];
       var cards = '<div class="gi-stages">';
-      stg.forEach(function (s) { cards += '<div class="gi-stage"><h5>' + s[0] + '</h5><div class="bpm">' + s[1] + '</div><div class="gi-meter"><i style="width:' + (s[2] * 10) + '%"></i></div><p>' + s[3] + '</p></div>'; });
+      stg.forEach(function (s) { cards += '<div class="gi-stage" data-tip="' + s[0] + ' · energy ' + s[2] + '/10 · ' + s[1] + '"><h5>' + s[0] + '</h5><div class="bpm">' + s[1] + '</div><div class="gi-meter"><i style="width:' + (s[2] * 10) + '%"></i></div><p>' + s[3] + '</p></div>'; });
       cards += '</div>';
       return '<div class="gi"><div class="gi-title">The energy arc</div><div class="gi-card">' + svg + '</div>' + cards + '</div>';
     }
     if (name === "FX & Loop Settings") {
-      var chain = ["LOOP|16 → ½ bar", "BEAT DIV|1/1 → 1/8", "EFFECT|Echo / Roll", "DEPTH|20 → 100%", "RELEASE|on beat 1"], ch = '<div class="gi-chain">';
-      chain.forEach(function (n, i) { var p = n.split("|"); ch += (i ? '<span class="gi-arrow">→</span>' : "") + '<span class="gi-node"><b>' + p[0] + '</b>' + p[1] + '</span>'; });
+      var chain = ["LOOP|16 → ½ bar|Loop length — 16 bars to extend a blend, ½ bar to build tension", "BEAT DIV|1/1 → 1/8|Beat division — 1/1 spacious tails to 1/8 fast rolls (BPM-synced)", "EFFECT|Echo / Roll|Echo / Reverb to wash out, Roll to build tension", "DEPTH|20 → 100%|Wet/dry mix — 20% subtle colour to 100% effect takes over", "RELEASE|on beat 1|Release the effect on the downbeat so it lands in time"], ch = '<div class="gi-chain">';
+      chain.forEach(function (n, i) { var p = n.split("|"); ch += (i ? '<span class="gi-arrow">→</span>' : "") + '<span class="gi-node" data-tip="' + p[2] + '"><b>' + p[0] + '</b>' + p[1] + '</span>'; });
       ch += '</div>';
-      var bands = [["20–40% · subtle colour", 35, "#2FE6FF"], ["50–70% · obvious wash", 60, "#FFC24B"], ["80–100% · effect takes over", 92, "#FF3D9A"]], bh = '<div class="gi-title" style="margin-top:16px">Depth (wet / dry)</div>';
-      bands.forEach(function (b) { bh += '<div class="gi-band"><span>' + b[0] + '</span><div class="gi-meter"><i style="width:' + b[1] + '%;background:' + b[2] + '"></i></div></div>'; });
+      var bands = [["20–40% · subtle colour", 35, "#2FE6FF", "Sits under the mix — keeps the groove intact"], ["50–70% · obvious wash", 60, "#FFC24B", "Obvious wash — use for transitions & breakdowns"], ["80–100% · effect takes over", 92, "#FF3D9A", "Effect takes over — drop slams, tape-stops, risers"]], bh = '<div class="gi-title" style="margin-top:16px">Depth (wet / dry)</div>';
+      bands.forEach(function (b) { bh += '<div class="gi-band" data-tip="' + b[3] + '"><span>' + b[0] + '</span><div class="gi-meter"><i style="width:' + b[1] + '%;background:' + b[2] + '"></i></div></div>'; });
       return '<div class="gi"><div class="gi-title">Signal chain</div><div class="gi-card">' + ch + bh + '</div></div>';
     }
     if (name === "Live Performance Playbook") {
       var W = 560, H = 66, wf = "";
       for (var j = 0; j < 70; j++) { var hh = (8 + (Math.sin(j * 0.55) * 0.5 + 0.5) * (j > 18 && j < 44 ? 34 : 15)).toFixed(0); wf += '<rect x="' + (j * 8 + 2) + '" y="' + ((H - hh) / 2).toFixed(0) + '" width="4" height="' + hh + '" rx="1" fill="rgba(150,150,185,0.28)"/>'; }
-      var cues = [[0.05, "A", "Mix in", "#5CE68A"], [0.3, "B", "Impact", "#FF4D4D"], [0.62, "C", "Escape", "#4C8CFF"], [0.9, "D", "Mix out", "#FF9A3C"]], cm = "";
-      cues.forEach(function (c) { var x = (c[0] * W).toFixed(0); cm += '<line x1="' + x + '" y1="0" x2="' + x + '" y2="' + H + '" stroke="' + c[3] + '" stroke-width="2"/><circle cx="' + x + '" cy="9" r="8" fill="' + c[3] + '"/><text x="' + x + '" y="12.5" fill="#08080F" font-family="Space Mono,monospace" font-size="9" font-weight="700" text-anchor="middle">' + c[1] + '</text>'; });
+      var cues = [[0.05, "A", "Mix in", "#5CE68A", "start of the first usable phrase (16–32 bar intro)"], [0.3, "B", "Impact", "#FF4D4D", "first drop / main section — your double-drop reference"], [0.62, "C", "Escape", "#4C8CFF", "breakdown — the blend-out zone & escape hatch"], [0.9, "D", "Mix out", "#FF9A3C", "start of the outro / last clean phrase"]], cm = "";
+      cues.forEach(function (c) { var x = (c[0] * W).toFixed(0); cm += '<g data-tip="Cue ' + c[1] + ' — ' + c[2] + ': ' + c[4] + '" style="cursor:pointer"><rect x="' + (x - 10) + '" y="0" width="20" height="' + H + '" fill="transparent" pointer-events="all"/><line x1="' + x + '" y1="0" x2="' + x + '" y2="' + H + '" stroke="' + c[3] + '" stroke-width="2"/><circle cx="' + x + '" cy="9" r="8" fill="' + c[3] + '"/><text x="' + x + '" y="12.5" fill="#08080F" font-family="Space Mono,monospace" font-size="9" font-weight="700" text-anchor="middle">' + c[1] + '</text></g>'; });
       var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block" aria-hidden="true">' + wf + cm + '</svg>';
       var leg = '<div class="gi-legend">';
       cues.forEach(function (c) { leg += '<span class="gi-chip"><i class="gi-dot" style="background:' + c[3] + '"></i>' + c[1] + ' — ' + c[2] + '</span>'; });
@@ -1831,61 +1836,61 @@
       D.push(["compatible-move rules",
         '<div class="gi"><div class="gi-title">Compatible moves from 8A</div><div class="gi-card gd-moves">' +
         '<div class="gd-hub">8A<span>YOU ARE HERE</span></div><div class="gd-mv">' +
-        '<div class="gd-arm" style="--ac:#C6F000"><b>→ 8A</b>Same key · perfect blend</div>' +
-        '<div class="gd-arm" style="--ac:#2FE6FF"><b>→ 7A / 9A</b>±1 step · energy-preserving</div>' +
-        '<div class="gd-arm" style="--ac:#FF3D9A"><b>→ 8B</b>Flip A↔B · mood shift</div>' +
-        '<div class="gd-arm" style="--ac:#FFC24B"><b>→ 3A</b>+7 · energy boost (sparingly)</div>' +
+        '<div class="gd-arm" data-tip="Same Camelot code — identical key, guaranteed clean blend" style="--ac:#C6F000"><b>→ 8A</b>Same key · perfect blend</div>' +
+        '<div class="gd-arm" data-tip="One step around the wheel — the classic energy-preserving move" style="--ac:#2FE6FF"><b>→ 7A / 9A</b>±1 step · energy-preserving</div>' +
+        '<div class="gd-arm" data-tip="Same number, flip the letter — relative major/minor, shifts mood" style="--ac:#FF3D9A"><b>→ 8B</b>Flip A↔B · mood shift</div>' +
+        '<div class="gd-arm" data-tip="+7 on the wheel — jumps a perfect 5th, lifts energy; use sparingly" style="--ac:#FFC24B"><b>→ 3A</b>+7 · energy boost (sparingly)</div>' +
         '</div></div></div>']);
       var W = 560, H = 116, pad = 22, lo = 60, hi = 180, bx = function (b) { return (pad + (b - lo) / (hi - lo) * (W - 2 * pad)).toFixed(1); }, yb = 74;
-      var ticks = [[70, "70", "Trap ½"], [124, "124", "House"], [140, "140", "Dubstep"], [174, "174", "DnB"]], sv = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block" aria-hidden="true">';
+      var ticks = [[70, "70", "Trap ½", "70 BPM — trap / half-time; sits under a 140 track"], [124, "124", "House", "124 BPM — house / tech-house core tempo"], [140, "140", "Dubstep", "140 BPM — dubstep; its half-time feel reads as 70"], [174, "174", "DnB", "174 BPM — drum & bass; half-time reads as 87"]], sv = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block" aria-hidden="true">';
       sv += '<line x1="' + pad + '" y1="' + yb + '" x2="' + (W - pad) + '" y2="' + yb + '" stroke="rgba(255,255,255,0.18)"/>';
-      function arc(b1, b2, lab, col) { var x1 = +bx(b1), x2 = +bx(b2), mx = (x1 + x2) / 2; return '<path d="M' + x1 + ' ' + yb + ' Q' + mx + ' 26 ' + x2 + ' ' + yb + '" fill="none" stroke="' + col + '" stroke-width="1.6" stroke-dasharray="4 3"/><text x="' + mx + '" y="30" fill="' + col + '" font-family="Space Mono,monospace" font-size="9" text-anchor="middle">' + lab + '</text>'; }
-      sv += arc(70, 140, "×2 double-time / ×½ halftime", "#2FE6FF");
-      sv += arc(87, 174, "×2 halftime bridge", "#FFC24B");
-      ticks.forEach(function (t) { var x = bx(t[0]); sv += '<line x1="' + x + '" y1="' + (yb - 5) + '" x2="' + x + '" y2="' + (yb + 5) + '" stroke="#ECECF4" stroke-width="2"/><text x="' + x + '" y="' + (yb + 20) + '" fill="#ECECF4" font-family="Space Mono,monospace" font-size="10" font-weight="700" text-anchor="middle">' + t[1] + '</text><text x="' + x + '" y="' + (yb + 32) + '" fill="rgba(236,236,244,0.55)" font-family="Space Mono,monospace" font-size="8" text-anchor="middle">' + t[2] + '</text>'; });
+      function arc(b1, b2, lab, col, ch, ly) { var x1 = +bx(b1), x2 = +bx(b2), mx = (x1 + x2) / 2; return '<path d="M' + x1 + ' ' + yb + ' Q' + mx + ' ' + ch + ' ' + x2 + ' ' + yb + '" fill="none" stroke="' + col + '" stroke-width="1.6" stroke-dasharray="4 3"/><text x="' + mx + '" y="' + ly + '" fill="' + col + '" font-family="Space Mono,monospace" font-size="9" text-anchor="middle">' + lab + '</text>'; }
+      sv += arc(70, 140, "double-time ×2", "#2FE6FF", 22, 16);
+      sv += arc(87, 174, "halftime ×½", "#FFC24B", 46, 42);
+      ticks.forEach(function (t) { var x = bx(t[0]); sv += '<g data-tip="' + t[3] + '" style="cursor:pointer"><rect x="' + (x - 18) + '" y="' + (yb - 16) + '" width="36" height="40" fill="transparent" pointer-events="all"/><line x1="' + x + '" y1="' + (yb - 5) + '" x2="' + x + '" y2="' + (yb + 5) + '" stroke="#ECECF4" stroke-width="2"/><text x="' + x + '" y="' + (yb + 20) + '" fill="#ECECF4" font-family="Space Mono,monospace" font-size="10" font-weight="700" text-anchor="middle">' + t[1] + '</text><text x="' + x + '" y="' + (yb + 32) + '" fill="rgba(236,236,244,0.55)" font-family="Space Mono,monospace" font-size="8" text-anchor="middle">' + t[2] + '</text></g>'; });
       sv += '<text x="' + bx(87) + '" y="87" fill="rgba(236,236,244,0.5)" font-family="Space Mono,monospace" font-size="8" text-anchor="middle">DnB ½</text></svg>';
       D.push(["Cross-genre", '<div class="gi"><div class="gi-title">BPM bridges (tempo ladder)</div><div class="gi-card">' + sv + '<p class="gi-note">Match keys first, then bridge tempo: small ±4 gaps pitch-ride; big gaps use the halftime / double-time feel (a 70 track sits under a 140, an 87 under a 174).</p></div></div>']);
     }
     if (name === "Set Building — Energy Arc") {
-      var steps = [["01", "Pick the arc"], ["02", "Sort Energy+BPM"], ["03", "Check keys"], ["04", "Plan bridges"], ["05", "Escape hatches"]], fl = '<div class="gd-flow">';
-      steps.forEach(function (s, i) { fl += (i ? '<span class="gd-fa">→</span>' : "") + '<div class="gd-step"><i>' + s[0] + '</i><h6>' + s[1] + '</h6></div>'; });
+      var steps = [["01", "Pick the arc", "Choose the arc for your slot & room (opening ≠ peak ≠ closing)"], ["02", "Sort Energy+BPM", "Order candidates so they climb, plateau, then ease"], ["03", "Check keys", "Keep neighbours within the Camelot rules; A↔B to shift mood"], ["04", "Plan bridges", "At genre / BPM changes use the CSV Transition Tip"], ["05", "Escape hatches", "Leave a breakdown / beatless exit if a mix isn't landing"]], fl = '<div class="gd-flow">';
+      steps.forEach(function (s, i) { fl += (i ? '<span class="gd-fa">→</span>' : "") + '<div class="gd-step" data-tip="' + s[2] + '"><i>' + s[0] + '</i><h6>' + s[1] + '</h6></div>'; });
       fl += '</div>';
       D.push(["How to program it", '<div class="gi"><div class="gi-title">Program flow</div><div class="gi-card">' + fl + '</div></div>']);
       var good = [30, 45, 58, 72, 85].map(function (h) { return gdBar(h, "#7CE88A"); }).join("");
       var bad = gdBar(40, "#FF6A6A") + gdBar(10, "rgba(255,255,255,.08)") + gdBar(10, "rgba(255,255,255,.08)") + gdBar(10, "rgba(255,255,255,.08)") + gdBar(90, "#FF6A6A");
       D.push(["Rules of thumb", '<div class="gi"><div class="gi-title">Move energy ±1–2 at a time</div><div class="gi-card gd-two">' +
-        '<div class="gd-ex good"><span class="tag">✓ GRADUAL 3→7</span><div class="gd-seq">' + good + '</div></div>' +
-        '<div class="gd-ex bad"><span class="tag">✕ JUMP 4→9</span><div class="gd-seq">' + bad + '</div></div></div></div>']);
+        '<div class="gd-ex good" data-tip="Climb one or two energy levels at a time — the floor stays with you"><span class="tag">✓ GRADUAL 3→7</span><div class="gd-seq">' + good + '</div></div>' +
+        '<div class="gd-ex bad" data-tip="Jumping 4→9 empties a floor as fast as staying flat does"><span class="tag">✕ JUMP 4→9</span><div class="gd-seq">' + bad + '</div></div></div></div>']);
     }
     if (name === "FX & Loop Settings") {
       var td = '<div class="gd-td">' +
-        '<div class="z" style="background:rgba(47,230,255,.12);color:#2FE6FF"><b>SHORT</b>1/16 · 1/8 · 1/4<br><span style="color:var(--fog)">rolls → build tension</span></div>' +
-        '<div class="z" style="background:rgba(255,194,75,.12);color:#FFC24B"><b>MEDIUM</b>1/2 · 3/4<br><span style="color:var(--fog)">slap / echo groove</span></div>' +
-        '<div class="z" style="background:rgba(255,61,154,.12);color:#FF3D9A"><b>LONG</b>1/1 · 2/1 · 4/1<br><span style="color:var(--fog)">wash-outs / breakdowns</span></div></div>';
+        '<div class="z" data-tip="Short divisions — fast rolls & stutters that build tension into a drop" style="background:rgba(47,230,255,.12);color:#2FE6FF"><b>SHORT</b>1/16 · 1/8 · 1/4<br><span style="color:var(--fog)">rolls → build tension</span></div>' +
+        '<div class="z" data-tip="Medium divisions — tight slap / echo for groove & rhythmic movement" style="background:rgba(255,194,75,.12);color:#FFC24B"><b>MEDIUM</b>1/2 · 3/4<br><span style="color:var(--fog)">slap / echo groove</span></div>' +
+        '<div class="z" data-tip="Long divisions — spacious tails & wash-outs for transitions & breakdowns" style="background:rgba(255,61,154,.12);color:#FF3D9A"><b>LONG</b>1/1 · 2/1 · 4/1<br><span style="color:var(--fog)">wash-outs / breakdowns</span></div></div>';
       var loops = [["4 bar", 100], ["2 bar", 62], ["1 bar", 38], ["½ bar", 22]], lh = '<div class="gd-loop">';
-      loops.forEach(function (l, i) { lh += (i ? '<span class="gd-fa">→</span>' : "") + '<div class="gd-lp" style="width:' + l[1] + 'px"><b>' + l[0] + '</b></div>'; });
-      lh += '<span class="gd-fa">→</span><div class="gd-drop">DROP</div></div>';
+      loops.forEach(function (l, i) { lh += (i ? '<span class="gd-fa">→</span>' : "") + '<div class="gd-lp" data-tip="' + l[0] + ' loop — halve it each phrase to wind up tension" style="width:' + l[1] + 'px"><b>' + l[0] + '</b></div>'; });
+      lh += '<span class="gd-fa">→</span><div class="gd-drop" data-tip="The drop — release the tension you built">DROP</div></div>';
       D.push(["How the three settings work", '<div class="gi"><div class="gi-title">Beat FX time division</div><div class="gi-card">' + td + '</div></div>' +
         '<div class="gi"><div class="gi-title">Loop halving → tension build</div><div class="gi-card">' + lh + '<p class="gi-note">Halve the loop each phrase (4→2→1→½ bar), often with a Beat FX Roll, to wind tension right into the drop.</p></div></div>']);
     }
     if (name === "Live Performance Playbook") {
       var W = 520, H = 34, gm = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block" aria-hidden="true">';
-      gm += '<rect x="0" y="8" width="' + (W * 0.7) + '" height="18" rx="3" fill="rgba(124,232,138,0.35)"/>';
-      gm += '<rect x="' + (W * 0.7) + '" y="8" width="' + (W * 0.16) + '" height="18" fill="rgba(255,194,75,0.4)"/>';
-      gm += '<rect x="' + (W * 0.86) + '" y="8" width="' + (W * 0.14) + '" height="18" rx="3" fill="rgba(255,90,90,0.45)"/>';
+      gm += '<rect x="0" y="8" width="' + (W * 0.7) + '" height="18" rx="3" fill="rgba(124,232,138,0.35)" data-tip="Green — healthy headroom; most of the signal should live here" style="cursor:pointer"/>';
+      gm += '<rect x="' + (W * 0.7) + '" y="8" width="' + (W * 0.16) + '" height="18" fill="rgba(255,194,75,0.4)" data-tip="Target — trim so peaks sit at top of green / bottom of red" style="cursor:pointer"/>';
+      gm += '<rect x="' + (W * 0.86) + '" y="8" width="' + (W * 0.14) + '" height="18" rx="3" fill="rgba(255,90,90,0.45)" data-tip="Red — clipping / distortion; keep the master out of here" style="cursor:pointer"/>';
       gm += '<rect x="' + (W * 0.66) + '" y="4" width="' + (W * 0.12) + '" height="26" rx="2" fill="none" stroke="#C6F000" stroke-width="2"/>';
       gm += '<text x="' + (W * 0.72) + '" y="21" fill="#08080F" font-family="Space Mono,monospace" font-size="9" font-weight="700" text-anchor="middle">TARGET</text>';
       gm += '<text x="' + (W * 0.35) + '" y="21" fill="rgba(8,20,10,0.7)" font-family="Space Mono,monospace" font-size="9" text-anchor="middle">GREEN — headroom</text>';
       gm += '<text x="' + (W * 0.93) + '" y="21" fill="#3a0d0d" font-family="Space Mono,monospace" font-size="9" text-anchor="middle">RED</text></svg>';
       D.push(["Live technique quick-hits", '<div class="gi"><div class="gi-title">Gain staging</div><div class="gi-card">' + gm + '<p class="gi-note">Trim each channel so peaks sit at the top of green / bottom of red; keep the master out of the red. Loud ≠ clean.</p></div></div>']);
       var esc = [["Ride a breakdown", "Drop into the incoming Cue C — the beatless section covers the exit.", "#2FE6FF"], ["Echo out", "Beat FX Echo 1/1 @ 50–70% on the outgoing, then pull the fader.", "#C6F000"], ["Loop &amp; reset", "Loop 4 bars on the incoming to re-find the phrase, release on the 1.", "#FFC24B"], ["Cut, don't fight it", "Clashing? A clean cut on the downbeat beats a long bad mix.", "#FF3D9A"]], cc = '<div class="gd-cards">';
-      esc.forEach(function (e) { cc += '<div class="gd-esc" style="border-left:3px solid ' + e[2] + '"><h6 style="color:' + e[2] + '">' + e[0] + '</h6><p>' + e[1] + '</p></div>'; });
+      esc.forEach(function (e) { cc += '<div class="gd-esc" data-tip="' + e[0] + ' — ' + e[1] + '" style="border-left:3px solid ' + e[2] + '"><h6 style="color:' + e[2] + '">' + e[0] + '</h6><p>' + e[1] + '</p></div>'; });
       cc += '</div>';
       D.push(["When a mix isn't landing", '<div class="gi"><div class="gi-title">Escape hatches</div>' + cc + '</div>']);
     }
     if (name === "Sources & Method") {
-      var W = 520, H = 30, seg = [["Sourced", 0.18, "#7CE88A", "~8 cols"], ["Canonical", 0.22, "#FFCC55", "~10 cols"], ["Convention", 0.60, "#B0B0C6", "~27 cols"]], x = 0, bar = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block" aria-hidden="true">';
-      seg.forEach(function (s) { var w = s[1] * W; bar += '<rect x="' + x.toFixed(1) + '" y="4" width="' + (w - 2).toFixed(1) + '" height="22" rx="3" fill="' + s[2] + '" opacity="0.85"/><text x="' + (x + w / 2).toFixed(1) + '" y="19" fill="#08080F" font-family="Space Mono,monospace" font-size="9" font-weight="700" text-anchor="middle">' + Math.round(s[1] * 100) + '%</text>'; x += w; });
+      var W = 520, H = 30, seg = [["Sourced", 0.18, "#7CE88A", "~8 cols", "Beatport taxonomy + documented history"], ["Canonical", 0.22, "#FFCC55", "~10 cols", "expert + web-verified genre classics"], ["Convention", 0.60, "#B0B0C6", "~27 cols", "production norms, not measured per-track"]], x = 0, bar = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block" aria-hidden="true">';
+      seg.forEach(function (s) { var w = s[1] * W; bar += '<rect x="' + x.toFixed(1) + '" y="4" width="' + (w - 2).toFixed(1) + '" height="22" rx="3" fill="' + s[2] + '" opacity="0.85" data-tip="' + s[0] + ' — ' + s[4] + ' (' + s[3] + ')" style="cursor:pointer"/><text x="' + (x + w / 2).toFixed(1) + '" y="19" fill="#08080F" font-family="Space Mono,monospace" font-size="9" font-weight="700" text-anchor="middle">' + Math.round(s[1] * 100) + '%</text>'; x += w; });
       bar += '</svg><div class="gi-legend" style="margin-top:10px">';
       seg.forEach(function (s) { bar += '<span class="gi-chip"><i class="gi-dot" style="background:' + s[2] + '"></i>' + s[0] + ' · ' + s[3] + '</span>'; });
       bar += '</div>';
@@ -1901,6 +1906,16 @@
   // ---- guides overlay ----
   (function buildGuides() {
     var tabs = document.getElementById("guideTabs"), body = document.getElementById("guideBody");
+    var gTip = document.getElementById("guideTip");
+    if (!gTip) { gTip = document.createElement("div"); gTip.id = "guideTip"; document.body.appendChild(gTip); }
+    body.addEventListener("mousemove", function (e) {
+      var t = e.target && e.target.closest ? e.target.closest("[data-tip]") : null;
+      if (t) { gTip.textContent = t.getAttribute("data-tip"); gTip.style.display = "block";
+        var x = e.clientX + 14, y = e.clientY + 16, w = gTip.offsetWidth; if (x + w + 8 > window.innerWidth) x = e.clientX - w - 14;
+        gTip.style.left = x + "px"; gTip.style.top = y + "px"; }
+      else gTip.style.display = "none";
+    });
+    body.addEventListener("mouseleave", function () { gTip.style.display = "none"; });
     var names = Object.keys(DATA.guides || {});
     if (!names.length) { document.getElementById("guidesBtn").style.display = "none"; return; }
     names.forEach(function (nm, i) {
@@ -2232,7 +2247,7 @@
     aboutEl = document.createElement("div"); aboutEl.className = "overlay about"; aboutEl.id = "aboutOverlay"; aboutEl.setAttribute("role", "dialog");
     aboutEl.innerHTML = '<div class="aboutsheet"><div class="cmphead"><span>About Me</span><button class="x" id="aboutClose">✕ close</button></div>' +
       '<div class="aboutbody">' +
-      '<div class="aboutpic"><div class="apic-frame"><img src="assets/about-me.jpg?v=90" alt="DJ7 - Wilsonlicioussss" onerror="this.parentNode.classList.add(\'empty\');this.remove()"></div><span class="aname">DJ7 · Wilsonlicioussss</span></div>' +
+      '<div class="aboutpic"><div class="apic-frame"><img src="assets/about-me.jpg?v=91" alt="DJ7 - Wilsonlicioussss" onerror="this.parentNode.classList.add(\'empty\');this.remove()"></div><span class="aname">DJ7 · Wilsonlicioussss</span></div>' +
       '<div class="aboutsec"><h4>★ Things I Love</h4><p>Thoughtful spaces, quiet details, electronic music, new technology and ideas that feel slightly ahead of their time.</p></div>' +
       '<div class="aboutsec"><h4>Always Learning</h4><p>Everything begins with curiosity. I explore how design, data, people and culture connect.</p></div>' +
       '<div class="aboutsec"><h4>I DJ</h4><p>A personal journey through electronic music — from high-energy moments to deeper, melodic and atmospheric sounds.</p></div>' +
@@ -2488,5 +2503,5 @@
     if (!_scAC || !_scGain) return;
     try { _scGain.gain.setTargetAtTime(0, _scAC.currentTime, 0.05); } catch (e) {}
   }
-  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, version: "V90" };
+  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, version: "V91" };
 })();
