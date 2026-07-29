@@ -46,7 +46,7 @@ body::before{
 .badge{
   width:42px;height:42px;border-radius:11px;flex:none;
   background:#08080F center/cover no-repeat;
-  background-image:url("icons/product-magenta-216.png?v=94");
+  background-image:url("icons/product-magenta-216.png?v=95");
   box-shadow:0 0 18px color-mix(in srgb,var(--c1) 45%, transparent), inset 0 0 0 1px rgba(255,255,255,.08);
 }
 .title{display:flex;flex-direction:column;line-height:1;min-width:0}
@@ -1119,3 +1119,19 @@ svg [data-tip]:hover{filter:brightness(1.28)}
 .gd-tvhead b{font-family:"Archivo","Space Grotesk",sans-serif;font-weight:800;font-size:15px;color:#fff}
 .gd-tment{font-family:"Space Mono",monospace;font-size:9px;letter-spacing:.05em;color:#C6F000;text-transform:uppercase}
 .gd-sub{font-family:"Space Mono",monospace;font-size:9px;letter-spacing:.08em;color:#6f6f86;margin:12px 0 4px;text-transform:uppercase}
+
+/* ---------- V95: FX depth + scenarios ---------- */
+.gd-fxcat{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.gd-fxc{background:rgba(255,255,255,.03);border:1px solid var(--line);border-left:3px solid var(--fc);border-radius:0 9px 9px 0;padding:9px 11px;cursor:pointer}
+.gd-fxc b{display:block;font-family:"Archivo","Space Grotesk",sans-serif;font-weight:700;font-size:13px;color:var(--ink)}
+.gd-fxc .w{font-size:11px;color:var(--fog);line-height:1.35;margin:2px 0 4px}
+.gd-fxc .s{font-family:"Space Mono",monospace;font-size:9.5px;color:var(--fc)}
+.gd-scn{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:9px}
+.gd-scnc{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:10px;padding:11px;cursor:pointer;transition:border-color .12s}
+.gd-scnc:hover{border-color:var(--c1)}
+.gd-scnc h6{margin:0 0 7px;font-family:"Archivo","Space Grotesk",sans-serif;font-weight:700;font-size:12.5px;color:#fff}
+.gd-scnr{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
+.gd-scnr span{font-family:"Space Mono",monospace;font-size:9px;color:var(--ink);background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:5px;padding:2px 6px}
+.gd-scnd{height:6px;border-radius:4px;background:rgba(255,255,255,.08);overflow:hidden}
+.gd-scnd i{display:block;height:100%;border-radius:4px}
+.gd-scnc .dl{font-family:"Space Mono",monospace;font-size:9px;color:var(--fog);margin-top:3px}

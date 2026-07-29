@@ -32,12 +32,12 @@
       for (var k = 0; k < olds.length; k++) { if (olds[k].parentNode) olds[k].parentNode.removeChild(olds[k]); }
       var link = document.createElement("link");
       link.rel = "icon"; link.type = "image/png"; link.setAttribute("sizes", "48x48");
-      link.href = "assets/icons/favicon-" + col + "-48.png?v=94";
+      link.href = "assets/icons/favicon-" + col + "-48.png?v=95";
       document.head.appendChild(link);
     } catch (e) {}
     try {
       var badge = document.querySelector(".badge");
-      if (badge) badge.style.backgroundImage = 'url("assets/icons/product-' + col + '-216.png?v=94")';
+      if (badge) badge.style.backgroundImage = 'url("assets/icons/product-' + col + '-216.png?v=95")';
     } catch (e) {}
   }
   function applyChannel(i) {
@@ -1895,6 +1895,34 @@
       lh += '<span class="gd-fa">→</span><div class="gd-drop" data-tip="The drop — release the tension you built">DROP</div></div>';
       D.push(["How the three settings work", '<div class="gi"><div class="gi-title">Beat FX time division</div><div class="gi-card">' + td + '</div></div>' +
         '<div class="gi"><div class="gi-title">Loop halving → tension build</div><div class="gi-card">' + lh + '<p class="gi-note">Halve the loop each phrase (4→2→1→½ bar), often with a Beat FX Roll, to wind tension right into the drop.</p></div></div>']);
+
+      var fxcat = [["Echo", "Decaying repeats — wash out or thicken", "1/1 \u00b7 50\u201370%", "#2FE6FF"], ["Delay", "Level-held rhythmic repeats", "1/4\u20131/2 \u00b7 30\u201350%", "#2FE6FF"], ["Reverb", "Space & tail, no distinct repeats", "1/1 \u00b7 50\u2013100%", "#8A63FF"], ["Roll", "Stutter riser — the tension tool", "1/8\u21921/16 \u00b7 50\u2192100%", "#FF3D9A"], ["Ping-Pong", "L\u2194R bounce — adds width", "1/2 \u00b7 40\u201360%", "#8A63FF"], ["Spiral", "Pitch-climbing echo", "1/1 \u00b7 60\u2013100%", "#FF3D9A"], ["Filter", "Sweep lows / highs in or out", "to taste", "#C6F000"], ["Vinyl Brake", "Tape-stop to a halt", "1/8\u20131/4 \u00b7 80\u2013100%", "#FF9A3C"], ["Flanger", "Comb-filter colour sweep", "1/1 \u00b7 30\u201350%", "#8A63FF"]];
+      var fxc = '<div class="gd-fxcat">';
+      fxcat.forEach(function (f) { fxc += '<div class="gd-fxc" data-tip="' + f[0] + ' \u2014 ' + f[1] + ' \u00b7 typical ' + f[2] + '" style="--fc:' + f[3] + '"><b>' + f[0] + '</b><div class="w">' + f[1] + '</div><div class="s">' + f[2] + '</div></div>'; });
+      fxc += '</div>';
+      D.push(["Beat FX types", '<div class="gi"><div class="gi-title">Beat FX catalog — reach for the right one</div>' + fxc + '</div>']);
+      var kcx = 100, kcy = 92, kr = 52;
+      function kpt(a, rad) { var t = a * Math.PI / 180; return [(kcx + rad * Math.sin(t)).toFixed(1), (kcy - rad * Math.cos(t)).toFixed(1)]; }
+      var knob = '<svg viewBox="0 0 520 170" width="100%" style="display:block" aria-hidden="true">';
+      knob += '<circle cx="' + kcx + '" cy="' + kcy + '" r="' + (kr + 12) + '" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.1)"/>';
+      var la0 = kpt(-135, kr), la1 = kpt(-10, kr);
+      knob += '<path d="M' + la0[0] + ' ' + la0[1] + ' A' + kr + ' ' + kr + ' 0 0 1 ' + la1[0] + ' ' + la1[1] + '" fill="none" stroke="#2FE6FF" stroke-width="6" stroke-linecap="round" data-tip="Turn LEFT — low-pass filter: removes highs, darker; the classic take-out" style="cursor:pointer"/>';
+      var ra0 = kpt(10, kr), ra1 = kpt(135, kr);
+      knob += '<path d="M' + ra0[0] + ' ' + ra0[1] + ' A' + kr + ' ' + kr + ' 0 0 1 ' + ra1[0] + ' ' + ra1[1] + '" fill="none" stroke="#C6F000" stroke-width="6" stroke-linecap="round" data-tip="Turn RIGHT — high-pass filter: removes lows, thinner; clean way to bring a track in" style="cursor:pointer"/>';
+      var kp = kpt(0, kr - 6);
+      knob += '<line x1="' + kcx + '" y1="' + kcy + '" x2="' + kp[0] + '" y2="' + kp[1] + '" stroke="#ECECF4" stroke-width="2.5" stroke-linecap="round"/><circle cx="' + kcx + '" cy="' + kcy + '" r="5" fill="#ECECF4"/>';
+      knob += '<text x="' + kcx + '" y="' + (kcy - kr - 18) + '" fill="rgba(236,236,244,0.7)" font-family="Space Mono,monospace" font-size="8.5" text-anchor="middle">CENTRE = DRY</text>';
+      knob += '<text x="' + kcx + '" y="158" fill="rgba(236,236,244,0.6)" font-family="Space Mono,monospace" font-size="8.5" text-anchor="middle">\u25c0 LPF (darker) \u00b7 dry \u00b7 HPF (thinner) \u25b6</text>';
+      var modes = [["Dub Echo", "filtered echo that builds", "#8A63FF"], ["Noise", "riser under a build", "#FF9A3C"], ["Sweep", "alt low / high sweep", "#2FE6FF"], ["Crush", "bit-crush / distortion", "#FF3D9A"]];
+      var my = 40; modes.forEach(function (m) { knob += '<g data-tip="Colour mode: ' + m[0] + ' \u2014 ' + m[1] + '" style="cursor:pointer"><rect x="250" y="' + (my - 11) + '" width="12" height="12" rx="3" fill="' + m[2] + '"/><text x="270" y="' + (my - 1) + '" fill="#ECECF4" font-family="Space Mono,monospace" font-size="10">' + m[0] + '</text><text x="270" y="' + (my + 11) + '" fill="rgba(236,236,244,0.5)" font-family="Space Mono,monospace" font-size="8">' + m[1] + '</text></g>'; my += 32; });
+      knob += '</svg>';
+      D.push(["per-channel knob", '<div class="gi"><div class="gi-title">The Colour knob (per channel)</div><div class="gi-card">' + knob + '<p class="gi-note">Per-channel, so you can HPF the outgoing track thin while the incoming stays full \u2014 a clean hand-off without touching the EQ.</p></div></div>']);
+      var scen = [["Smooth 8-bar house blend", "8-bar loop", "Echo", "1/1", "40%", 40, "#7CE88A"], ["Build into a big drop", "4\u2192\u00bd bar", "Roll", "1/8\u21921/16", "50\u2192100%", 100, "#FF6A6A"], ["Wash out & exit", "\u2014", "Echo/Reverb", "1/1", "50\u201370%", 65, "#FFC24B"], ["Slam the drop", "\u2014", "Roll/Reverb", "1/8", "80\u2013100%", 95, "#FF6A6A"], ["Genre switch \u2192 DnB", "halftime", "Reverb+roll", "1/1", "60%", 60, "#FFC24B"], ["Escape a clash", "\u2014", "Echo", "1/1", "60%", 60, "#7CE88A"], ["Tape-stop into trap", "1\u20132 bar", "Vinyl Brake", "1/8", "80\u2013100%", 90, "#FF6A6A"], ["Extend a breakdown", "16-bar loop", "Reverb", "1/1", "50\u201370%", 60, "#7CE88A"]];
+      var scc = '<div class="gd-scn">';
+      scen.forEach(function (s) { scc += '<div class="gd-scnc" data-tip="' + s[0] + ' \u2014 loop ' + s[1] + ' \u00b7 ' + s[2] + ' ' + s[3] + ' \u00b7 depth ' + s[4] + '"><h6>' + s[0] + '</h6><div class="gd-scnr"><span>LOOP ' + s[1] + '</span><span>' + s[2] + '</span><span>' + s[3] + '</span></div><div class="gd-scnd"><i style="width:' + s[5] + '%;background:' + s[6] + '"></i></div><div class="dl">depth ' + s[4] + '</div></div>'; });
+      scc += '</div>';
+      D.push(["Scenarios", '<div class="gi"><div class="gi-title">Scenario recipes — situation \u2192 settings</div>' + scc + '</div>']);
+
     }
     if (name === "Live Performance Playbook") {
       var W = 520, H = 34, gm = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block" aria-hidden="true">';
@@ -2372,7 +2400,7 @@
     aboutEl = document.createElement("div"); aboutEl.className = "overlay about"; aboutEl.id = "aboutOverlay"; aboutEl.setAttribute("role", "dialog");
     aboutEl.innerHTML = '<div class="aboutsheet"><div class="cmphead"><span>About Me</span><button class="x" id="aboutClose">✕ close</button></div>' +
       '<div class="aboutbody">' +
-      '<div class="aboutpic"><div class="apic-frame"><img src="assets/about-me.jpg?v=94" alt="DJ7 - Wilsonlicioussss" onerror="this.parentNode.classList.add(\'empty\');this.remove()"></div><span class="aname">DJ7 · Wilsonlicioussss</span></div>' +
+      '<div class="aboutpic"><div class="apic-frame"><img src="assets/about-me.jpg?v=95" alt="DJ7 - Wilsonlicioussss" onerror="this.parentNode.classList.add(\'empty\');this.remove()"></div><span class="aname">DJ7 · Wilsonlicioussss</span></div>' +
       '<div class="aboutsec"><h4>★ Things I Love</h4><p>Thoughtful spaces, quiet details, electronic music, new technology and ideas that feel slightly ahead of their time.</p></div>' +
       '<div class="aboutsec"><h4>Always Learning</h4><p>Everything begins with curiosity. I explore how design, data, people and culture connect.</p></div>' +
       '<div class="aboutsec"><h4>I DJ</h4><p>A personal journey through electronic music — from high-energy moments to deeper, melodic and atmospheric sounds.</p></div>' +
@@ -2628,5 +2656,5 @@
     if (!_scAC || !_scGain) return;
     try { _scGain.gain.setTargetAtTime(0, _scAC.currentTime, 0.05); } catch (e) {}
   }
-  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, version: "V94" };
+  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, version: "V95" };
 })();
