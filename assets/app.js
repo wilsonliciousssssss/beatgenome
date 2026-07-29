@@ -32,12 +32,12 @@
       for (var k = 0; k < olds.length; k++) { if (olds[k].parentNode) olds[k].parentNode.removeChild(olds[k]); }
       var link = document.createElement("link");
       link.rel = "icon"; link.type = "image/png"; link.setAttribute("sizes", "48x48");
-      link.href = "assets/icons/favicon-" + col + "-48.png?v=93";
+      link.href = "assets/icons/favicon-" + col + "-48.png?v=94";
       document.head.appendChild(link);
     } catch (e) {}
     try {
       var badge = document.querySelector(".badge");
-      if (badge) badge.style.backgroundImage = 'url("assets/icons/product-' + col + '-216.png?v=93")';
+      if (badge) badge.style.backgroundImage = 'url("assets/icons/product-' + col + '-216.png?v=94")';
     } catch (e) {}
   }
   function applyChannel(i) {
@@ -1956,9 +1956,61 @@
       mxs += '<text x="13" y="' + ((mxPt + mxH - mxPb) / 2) + '" fill="rgba(236,236,244,0.55)" font-family="Space Mono,monospace" font-size="8.5" text-anchor="middle" transform="rotate(-90 13 ' + ((mxPt + mxH - mxPb) / 2) + ')">RISK  (low → high) →</text>';
       mxPts.forEach(function (p) { var x = mxX(p[1]), y = mxY(p[2]), right = p[1] > 0.68, lx = right ? (x - 8) : (x + 8), anch = right ? 'end' : 'start'; mxs += '<g data-tip="' + p[0] + ' — energy ' + Math.round(p[1] * 10) + '/10 · risk ' + Math.round(p[2] * 10) + '/10" style="cursor:pointer"><circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="5" fill="' + p[3] + '"/><text x="' + lx.toFixed(1) + '" y="' + (y + 3).toFixed(1) + '" fill="#ECECF4" font-family="Space Mono,monospace" font-size="8.5" text-anchor="' + anch + '">' + p[0] + '</text></g>'; });
       mxs += '</svg>';
+      function tvx(f) { return (70 + f * 440).toFixed(1); }
+      function tvDeck(rows, blend) {
+        var H = 20 + rows.length * 30, s = '<svg viewBox="0 0 520 ' + H + '" width="100%" style="display:block" aria-hidden="true">';
+        if (blend) { var b0 = +tvx(blend[0]), b1 = +tvx(blend[1]); s += '<rect x="' + b0.toFixed(1) + '" y="2" width="' + (b1 - b0).toFixed(1) + '" height="' + (H - 4) + '" fill="rgba(198,240,0,0.06)" stroke="rgba(198,240,0,0.35)" stroke-dasharray="3 3"/><text x="' + ((b0 + b1) / 2).toFixed(1) + '" y="11" fill="#C6F000" font-family="Space Mono,monospace" font-size="7.5" text-anchor="middle">BLEND</text>'; }
+        rows.forEach(function (r, ri) { var y = 16 + ri * 30; s += '<text x="4" y="' + (y + 14) + '" fill="' + r[1] + '" font-family="Space Mono,monospace" font-size="8.5">' + r[0] + '</text>'; r[2].forEach(function (g) { var x0 = +tvx(g[0]), x1 = +tvx(g[1]); s += '<g data-tip="' + r[0] + ' — ' + g[3] + '" style="cursor:pointer"><rect x="' + x0.toFixed(1) + '" y="' + y + '" width="' + (x1 - x0).toFixed(1) + '" height="20" rx="3" fill="' + g[2] + '"/><text x="' + ((x0 + x1) / 2).toFixed(1) + '" y="' + (y + 13) + '" fill="rgba(236,236,244,0.92)" font-family="Space Mono,monospace" font-size="7.5" text-anchor="middle">' + g[3] + '</text></g>'; }); });
+        return s + '</svg>';
+      }
+      function tvCurve(curves, marks) {
+        var W = 520, H = 110, pl = 70, pr = 10, pt = 16, pb = 20;
+        var cx = function (f) { return (pl + f * (W - pl - pr)).toFixed(1); }, cy = function (v) { return (H - pb - v * (H - pb - pt)).toFixed(1); };
+        var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block" aria-hidden="true">';
+        ["0", "50", "100"].forEach(function (lab, gi) { var g = gi / 2; s += '<line x1="' + pl + '" y1="' + cy(g) + '" x2="' + (W - pr) + '" y2="' + cy(g) + '" stroke="rgba(255,255,255,0.05)"/><text x="' + (pl - 6) + '" y="' + (+cy(g) + 3) + '" fill="rgba(236,236,244,0.4)" font-family="Space Mono,monospace" font-size="7" text-anchor="end">' + lab + '</text>'; });
+        marks.forEach(function (m) { s += '<line x1="' + cx(m[0]) + '" y1="' + pt + '" x2="' + cx(m[0]) + '" y2="' + (H - pb) + '" stroke="rgba(198,240,0,0.4)" stroke-dasharray="3 3"/><text x="' + cx(m[0]) + '" y="' + (pt - 4) + '" fill="#C6F000" font-family="Space Mono,monospace" font-size="7.5" text-anchor="middle">' + m[1] + '</text>'; });
+        curves.forEach(function (c) { var p = c[3], d = 'M' + cx(p[0][0]) + ' ' + cy(p[0][1]); for (var i = 1; i < p.length; i++) d += ' L' + cx(p[i][0]) + ' ' + cy(p[i][1]); s += '<path d="' + d + '" fill="none" stroke="' + c[1] + '" stroke-width="2" stroke-linejoin="round"' + (c[2] ? ' stroke-dasharray="4 3"' : '') + ' data-tip="' + c[0] + ' — level over the transition" style="cursor:pointer"/>'; });
+        s += '<text x="' + pl + '" y="' + (H - 5) + '" fill="rgba(236,236,244,0.4)" font-family="Space Mono,monospace" font-size="7.5">transition time \u2192</text>';
+        return s + '</svg>';
+      }
+      function tvLegend(cs) { var l = '<div class="gi-legend" style="margin-top:8px">'; cs.forEach(function (c) { l += '<span class="gi-chip"><i class="gi-dot" style="background:' + c[1] + '"></i>' + c[0] + '</span>'; }); return l + '</div>'; }
+      var TV = [
+        { name: "Long blend", entry: "intro \u203a outro", risk: "LOW", rc: "#7CE88A",
+          deck: [["A\u00b7out", "#FF3D9A", [[0, 0.6, "rgba(255,61,154,0.22)", "groove"], [0.6, 0.85, "#FF9A3C", "outro"]]], ["B\u00b7in", "#2FE6FF", [[0.15, 0.55, "rgba(47,230,255,0.7)", "intro"], [0.55, 1, "rgba(198,240,0,0.7)", "drop"]]]],
+          blend: [0.15, 0.85],
+          curves: [["Out fader", "#FF3D9A", 0, [[0, 1], [0.6, 1], [0.85, 0]]], ["In fader", "#2FE6FF", 0, [[0, 0], [0.15, 0], [0.5, 1], [1, 1]]], ["Low-EQ swap", "#C6F000", 1, [[0, 1], [0.5, 1], [0.62, 0]]]],
+          marks: [[0.55, "bass swap"]], cap: "Long 16\u201332 bar overlap \u2014 beatmatch, then trade the lows on a phrase boundary. The safest move." },
+        { name: "Breakdown mix", entry: "into the breakdown", risk: "LOW", rc: "#7CE88A",
+          deck: [["A\u00b7out", "#FF3D9A", [[0, 0.4, "rgba(255,61,154,0.22)", "groove"], [0.4, 0.7, "#8A63FF", "breakdown"], [0.7, 0.9, "rgba(255,61,154,0.22)", "re-build"]]], ["B\u00b7in", "#2FE6FF", [[0.4, 0.7, "rgba(47,230,255,0.7)", "layer"], [0.7, 1, "rgba(198,240,0,0.7)", "beat in"]]]],
+          blend: [0.4, 0.85],
+          curves: [["Out fader", "#FF3D9A", 0, [[0, 1], [0.7, 1], [0.9, 0]]], ["In fader", "#2FE6FF", 0, [[0, 0], [0.4, 0.45], [0.7, 1], [1, 1]]], ["In kick", "#C6F000", 0, [[0, 0], [0.7, 0], [0.7, 1], [1, 1]]]],
+          marks: [[0.7, "kick return"]], cap: "Enter over the beatless breakdown \u2014 no kick clash, so you can layer. Drop the incoming's beat back in on the re-build." },
+        { name: "Drop swap / double-drop", entry: "drop \u203a drop", risk: "HIGH", rc: "#FF6A6A",
+          deck: [["A\u00b7out", "#FF3D9A", [[0, 0.45, "rgba(255,61,154,0.22)", "build"], [0.45, 0.55, "#FF3D9A", "DROP"]]], ["B\u00b7in", "#2FE6FF", [[0.33, 0.45, "rgba(47,230,255,0.5)", "build"], [0.45, 1, "#FF3D9A", "DROP"]]]],
+          blend: [0.42, 0.56],
+          curves: [["Out fader", "#FF3D9A", 0, [[0, 1], [0.5, 1], [0.5, 0]]], ["In fader", "#2FE6FF", 0, [[0, 0], [0.5, 0], [0.5, 1], [1, 1]]]],
+          marks: [[0.5, "the 1 \u00b7 drop"]], cap: "Line up both drops on the phrase and swap on the downbeat. Match keys first \u2014 the least forgiving move in the book." },
+        { name: "Hard cut / slam", entry: "straight to beat 1", risk: "MED", rc: "#FFC24B",
+          deck: [["A\u00b7out", "#FF3D9A", [[0, 0.5, "rgba(255,61,154,0.22)", "groove"]]], ["B\u00b7in", "#2FE6FF", [[0.5, 1, "#FF3D9A", "drop / beat 1"]]]],
+          blend: null,
+          curves: [["Out fader", "#FF3D9A", 0, [[0, 1], [0.5, 1], [0.5, 0]]], ["In fader", "#2FE6FF", 0, [[0, 0], [0.5, 0], [0.5, 1], [1, 1]]]],
+          marks: [[0.5, "cut on downbeat"]], cap: "No blend \u2014 silence the outgoing (or let it end) and drop the incoming on beat 1, often with a spin-back or tape-stop." },
+        { name: "FX wash-out", entry: "over the tail", risk: "LOW", rc: "#7CE88A",
+          deck: [["A\u00b7out", "#FF3D9A", [[0, 0.5, "rgba(255,61,154,0.22)", "groove"], [0.5, 0.78, "rgba(255,154,60,0.4)", "echo tail"]]], ["B\u00b7in", "#2FE6FF", [[0.6, 1, "rgba(47,230,255,0.7)", "intro"]]]],
+          blend: [0.6, 0.78],
+          curves: [["Out fader", "#FF3D9A", 0, [[0, 1], [0.5, 1], [0.75, 0]]], ["Echo depth", "#C6F000", 0, [[0, 0], [0.45, 0], [0.6, 0.7], [0.78, 0]]], ["In fader", "#2FE6FF", 0, [[0, 0], [0.6, 0], [0.85, 1], [1, 1]]]],
+          marks: [[0.5, "echo 1/1"], [0.74, "pull fader"]], cap: "Echo/reverb the outgoing away and bring the incoming in under the tail, then pull the fader once it's covered." },
+        { name: "Loop-roll build", entry: "loop \u203a release", risk: "MED", rc: "#FFC24B",
+          deck: [["A\u00b7out", "#FF3D9A", [[0, 0.4, "rgba(255,61,154,0.22)", "groove"], [0.4, 0.5, "#C6F000", "4 bar"], [0.5, 0.58, "#C6F000", "2"], [0.58, 0.64, "#C6F000", "1"], [0.64, 0.7, "#C6F000", "\u00bd"]]], ["B\u00b7in", "#2FE6FF", [[0.7, 1, "#FF3D9A", "drop"]]]],
+          blend: [0.68, 0.72],
+          curves: [["Roll depth", "#C6F000", 0, [[0, 0], [0.4, 0.3], [0.7, 1], [0.7, 0]]], ["Out fader", "#FF3D9A", 0, [[0, 1], [0.7, 1], [0.7, 0]]], ["In fader", "#2FE6FF", 0, [[0, 0], [0.7, 0], [0.7, 1], [1, 1]]]],
+          marks: [[0.7, "release on 1"]], cap: "Loop the outgoing and halve it (4\u21921\u2192\u00bd bar) with a roll to build tension, then release exactly on the 1 into the drop." }
+      ];
+      var details = '<div class="gi-title" style="margin-top:8px">Each entry, step by step \u2014 deck overlap + control moves</div>';
+      TV.forEach(function (t) { details += '<div class="gi"><div class="gd-tvhead"><b>' + t.name + '</b><span class="gd-tment">enter: ' + t.entry + '</span><span class="gd-risk" style="--rc:' + t.rc + '">' + t.risk + '</span></div><div class="gi-card"><div class="gd-sub">Deck overlap</div>' + tvDeck(t.deck, t.blend) + '<div class="gd-sub">Control moves (level %)</div>' + tvCurve(t.curves, t.marks) + tvLegend(t.curves) + '<p class="gi-note">' + t.cap + '</p></div></div>'; });
       D.push(["Mix entry points", '<div class="gi"><div class="gi-title">Song anatomy — where you can enter</div><div class="gi-card">' + ana + '</div></div>' +
         '<div class="gi"><div class="gi-title">Six entry styles &amp; how to manage each</div>' + mcards + '</div>' +
-        '<div class="gi"><div class="gi-title">Pick your move — energy vs risk</div><div class="gi-card">' + mxs + '<p class="gi-note">Low-energy entries (long blend, wash-out) forgive loose timing; high-energy entries (drop swap) demand phrase-perfect, key-matched execution.</p></div></div>']);
+        '<div class="gi"><div class="gi-title">Pick your move — energy vs risk</div><div class="gi-card">' + mxs + '<p class="gi-note">Low-energy entries (long blend, wash-out) forgive loose timing; high-energy entries (drop swap) demand phrase-perfect, key-matched execution.</p></div></div>' + details]);
 
     }
     if (name === "Sources & Method") {
@@ -2320,7 +2372,7 @@
     aboutEl = document.createElement("div"); aboutEl.className = "overlay about"; aboutEl.id = "aboutOverlay"; aboutEl.setAttribute("role", "dialog");
     aboutEl.innerHTML = '<div class="aboutsheet"><div class="cmphead"><span>About Me</span><button class="x" id="aboutClose">✕ close</button></div>' +
       '<div class="aboutbody">' +
-      '<div class="aboutpic"><div class="apic-frame"><img src="assets/about-me.jpg?v=93" alt="DJ7 - Wilsonlicioussss" onerror="this.parentNode.classList.add(\'empty\');this.remove()"></div><span class="aname">DJ7 · Wilsonlicioussss</span></div>' +
+      '<div class="aboutpic"><div class="apic-frame"><img src="assets/about-me.jpg?v=94" alt="DJ7 - Wilsonlicioussss" onerror="this.parentNode.classList.add(\'empty\');this.remove()"></div><span class="aname">DJ7 · Wilsonlicioussss</span></div>' +
       '<div class="aboutsec"><h4>★ Things I Love</h4><p>Thoughtful spaces, quiet details, electronic music, new technology and ideas that feel slightly ahead of their time.</p></div>' +
       '<div class="aboutsec"><h4>Always Learning</h4><p>Everything begins with curiosity. I explore how design, data, people and culture connect.</p></div>' +
       '<div class="aboutsec"><h4>I DJ</h4><p>A personal journey through electronic music — from high-energy moments to deeper, melodic and atmospheric sounds.</p></div>' +
@@ -2576,5 +2628,5 @@
     if (!_scAC || !_scGain) return;
     try { _scGain.gain.setTargetAtTime(0, _scAC.currentTime, 0.05); } catch (e) {}
   }
-  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, version: "V93" };
+  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, version: "V94" };
 })();
