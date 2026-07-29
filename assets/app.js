@@ -32,12 +32,12 @@
       for (var k = 0; k < olds.length; k++) { if (olds[k].parentNode) olds[k].parentNode.removeChild(olds[k]); }
       var link = document.createElement("link");
       link.rel = "icon"; link.type = "image/png"; link.setAttribute("sizes", "48x48");
-      link.href = "assets/icons/favicon-" + col + "-48.png?v=88";
+      link.href = "assets/icons/favicon-" + col + "-48.png?v=90";
       document.head.appendChild(link);
     } catch (e) {}
     try {
       var badge = document.querySelector(".badge");
-      if (badge) badge.style.backgroundImage = 'url("assets/icons/product-' + col + '-216.png?v=88")';
+      if (badge) badge.style.backgroundImage = 'url("assets/icons/product-' + col + '-216.png?v=90")';
     } catch (e) {}
   }
   function applyChannel(i) {
@@ -1747,6 +1747,157 @@
   renderLegend();
   legend.querySelector(".tog").addEventListener("click", function () { legend.classList.toggle("collapsed"); });
 
+  // ---- V89: Guide Lab infographics (visual hero per guide) ----
+  function giWedge(cx, cy, r0, r1, a0, a1, fill) {
+    var P = function (r, a) { return (cx + r * Math.cos(a)).toFixed(1) + " " + (cy + r * Math.sin(a)).toFixed(1); };
+    var lg = (a1 - a0) > Math.PI ? 1 : 0;
+    return '<path d="M' + P(r1, a0) + ' A' + r1 + ' ' + r1 + ' 0 ' + lg + ' 1 ' + P(r1, a1) + ' L' + P(r0, a1) + ' A' + r0 + ' ' + r0 + ' 0 ' + lg + ' 0 ' + P(r0, a0) + ' Z" fill="' + fill + '"/>';
+  }
+  function guideHero(name) {
+    if (name === "Harmonic Mixing & Camelot") {
+      var cx = 150, cy = 150, rIn = 56, rA = 90, rB = 122, sv = '<svg viewBox="0 0 300 300" width="100%" style="max-width:270px;display:block;margin:2px auto 0" aria-hidden="true">';
+      for (var k = 1; k <= 12; k++) {
+        var a0 = ((k - 1) / 12) * 6.2832 - 1.5708 - 0.2618, a1 = a0 + 0.5236, hue = ((k - 1) / 12) * 360, am = (a0 + a1) / 2;
+        sv += giWedge(cx, cy, rIn + 4, rB, a0 + 0.02, a1 - 0.02, "hsla(" + hue + ",72%,55%,0.16)");
+        sv += '<text x="' + (cx + Math.cos(am) * (rB - 9)).toFixed(0) + '" y="' + (cy + Math.sin(am) * (rB - 9) + 4).toFixed(0) + '" fill="hsl(' + hue + ',82%,70%)" font-family="Space Mono,monospace" font-size="12" font-weight="700" text-anchor="middle">' + k + '</text>';
+        sv += '<text x="' + (cx + Math.cos(am) * (rA - 14)).toFixed(0) + '" y="' + (cy + Math.sin(am) * (rA - 14) + 3).toFixed(0) + '" fill="rgba(236,236,244,0.5)" font-family="Space Mono,monospace" font-size="7.5" text-anchor="middle">' + (MINKEY[k] || "") + '</text>';
+      }
+      sv += '<circle cx="150" cy="150" r="' + rA + '" fill="none" stroke="rgba(150,200,255,0.22)"/><circle cx="150" cy="150" r="' + rB + '" fill="none" stroke="rgba(255,200,80,0.22)"/>';
+      sv += '<circle cx="150" cy="150" r="' + rIn + '" fill="rgba(255,205,90,0.12)" stroke="rgba(255,200,90,0.4)"/>';
+      sv += '<text x="150" y="147" fill="rgba(28,18,4,0.92)" font-family="Space Grotesk,sans-serif" font-size="10.5" font-weight="700" text-anchor="middle">MIX IN</text><text x="150" y="159" fill="rgba(28,18,4,0.92)" font-family="Space Grotesk,sans-serif" font-size="10.5" font-weight="700" text-anchor="middle">HARMONY</text></svg>';
+      var lg = '<div class="gi-legend">' +
+        '<span class="gi-chip"><i class="gi-dot" style="background:#C6F000"></i>Perfect — same key</span>' +
+        '<span class="gi-chip"><i class="gi-dot" style="background:#2FE6FF"></i>Smooth — ±1 number</span>' +
+        '<span class="gi-chip"><i class="gi-dot" style="background:#FF3D9A"></i>Mood — A↔B</span>' +
+        '<span class="gi-chip"><i class="gi-dot" style="background:#FFC24B"></i>Energy — +2 (advanced)</span></div>';
+      return '<div class="gi"><div class="gi-title">The Camelot wheel</div><div class="gi-card">' + sv + lg + '<p class="gi-note">Inner ring = minor (A), outer = major (B). From any key: stay, step ±1, or flip A↔B — never jump across.</p></div></div>';
+    }
+    if (name === "Set Building — Energy Arc") {
+      var W = 560, H = 190, pl = 10, pb = 26, pt = 12,
+        pts = [[0, 2], [0.13, 3], [0.27, 5], [0.42, 7.5], [0.54, 9], [0.68, 9], [0.78, 8], [0.9, 4], [1, 3]],
+        Xf = function (f) { return (pl + f * (W - pl - 8)).toFixed(1); }, Yf = function (e) { return (H - pb - (e / 10) * (H - pb - pt)).toFixed(1); },
+        d = "M" + Xf(pts[0][0]) + " " + Yf(pts[0][1]);
+      for (var i = 1; i < pts.length; i++) d += " L" + Xf(pts[i][0]) + " " + Yf(pts[i][1]);
+      var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block" aria-hidden="true"><defs><linearGradient id="giEg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FF3D9A" stop-opacity="0.32"/><stop offset="1" stop-color="#8A63FF" stop-opacity="0.02"/></linearGradient></defs>';
+      for (var e = 2; e <= 10; e += 2) svg += '<line x1="' + pl + '" y1="' + Yf(e) + '" x2="' + (W - 8) + '" y2="' + Yf(e) + '" stroke="rgba(255,255,255,0.05)"/>';
+      svg += '<path d="' + d + ' L' + Xf(1) + ' ' + Yf(0) + ' L' + Xf(0) + ' ' + Yf(0) + ' Z" fill="url(#giEg)"/>';
+      svg += '<path d="' + d + '" fill="none" stroke="#FF3D9A" stroke-width="2.5" stroke-linejoin="round"/>';
+      var labs = [["Warm-up", 0.08], ["Build", 0.32], ["Peak", 0.58], ["Plateau", 0.72], ["Wind-down", 0.92]];
+      labs.forEach(function (l) { svg += '<text x="' + Xf(l[1]) + '" y="' + (H - 8) + '" fill="rgba(236,236,244,0.6)" font-family="Space Mono,monospace" font-size="9" text-anchor="middle">' + l[0] + '</text>'; });
+      svg += '</svg>';
+      var stg = [["Warm-up", "110–122 BPM", 3, "Set the mood, don't peak too soon."], ["Build", "120–126 BPM", 5, "Lift steadily, introduce groove."], ["Peak", "126–140 BPM", 9, "Main room, maximum floor."], ["Hard peak", "140+ BPM", 10, "Bursts only — not for long."], ["Wind-down", "back to 3–5", 4, "Release the tension, land the plane."]];
+      var cards = '<div class="gi-stages">';
+      stg.forEach(function (s) { cards += '<div class="gi-stage"><h5>' + s[0] + '</h5><div class="bpm">' + s[1] + '</div><div class="gi-meter"><i style="width:' + (s[2] * 10) + '%"></i></div><p>' + s[3] + '</p></div>'; });
+      cards += '</div>';
+      return '<div class="gi"><div class="gi-title">The energy arc</div><div class="gi-card">' + svg + '</div>' + cards + '</div>';
+    }
+    if (name === "FX & Loop Settings") {
+      var chain = ["LOOP|16 → ½ bar", "BEAT DIV|1/1 → 1/8", "EFFECT|Echo / Roll", "DEPTH|20 → 100%", "RELEASE|on beat 1"], ch = '<div class="gi-chain">';
+      chain.forEach(function (n, i) { var p = n.split("|"); ch += (i ? '<span class="gi-arrow">→</span>' : "") + '<span class="gi-node"><b>' + p[0] + '</b>' + p[1] + '</span>'; });
+      ch += '</div>';
+      var bands = [["20–40% · subtle colour", 35, "#2FE6FF"], ["50–70% · obvious wash", 60, "#FFC24B"], ["80–100% · effect takes over", 92, "#FF3D9A"]], bh = '<div class="gi-title" style="margin-top:16px">Depth (wet / dry)</div>';
+      bands.forEach(function (b) { bh += '<div class="gi-band"><span>' + b[0] + '</span><div class="gi-meter"><i style="width:' + b[1] + '%;background:' + b[2] + '"></i></div></div>'; });
+      return '<div class="gi"><div class="gi-title">Signal chain</div><div class="gi-card">' + ch + bh + '</div></div>';
+    }
+    if (name === "Live Performance Playbook") {
+      var W = 560, H = 66, wf = "";
+      for (var j = 0; j < 70; j++) { var hh = (8 + (Math.sin(j * 0.55) * 0.5 + 0.5) * (j > 18 && j < 44 ? 34 : 15)).toFixed(0); wf += '<rect x="' + (j * 8 + 2) + '" y="' + ((H - hh) / 2).toFixed(0) + '" width="4" height="' + hh + '" rx="1" fill="rgba(150,150,185,0.28)"/>'; }
+      var cues = [[0.05, "A", "Mix in", "#5CE68A"], [0.3, "B", "Impact", "#FF4D4D"], [0.62, "C", "Escape", "#4C8CFF"], [0.9, "D", "Mix out", "#FF9A3C"]], cm = "";
+      cues.forEach(function (c) { var x = (c[0] * W).toFixed(0); cm += '<line x1="' + x + '" y1="0" x2="' + x + '" y2="' + H + '" stroke="' + c[3] + '" stroke-width="2"/><circle cx="' + x + '" cy="9" r="8" fill="' + c[3] + '"/><text x="' + x + '" y="12.5" fill="#08080F" font-family="Space Mono,monospace" font-size="9" font-weight="700" text-anchor="middle">' + c[1] + '</text>'; });
+      var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block" aria-hidden="true">' + wf + cm + '</svg>';
+      var leg = '<div class="gi-legend">';
+      cues.forEach(function (c) { leg += '<span class="gi-chip"><i class="gi-dot" style="background:' + c[3] + '"></i>' + c[1] + ' — ' + c[2] + '</span>'; });
+      leg += '</div>';
+      return '<div class="gi"><div class="gi-title">Cue-point map (set A–D on every track)</div><div class="gi-card">' + svg + leg + '<p class="gi-note">Intro → first drop → breakdown → outro. Colour-code cues the same across your library for muscle memory in the booth.</p></div></div>';
+    }
+    if (name === "Sources & Method") {
+      var rows = [["Genre / subgenre taxonomy", "src", "Sourced", "Beatport label-delivery"], ["Origin / era", "src", "Sourced", "documented genre history"], ["Representative artists / tracks", "can", "Canonical", "expert + web-verified"], ["BPM ranges", "con", "Convention", "common DJ references"], ["Common keys / Camelot", "con", "Convention", "genre tonal tendency"], ["Production / arrangement norms", "con", "Convention", "standard conventions"]], mx = '<table class="gi-matrix"><tr><td style="color:var(--fog);font-family:\'Space Mono\';font-size:10px">DATA</td><td style="color:var(--fog);font-family:\'Space Mono\';font-size:10px">BASIS</td><td style="color:var(--fog);font-family:\'Space Mono\';font-size:10px">FROM</td></tr>';
+      rows.forEach(function (r) { mx += '<tr><td>' + r[0] + '</td><td><span class="gi-badge gi-b-' + r[1] + '">' + r[2] + '</span></td><td style="color:var(--fog);font-size:11.5px">' + r[3] + '</td></tr>'; });
+      mx += '</table>';
+      return '<div class="gi"><div class="gi-title">Data-confidence matrix</div><div class="gi-card">' + mx + '<p class="gi-note"><span class="gi-badge gi-b-src">Sourced</span> external refs · <span class="gi-badge gi-b-can">Canonical</span> expert-verified · <span class="gi-badge gi-b-con">Convention</span> production norms, not measured.</p></div></div>';
+    }
+    return "";
+  }
+  // ---- V90: per-section guide diagrams + colourised body ----
+  function injectAfterH2(html, needle, frag) {
+    var idx = html.indexOf(needle); if (idx < 0) return html + frag;
+    var close = html.indexOf("</h2>", idx); if (close < 0) return html + frag;
+    close += 5; return html.slice(0, close) + frag + html.slice(close);
+  }
+  function gdBar(pct, col) { return '<i style="height:' + pct + '%;background:' + col + '"></i>'; }
+  function guideDiagrams(name) {
+    var D = [];
+    if (name === "Harmonic Mixing & Camelot") {
+      D.push(["compatible-move rules",
+        '<div class="gi"><div class="gi-title">Compatible moves from 8A</div><div class="gi-card gd-moves">' +
+        '<div class="gd-hub">8A<span>YOU ARE HERE</span></div><div class="gd-mv">' +
+        '<div class="gd-arm" style="--ac:#C6F000"><b>→ 8A</b>Same key · perfect blend</div>' +
+        '<div class="gd-arm" style="--ac:#2FE6FF"><b>→ 7A / 9A</b>±1 step · energy-preserving</div>' +
+        '<div class="gd-arm" style="--ac:#FF3D9A"><b>→ 8B</b>Flip A↔B · mood shift</div>' +
+        '<div class="gd-arm" style="--ac:#FFC24B"><b>→ 3A</b>+7 · energy boost (sparingly)</div>' +
+        '</div></div></div>']);
+      var W = 560, H = 116, pad = 22, lo = 60, hi = 180, bx = function (b) { return (pad + (b - lo) / (hi - lo) * (W - 2 * pad)).toFixed(1); }, yb = 74;
+      var ticks = [[70, "70", "Trap ½"], [124, "124", "House"], [140, "140", "Dubstep"], [174, "174", "DnB"]], sv = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block" aria-hidden="true">';
+      sv += '<line x1="' + pad + '" y1="' + yb + '" x2="' + (W - pad) + '" y2="' + yb + '" stroke="rgba(255,255,255,0.18)"/>';
+      function arc(b1, b2, lab, col) { var x1 = +bx(b1), x2 = +bx(b2), mx = (x1 + x2) / 2; return '<path d="M' + x1 + ' ' + yb + ' Q' + mx + ' 26 ' + x2 + ' ' + yb + '" fill="none" stroke="' + col + '" stroke-width="1.6" stroke-dasharray="4 3"/><text x="' + mx + '" y="30" fill="' + col + '" font-family="Space Mono,monospace" font-size="9" text-anchor="middle">' + lab + '</text>'; }
+      sv += arc(70, 140, "×2 double-time / ×½ halftime", "#2FE6FF");
+      sv += arc(87, 174, "×2 halftime bridge", "#FFC24B");
+      ticks.forEach(function (t) { var x = bx(t[0]); sv += '<line x1="' + x + '" y1="' + (yb - 5) + '" x2="' + x + '" y2="' + (yb + 5) + '" stroke="#ECECF4" stroke-width="2"/><text x="' + x + '" y="' + (yb + 20) + '" fill="#ECECF4" font-family="Space Mono,monospace" font-size="10" font-weight="700" text-anchor="middle">' + t[1] + '</text><text x="' + x + '" y="' + (yb + 32) + '" fill="rgba(236,236,244,0.55)" font-family="Space Mono,monospace" font-size="8" text-anchor="middle">' + t[2] + '</text>'; });
+      sv += '<text x="' + bx(87) + '" y="87" fill="rgba(236,236,244,0.5)" font-family="Space Mono,monospace" font-size="8" text-anchor="middle">DnB ½</text></svg>';
+      D.push(["Cross-genre", '<div class="gi"><div class="gi-title">BPM bridges (tempo ladder)</div><div class="gi-card">' + sv + '<p class="gi-note">Match keys first, then bridge tempo: small ±4 gaps pitch-ride; big gaps use the halftime / double-time feel (a 70 track sits under a 140, an 87 under a 174).</p></div></div>']);
+    }
+    if (name === "Set Building — Energy Arc") {
+      var steps = [["01", "Pick the arc"], ["02", "Sort Energy+BPM"], ["03", "Check keys"], ["04", "Plan bridges"], ["05", "Escape hatches"]], fl = '<div class="gd-flow">';
+      steps.forEach(function (s, i) { fl += (i ? '<span class="gd-fa">→</span>' : "") + '<div class="gd-step"><i>' + s[0] + '</i><h6>' + s[1] + '</h6></div>'; });
+      fl += '</div>';
+      D.push(["How to program it", '<div class="gi"><div class="gi-title">Program flow</div><div class="gi-card">' + fl + '</div></div>']);
+      var good = [30, 45, 58, 72, 85].map(function (h) { return gdBar(h, "#7CE88A"); }).join("");
+      var bad = gdBar(40, "#FF6A6A") + gdBar(10, "rgba(255,255,255,.08)") + gdBar(10, "rgba(255,255,255,.08)") + gdBar(10, "rgba(255,255,255,.08)") + gdBar(90, "#FF6A6A");
+      D.push(["Rules of thumb", '<div class="gi"><div class="gi-title">Move energy ±1–2 at a time</div><div class="gi-card gd-two">' +
+        '<div class="gd-ex good"><span class="tag">✓ GRADUAL 3→7</span><div class="gd-seq">' + good + '</div></div>' +
+        '<div class="gd-ex bad"><span class="tag">✕ JUMP 4→9</span><div class="gd-seq">' + bad + '</div></div></div></div>']);
+    }
+    if (name === "FX & Loop Settings") {
+      var td = '<div class="gd-td">' +
+        '<div class="z" style="background:rgba(47,230,255,.12);color:#2FE6FF"><b>SHORT</b>1/16 · 1/8 · 1/4<br><span style="color:var(--fog)">rolls → build tension</span></div>' +
+        '<div class="z" style="background:rgba(255,194,75,.12);color:#FFC24B"><b>MEDIUM</b>1/2 · 3/4<br><span style="color:var(--fog)">slap / echo groove</span></div>' +
+        '<div class="z" style="background:rgba(255,61,154,.12);color:#FF3D9A"><b>LONG</b>1/1 · 2/1 · 4/1<br><span style="color:var(--fog)">wash-outs / breakdowns</span></div></div>';
+      var loops = [["4 bar", 100], ["2 bar", 62], ["1 bar", 38], ["½ bar", 22]], lh = '<div class="gd-loop">';
+      loops.forEach(function (l, i) { lh += (i ? '<span class="gd-fa">→</span>' : "") + '<div class="gd-lp" style="width:' + l[1] + 'px"><b>' + l[0] + '</b></div>'; });
+      lh += '<span class="gd-fa">→</span><div class="gd-drop">DROP</div></div>';
+      D.push(["How the three settings work", '<div class="gi"><div class="gi-title">Beat FX time division</div><div class="gi-card">' + td + '</div></div>' +
+        '<div class="gi"><div class="gi-title">Loop halving → tension build</div><div class="gi-card">' + lh + '<p class="gi-note">Halve the loop each phrase (4→2→1→½ bar), often with a Beat FX Roll, to wind tension right into the drop.</p></div></div>']);
+    }
+    if (name === "Live Performance Playbook") {
+      var W = 520, H = 34, gm = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block" aria-hidden="true">';
+      gm += '<rect x="0" y="8" width="' + (W * 0.7) + '" height="18" rx="3" fill="rgba(124,232,138,0.35)"/>';
+      gm += '<rect x="' + (W * 0.7) + '" y="8" width="' + (W * 0.16) + '" height="18" fill="rgba(255,194,75,0.4)"/>';
+      gm += '<rect x="' + (W * 0.86) + '" y="8" width="' + (W * 0.14) + '" height="18" rx="3" fill="rgba(255,90,90,0.45)"/>';
+      gm += '<rect x="' + (W * 0.66) + '" y="4" width="' + (W * 0.12) + '" height="26" rx="2" fill="none" stroke="#C6F000" stroke-width="2"/>';
+      gm += '<text x="' + (W * 0.72) + '" y="21" fill="#08080F" font-family="Space Mono,monospace" font-size="9" font-weight="700" text-anchor="middle">TARGET</text>';
+      gm += '<text x="' + (W * 0.35) + '" y="21" fill="rgba(8,20,10,0.7)" font-family="Space Mono,monospace" font-size="9" text-anchor="middle">GREEN — headroom</text>';
+      gm += '<text x="' + (W * 0.93) + '" y="21" fill="#3a0d0d" font-family="Space Mono,monospace" font-size="9" text-anchor="middle">RED</text></svg>';
+      D.push(["Live technique quick-hits", '<div class="gi"><div class="gi-title">Gain staging</div><div class="gi-card">' + gm + '<p class="gi-note">Trim each channel so peaks sit at the top of green / bottom of red; keep the master out of the red. Loud ≠ clean.</p></div></div>']);
+      var esc = [["Ride a breakdown", "Drop into the incoming Cue C — the beatless section covers the exit.", "#2FE6FF"], ["Echo out", "Beat FX Echo 1/1 @ 50–70% on the outgoing, then pull the fader.", "#C6F000"], ["Loop &amp; reset", "Loop 4 bars on the incoming to re-find the phrase, release on the 1.", "#FFC24B"], ["Cut, don't fight it", "Clashing? A clean cut on the downbeat beats a long bad mix.", "#FF3D9A"]], cc = '<div class="gd-cards">';
+      esc.forEach(function (e) { cc += '<div class="gd-esc" style="border-left:3px solid ' + e[2] + '"><h6 style="color:' + e[2] + '">' + e[0] + '</h6><p>' + e[1] + '</p></div>'; });
+      cc += '</div>';
+      D.push(["When a mix isn't landing", '<div class="gi"><div class="gi-title">Escape hatches</div>' + cc + '</div>']);
+    }
+    if (name === "Sources & Method") {
+      var W = 520, H = 30, seg = [["Sourced", 0.18, "#7CE88A", "~8 cols"], ["Canonical", 0.22, "#FFCC55", "~10 cols"], ["Convention", 0.60, "#B0B0C6", "~27 cols"]], x = 0, bar = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block" aria-hidden="true">';
+      seg.forEach(function (s) { var w = s[1] * W; bar += '<rect x="' + x.toFixed(1) + '" y="4" width="' + (w - 2).toFixed(1) + '" height="22" rx="3" fill="' + s[2] + '" opacity="0.85"/><text x="' + (x + w / 2).toFixed(1) + '" y="19" fill="#08080F" font-family="Space Mono,monospace" font-size="9" font-weight="700" text-anchor="middle">' + Math.round(s[1] * 100) + '%</text>'; x += w; });
+      bar += '</svg><div class="gi-legend" style="margin-top:10px">';
+      seg.forEach(function (s) { bar += '<span class="gi-chip"><i class="gi-dot" style="background:' + s[2] + '"></i>' + s[0] + ' · ' + s[3] + '</span>'; });
+      bar += '</div>';
+      D.push(["Data basis by column", '<div class="gi"><div class="gi-title">Where the ~45 columns come from</div><div class="gi-card">' + bar + '<p class="gi-note">Most of the dataset is <b>convention</b> (production norms, not measured). Trust per-track values from your DJ software over genre averages.</p></div></div>']);
+    }
+    return D;
+  }
+  function guideBody(name) {
+    var html = md(DATA.guides[name]);
+    guideDiagrams(name).forEach(function (d) { html = injectAfterH2(html, d[0], d[1]); });
+    return guideHero(name) + html;
+  }
   // ---- guides overlay ----
   (function buildGuides() {
     var tabs = document.getElementById("guideTabs"), body = document.getElementById("guideBody");
@@ -1756,14 +1907,14 @@
       var b = document.createElement("button"); b.textContent = nm; b.className = i === 0 ? "active" : "";
       b.addEventListener("click", function () {
         Array.prototype.forEach.call(tabs.querySelectorAll("button"), function (x) { x.classList.remove("active"); });
-        b.classList.add("active"); body.innerHTML = md(DATA.guides[nm]); body.parentNode.scrollTop = 0;
+        b.classList.add("active"); body.innerHTML = guideBody(nm); body.parentNode.scrollTop = 0;
       });
       tabs.appendChild(b);
     });
     var x = document.createElement("button"); x.textContent = "✕ close"; x.className = "x";
     x.addEventListener("click", function () { overlay.classList.remove("show"); });
     tabs.appendChild(x);
-    body.innerHTML = md(DATA.guides[names[0]]);
+    body.innerHTML = guideBody(names[0]);
     document.getElementById("guidesBtn").addEventListener("click", function () { overlay.classList.add("show"); });
     overlay.addEventListener("click", function (e) { if (e.target === overlay) overlay.classList.remove("show"); });
   })();
@@ -1783,7 +1934,7 @@
     }
     for (i = 0; i < lines.length; i++) {
       var ln = lines[i];
-      if (/^```/.test(ln)) { if (inCode) { out.push("<pre>" + esc(code.join("\n")) + "</pre>"); code = []; } inCode = !inCode; continue; }
+      if (/^```/.test(ln)) { if (inCode) { var cj = code.join("\n"); if (!/Outer ring|Warm-up|_{4,}/.test(cj)) out.push("<pre>" + esc(cj) + "</pre>"); code = []; } inCode = !inCode; continue; }
       if (inCode) { code.push(ln); continue; }
       if (/^\s*\|.*\|/.test(ln)) { tbl.push(ln); continue; } else flushTbl();
       if (/^###\s/.test(ln)) out.push("<h3>" + inline(ln.slice(4)) + "</h3>");
@@ -1793,10 +1944,11 @@
         if (!out.length || out[out.length - 1].slice(-5) !== "</ul>") out.push("<ul></ul>");
         out[out.length - 1] = out[out.length - 1].replace("</ul>", "<li>" + inline(ln.replace(/^\s*[-*]\s/, "")) + "</li></ul>");
       }
+      else if (/^_.+_\s*$/.test(ln)) out.push('<p class="md-note">' + inline(ln.replace(/^_/, "").replace(/_\s*$/, "")) + "</p>");
       else if (/^\s*$/.test(ln)) out.push("");
       else out.push("<p>" + inline(ln) + "</p>");
     }
-    flushTbl(); if (inCode) out.push("<pre>" + esc(code.join("\n")) + "</pre>");
+    flushTbl(); if (inCode) { var cj2 = code.join("\n"); if (!/Outer ring|Warm-up|_{4,}/.test(cj2)) out.push("<pre>" + esc(cj2) + "</pre>"); }
     return out.join("\n");
   }
   function inline(s) {
@@ -2080,7 +2232,7 @@
     aboutEl = document.createElement("div"); aboutEl.className = "overlay about"; aboutEl.id = "aboutOverlay"; aboutEl.setAttribute("role", "dialog");
     aboutEl.innerHTML = '<div class="aboutsheet"><div class="cmphead"><span>About Me</span><button class="x" id="aboutClose">✕ close</button></div>' +
       '<div class="aboutbody">' +
-      '<div class="aboutpic"><div class="apic-frame"><img src="assets/about-me.jpg?v=88" alt="DJ7 - Wilsonlicioussss" onerror="this.parentNode.classList.add(\'empty\');this.remove()"></div><span class="aname">DJ7 · Wilsonlicioussss</span></div>' +
+      '<div class="aboutpic"><div class="apic-frame"><img src="assets/about-me.jpg?v=90" alt="DJ7 - Wilsonlicioussss" onerror="this.parentNode.classList.add(\'empty\');this.remove()"></div><span class="aname">DJ7 · Wilsonlicioussss</span></div>' +
       '<div class="aboutsec"><h4>★ Things I Love</h4><p>Thoughtful spaces, quiet details, electronic music, new technology and ideas that feel slightly ahead of their time.</p></div>' +
       '<div class="aboutsec"><h4>Always Learning</h4><p>Everything begins with curiosity. I explore how design, data, people and culture connect.</p></div>' +
       '<div class="aboutsec"><h4>I DJ</h4><p>A personal journey through electronic music — from high-energy moments to deeper, melodic and atmospheric sounds.</p></div>' +
@@ -2336,5 +2488,5 @@
     if (!_scAC || !_scGain) return;
     try { _scGain.gain.setTargetAtTime(0, _scAC.currentTime, 0.05); } catch (e) {}
   }
-  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, version: "V88" };
+  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, version: "V90" };
 })();
