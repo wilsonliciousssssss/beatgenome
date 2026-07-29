@@ -32,12 +32,12 @@
       for (var k = 0; k < olds.length; k++) { if (olds[k].parentNode) olds[k].parentNode.removeChild(olds[k]); }
       var link = document.createElement("link");
       link.rel = "icon"; link.type = "image/png"; link.setAttribute("sizes", "48x48");
-      link.href = "assets/icons/favicon-" + col + "-48.png?v=96";
+      link.href = "assets/icons/favicon-" + col + "-48.png?v=97";
       document.head.appendChild(link);
     } catch (e) {}
     try {
       var badge = document.querySelector(".badge");
-      if (badge) badge.style.backgroundImage = 'url("assets/icons/product-' + col + '-216.png?v=96")';
+      if (badge) badge.style.backgroundImage = 'url("assets/icons/product-' + col + '-216.png?v=97")';
     } catch (e) {}
   }
   function applyChannel(i) {
@@ -1884,6 +1884,40 @@
       for (var sd = 0; sd < scN; sd++) { sc += '<g data-tip="Track ' + (sd + 1) + ' · ' + bpms[sd] + ' BPM' + (sd ? ' (+' + (bpms[sd] - bpms[sd - 1]) + ')' : ' · start') + '" style="cursor:pointer"><rect x="' + (scX(sd) - 10).toFixed(1) + '" y="' + scPt + '" width="20" height="' + (scH - scPb - scPt) + '" fill="transparent" pointer-events="all"/><circle cx="' + scX(sd).toFixed(1) + '" cy="' + scY(bpms[sd]).toFixed(1) + '" r="4" fill="#2FE6FF"/></g><text x="' + scX(sd).toFixed(1) + '" y="' + (scH - 7) + '" fill="rgba(236,236,244,0.5)" font-family="Space Mono,monospace" font-size="8" text-anchor="middle">' + (sd + 1) + '</text>'; }
       sc += '</svg>';
       D.push(["Rules of thumb", '<div class="gi"><div class="gi-title">Tempo staircase — +2–4 BPM per track</div><div class="gi-card">' + sc + '<p class="gi-note">Raise tempo in small steps across the set (unless you use a deliberate half-time / double-time bridge). Hover a step for the jump.</p></div></div>']);
+
+      var raW = 520, raH = 180, raPl = 30, raPb = 24, raPt = 12;
+      var raX = function (f) { return (raPl + f * (raW - raPl - 10)).toFixed(1); }, raY = function (e) { return (raH - raPb - (e / 10) * (raH - raPb - raPt)).toFixed(1); };
+      var warmPts = [[0, 2], [0.15, 3], [0.3, 4.3], [0.42, 5.4], [0.5, 6]], mainPts = [[0.5, 6], [0.62, 8], [0.72, 9], [0.82, 9], [0.92, 8], [1, 7]];
+      function raLine(pts) { var d = 'M' + raX(pts[0][0]) + ' ' + raY(pts[0][1]); for (var i = 1; i < pts.length; i++) d += ' L' + raX(pts[i][0]) + ' ' + raY(pts[i][1]); return d; }
+      function raArea(pts) { return raLine(pts) + ' L' + raX(pts[pts.length - 1][0]) + ' ' + raY(0) + ' L' + raX(pts[0][0]) + ' ' + raY(0) + ' Z'; }
+      var relay = '<svg viewBox="0 0 ' + raW + ' ' + raH + '" width="100%" style="display:block" aria-hidden="true"><defs><linearGradient id="raC" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2FE6FF" stop-opacity="0.3"/><stop offset="1" stop-color="#2FE6FF" stop-opacity="0.02"/></linearGradient><linearGradient id="raM" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FF3D9A" stop-opacity="0.32"/><stop offset="1" stop-color="#FF3D9A" stop-opacity="0.02"/></linearGradient></defs>';
+      [2, 4, 6, 8, 10].forEach(function (e) { relay += '<line x1="' + raPl + '" y1="' + raY(e) + '" x2="' + (raW - 10) + '" y2="' + raY(e) + '" stroke="rgba(255,255,255,0.05)"/><text x="' + (raPl - 5) + '" y="' + (+raY(e) + 3) + '" fill="rgba(236,236,244,0.4)" font-family="Space Mono,monospace" font-size="7.5" text-anchor="end">' + e + '</text>'; });
+      relay += '<path d="' + raArea(warmPts) + '" fill="url(#raC)"/><path d="' + raArea(mainPts) + '" fill="url(#raM)"/>';
+      relay += '<path d="' + raLine(warmPts) + '" fill="none" stroke="#2FE6FF" stroke-width="2.5" stroke-linejoin="round" data-tip="Warm-up curve — build 2\u21926 and stop; leave headroom" style="cursor:pointer"/>';
+      relay += '<path d="' + raLine(mainPts) + '" fill="none" stroke="#FF3D9A" stroke-width="2.5" stroke-linejoin="round" data-tip="Main curve — take 6\u21929, hold the plateau, then land it" style="cursor:pointer"/>';
+      relay += '<line x1="' + raX(0.5) + '" y1="' + raPt + '" x2="' + raX(0.5) + '" y2="' + (raH - raPb) + '" stroke="rgba(198,240,0,0.5)" stroke-dasharray="4 3"/><text x="' + raX(0.5) + '" y="' + (raPt + 1) + '" fill="#C6F000" font-family="Space Mono,monospace" font-size="8" text-anchor="middle">HAND-OFF</text>';
+      relay += '<text x="' + raX(0.24) + '" y="' + (raH - 7) + '" fill="#2FE6FF" font-family="Space Mono,monospace" font-size="9" text-anchor="middle">WARM-UP</text><text x="' + raX(0.76) + '" y="' + (raH - 7) + '" fill="#FF3D9A" font-family="Space Mono,monospace" font-size="9" text-anchor="middle">MAIN / PEAK</text>';
+      relay += '</svg>';
+      var roles = [["WARM-UP DJ", "opener", "#2FE6FF", [["Job", "Fill the room, set the mood, build a foundation"], ["Energy", "2\u20136 \u2014 never peak"], ["Tempo", "~110\u2013124 BPM, rising gently"], ["Selection", "Deep, groovy, atmospheric \u2014 save the anthems"], ["Blends", "Long & patient (16\u201332 bars)"], ["Mindset", "Restraint \u2014 leave headroom"], ["Avoid", "Peaking early / dropping the big tracks"]]], ["MAIN DJ", "peak-time \u00b7 headliner", "#FF3D9A", [["Job", "Take the built energy to the peak"], ["Energy", "6\u201310 \u2014 big moments"], ["Tempo", "~124\u2013140+ BPM"], ["Selection", "Anthems, drops, recognisable hooks"], ["Blends", "Tighter, punchier, double-drops"], ["Mindset", "Command the room, then land it"], ["Avoid", "Resetting the floor / flat at 10"]]]];
+      var rolh = '<div class="gd-roles">';
+      roles.forEach(function (r) { rolh += '<div class="gd-role" style="--rlc:' + r[2] + '" data-tip="' + r[0] + ' \u2014 ' + r[3][0][1] + '"><div class="gd-rolehd"><b>' + r[0] + '</b><span>' + r[1] + '</span></div>'; r[3].forEach(function (row) { rolh += '<div class="gd-rolerow"><span class="k">' + row[0] + '</span><span class="v">' + row[1] + '</span></div>'; }); rolh += '</div>'; });
+      rolh += '</div>';
+      var owW = 520, owH = 200, owPl = 40, owPb = 30, owPt = 14;
+      var owX = function (b) { return (owPl + (b - 105) / 40 * (owW - owPl - 14)); }, owY = function (e) { return (owH - owPb - (e - 1) / 9 * (owH - owPb - owPt)); };
+      var ow = '<svg viewBox="0 0 ' + owW + ' ' + owH + '" width="100%" style="display:block" aria-hidden="true">';
+      [110, 120, 130, 140].forEach(function (b) { ow += '<line x1="' + owX(b).toFixed(1) + '" y1="' + owPt + '" x2="' + owX(b).toFixed(1) + '" y2="' + (owH - owPb) + '" stroke="rgba(255,255,255,0.04)"/><text x="' + owX(b).toFixed(1) + '" y="' + (owH - owPb + 12) + '" fill="rgba(236,236,244,0.4)" font-family="Space Mono,monospace" font-size="7.5" text-anchor="middle">' + b + '</text>'; });
+      [2, 4, 6, 8, 10].forEach(function (e) { ow += '<line x1="' + owPl + '" y1="' + owY(e).toFixed(1) + '" x2="' + (owW - 14) + '" y2="' + owY(e).toFixed(1) + '" stroke="rgba(255,255,255,0.04)"/><text x="' + (owPl - 5) + '" y="' + (owY(e) + 3).toFixed(1) + '" fill="rgba(236,236,244,0.4)" font-family="Space Mono,monospace" font-size="7.5" text-anchor="end">' + e + '</text>'; });
+      ow += '<rect x="' + owX(110).toFixed(1) + '" y="' + owY(6).toFixed(1) + '" width="' + (owX(124) - owX(110)).toFixed(1) + '" height="' + (owY(2) - owY(6)).toFixed(1) + '" rx="4" fill="rgba(47,230,255,0.14)" stroke="#2FE6FF" data-tip="Warm-up window \u2014 energy 2\u20136 \u00b7 110\u2013124 BPM" style="cursor:pointer"/><text x="' + ((owX(110) + owX(124)) / 2).toFixed(1) + '" y="' + owY(4).toFixed(1) + '" fill="#2FE6FF" font-family="Space Mono,monospace" font-size="9" text-anchor="middle">WARM-UP</text>';
+      ow += '<rect x="' + owX(124).toFixed(1) + '" y="' + owY(10).toFixed(1) + '" width="' + (owX(140) - owX(124)).toFixed(1) + '" height="' + (owY(6) - owY(10)).toFixed(1) + '" rx="4" fill="rgba(255,61,154,0.14)" stroke="#FF3D9A" data-tip="Main window \u2014 energy 6\u201310 \u00b7 124\u2013140+ BPM" style="cursor:pointer"/><text x="' + ((owX(124) + owX(140)) / 2).toFixed(1) + '" y="' + owY(8.5).toFixed(1) + '" fill="#FF3D9A" font-family="Space Mono,monospace" font-size="9" text-anchor="middle">MAIN</text>';
+      ow += '<circle cx="' + owX(124).toFixed(1) + '" cy="' + owY(6).toFixed(1) + '" r="4" fill="#C6F000" data-tip="Hand-off zone \u2014 ~124 BPM, energy 6: where the warm-up passes to the main" style="cursor:pointer"/>';
+      ow += '<text x="' + ((owPl + owW - 14) / 2) + '" y="' + (owH - 4) + '" fill="rgba(236,236,244,0.5)" font-family="Space Mono,monospace" font-size="8" text-anchor="middle">BPM \u2192</text><text x="12" y="' + ((owPt + owH - owPb) / 2) + '" fill="rgba(236,236,244,0.5)" font-family="Space Mono,monospace" font-size="8" text-anchor="middle" transform="rotate(-90 12 ' + ((owPt + owH - owPb) / 2) + ')">ENERGY \u2191</text></svg>';
+      function miniE(pts, col) { var W = 210, H = 58, pl = 6, pb = 8, pt = 8, x = function (f) { return (pl + f * (W - pl - 6)).toFixed(1); }, y = function (v) { return (H - pb - v * (H - pb - pt)).toFixed(1); }; var d = 'M' + x(pts[0][0]) + ' ' + y(pts[0][1]); for (var i = 1; i < pts.length; i++) d += ' L' + x(pts[i][0]) + ' ' + y(pts[i][1]); return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block;margin-top:6px" aria-hidden="true"><line x1="' + x(0.5) + '" y1="' + pt + '" x2="' + x(0.5) + '" y2="' + (H - pb) + '" stroke="rgba(198,240,0,0.4)" stroke-dasharray="3 3"/><text x="' + x(0.5) + '" y="' + (pt + 1) + '" fill="#C6F000" font-family="Space Mono,monospace" font-size="7" text-anchor="middle">hand-off</text><path d="' + d + '" fill="none" stroke="' + col + '" stroke-width="2.5" stroke-linejoin="round"/></svg>'; }
+      var handoff = '<div class="gd-two"><div class="gd-ex good" data-tip="Match the outgoing energy & BPM — the floor keeps climbing"><span class="tag">\u2713 MATCH THE ENERGY</span>' + miniE([[0, 0.45], [0.35, 0.5], [0.5, 0.55], [0.72, 0.78], [1, 0.9]], "#7CE88A") + '</div><div class="gd-ex bad" data-tip="Resetting to zero on arrival empties the floor"><span class="tag">\u2717 RESET TO ZERO</span>' + miniE([[0, 0.55], [0.5, 0.55], [0.56, 0.15], [1, 0.2]], "#FF6A6A") + '</div></div>';
+      D.push(["Warm-up DJ vs main DJ", '<div class="gi"><div class="gi-title">The night is a relay \u2014 two energy arcs, one hand-off</div><div class="gi-card">' + relay + '</div></div>' +
+        '<div class="gi"><div class="gi-title">Two jobs, side by side</div>' + rolh + '</div>' +
+        '<div class="gi"><div class="gi-title">Operating windows \u2014 BPM \u00d7 energy</div><div class="gi-card">' + ow + '</div></div>' +
+        '<div class="gi"><div class="gi-title">The hand-off \u2014 match, don\'t reset</div><div class="gi-card gd-two">' + handoff + '</div></div>']);
+
     }
     if (name === "FX & Loop Settings") {
       var td = '<div class="gd-td">' +
@@ -2435,7 +2469,7 @@
     aboutEl = document.createElement("div"); aboutEl.className = "overlay about"; aboutEl.id = "aboutOverlay"; aboutEl.setAttribute("role", "dialog");
     aboutEl.innerHTML = '<div class="aboutsheet"><div class="cmphead"><span>About Me</span><button class="x" id="aboutClose">✕ close</button></div>' +
       '<div class="aboutbody">' +
-      '<div class="aboutpic"><div class="apic-frame"><img src="assets/about-me.jpg?v=96" alt="DJ7 - Wilsonlicioussss" onerror="this.parentNode.classList.add(\'empty\');this.remove()"></div><span class="aname">DJ7 · Wilsonlicioussss</span></div>' +
+      '<div class="aboutpic"><div class="apic-frame"><img src="assets/about-me.jpg?v=97" alt="DJ7 - Wilsonlicioussss" onerror="this.parentNode.classList.add(\'empty\');this.remove()"></div><span class="aname">DJ7 · Wilsonlicioussss</span></div>' +
       '<div class="aboutsec"><h4>★ Things I Love</h4><p>Thoughtful spaces, quiet details, electronic music, new technology and ideas that feel slightly ahead of their time.</p></div>' +
       '<div class="aboutsec"><h4>Always Learning</h4><p>Everything begins with curiosity. I explore how design, data, people and culture connect.</p></div>' +
       '<div class="aboutsec"><h4>I DJ</h4><p>A personal journey through electronic music — from high-energy moments to deeper, melodic and atmospheric sounds.</p></div>' +
@@ -2691,5 +2725,5 @@
     if (!_scAC || !_scGain) return;
     try { _scGain.gain.setTargetAtTime(0, _scAC.currentTime, 0.05); } catch (e) {}
   }
-  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, version: "V96" };
+  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, version: "V97" };
 })();

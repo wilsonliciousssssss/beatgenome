@@ -46,7 +46,7 @@ body::before{
 .badge{
   width:42px;height:42px;border-radius:11px;flex:none;
   background:#08080F center/cover no-repeat;
-  background-image:url("icons/product-magenta-216.png?v=96");
+  background-image:url("icons/product-magenta-216.png?v=97");
   box-shadow:0 0 18px color-mix(in srgb,var(--c1) 45%, transparent), inset 0 0 0 1px rgba(255,255,255,.08);
 }
 .title{display:flex;flex-direction:column;line-height:1;min-width:0}
@@ -1145,3 +1145,14 @@ svg [data-tip]:hover{filter:brightness(1.28)}
 .gd-fxpill{font-family:"Space Mono",monospace;font-size:9.5px;font-weight:700;padding:2px 8px;border-radius:20px;border:1px solid}
 .gd-plus{color:var(--fog);font-size:12px}
 .gd-comboc p{margin:0;font-size:11px;color:var(--fog);line-height:1.35}
+
+/* ---------- V97: warm-up vs main DJ ---------- */
+.gd-roles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.gd-role{background:rgba(255,255,255,.03);border:1px solid var(--line);border-top:3px solid var(--rlc);border-radius:9px;padding:12px}
+.gd-rolehd{margin-bottom:6px}
+.gd-rolehd b{font-family:"Archivo","Space Grotesk",sans-serif;font-weight:800;font-size:15px;color:var(--rlc);display:block;line-height:1.1}
+.gd-rolehd span{font-family:"Space Mono",monospace;font-size:9px;letter-spacing:.06em;color:var(--fog);text-transform:uppercase}
+.gd-rolerow{display:flex;gap:8px;padding:5px 0;border-top:1px solid var(--line);font-size:11.5px}
+.gd-rolerow .k{font-family:"Space Mono",monospace;font-size:9px;color:var(--fog);min-width:62px;flex:none;text-transform:uppercase;padding-top:2px}
+.gd-rolerow .v{color:var(--ink);line-height:1.35}
+@media(max-width:600px){.gd-roles{grid-template-columns:1fr}}
