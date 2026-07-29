@@ -54,6 +54,22 @@ Separate from Beat FX: the **Colour** knob sits on each channel (centre = off) a
 
 Because it's per-channel you can HPF the *outgoing* track thin while the *incoming* stays full — a clean hand-off without touching the EQ.
 
+## Combining Sound Colour + Beat FX
+
+The two FX systems live at different points in the signal path, and that is exactly why they stack so well:
+
+**Channel → EQ → Sound Colour FX (per channel) → crossfader → master → Beat FX → out.**
+
+Sound Colour FX shapes each track *before* it reaches the master; Beat FX then works on whatever the crossfader hands it. So the Colour knob decides *what* the Beat FX chews on.
+
+- **Clean hand-off** — HPF the outgoing track (Colour) while feeding **Echo 1/1** (Beat FX) on the master. The outgoing thins out and echoes away while the incoming, full and un-filtered, takes the low end.
+- **Riser into the drop** — turn up **Noise** (Colour) and hold **Reverb** or a **Roll** (Beat FX); the noise builds the top end while the beat FX builds the tail — release both on the 1.
+- **Deep breakdown** — **LPF** (Colour) to pull the brightness down, **Spiral** or **Reverb 1/1** (Beat FX) for space; dark and wide without a beat clash.
+- **Dub groove** — **Dub Echo** (Colour) plus a tight **Delay 1/2** (Beat FX) for rhythmic, spacious stabs.
+- **Hard slam** — **Crush** (Colour) into **Reverb 1/8** at 80–100% (Beat FX); aggressive impact for hard techno / dubstep.
+
+Two rules: **one move per system at a time** (one Colour, one Beat FX — never a stack of each), and **Colour first, Beat FX second** — shape the source, then decide how much space it lives in.
+
 ## General quick-reference
 
 | Goal | Loop | Beat FX | Beat setting | Depth |
