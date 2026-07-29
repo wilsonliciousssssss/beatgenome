@@ -32,12 +32,12 @@
       for (var k = 0; k < olds.length; k++) { if (olds[k].parentNode) olds[k].parentNode.removeChild(olds[k]); }
       var link = document.createElement("link");
       link.rel = "icon"; link.type = "image/png"; link.setAttribute("sizes", "48x48");
-      link.href = "assets/icons/favicon-" + col + "-48.png?v=95";
+      link.href = "assets/icons/favicon-" + col + "-48.png?v=96";
       document.head.appendChild(link);
     } catch (e) {}
     try {
       var badge = document.querySelector(".badge");
-      if (badge) badge.style.backgroundImage = 'url("assets/icons/product-' + col + '-216.png?v=95")';
+      if (badge) badge.style.backgroundImage = 'url("assets/icons/product-' + col + '-216.png?v=96")';
     } catch (e) {}
   }
   function applyChannel(i) {
@@ -1921,6 +1921,41 @@
       var scc = '<div class="gd-scn">';
       scen.forEach(function (s) { scc += '<div class="gd-scnc" data-tip="' + s[0] + ' \u2014 loop ' + s[1] + ' \u00b7 ' + s[2] + ' ' + s[3] + ' \u00b7 depth ' + s[4] + '"><h6>' + s[0] + '</h6><div class="gd-scnr"><span>LOOP ' + s[1] + '</span><span>' + s[2] + '</span><span>' + s[3] + '</span></div><div class="gd-scnd"><i style="width:' + s[5] + '%;background:' + s[6] + '"></i></div><div class="dl">depth ' + s[4] + '</div></div>'; });
       scc += '</div>';
+      
+      function rbox(x, y, w, h, title, sub, accent, tip) { return '<g data-tip="' + tip + '" style="cursor:pointer"><rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="7" fill="rgba(255,255,255,0.03)" stroke="' + accent + '"/><text x="' + (x + w / 2) + '" y="' + (y + (sub ? 18 : h / 2 + 4)) + '" fill="#ECECF4" font-family="Space Mono,monospace" font-size="9.5" font-weight="700" text-anchor="middle">' + title + '</text>' + (sub ? '<text x="' + (x + w / 2) + '" y="' + (y + 32) + '" fill="' + accent + '" font-family="Space Mono,monospace" font-size="8" text-anchor="middle">' + sub + '</text>' : '') + '</g>'; }
+      function rarr(x1, y1, x2, y2) { return '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + (x2 - 6) + '" y2="' + y2 + '" stroke="rgba(236,236,244,0.4)" stroke-width="1.5"/><path d="M' + x2 + ' ' + y2 + ' l-7 -4 l0 8 z" fill="rgba(236,236,244,0.55)"/>'; }
+      var route = '<svg viewBox="0 0 520 150" width="100%" style="display:block" aria-hidden="true">';
+      route += rbox(6, 16, 116, 46, "DECK A", "EQ \u00b7 Colour FX", "#2FE6FF", "Channel A \u2014 EQ then Sound Colour FX (per channel, before the crossfader)");
+      route += rbox(6, 84, 116, 46, "DECK B", "EQ \u00b7 Colour FX", "#2FE6FF", "Channel B \u2014 EQ then Sound Colour FX (per channel, before the crossfader)");
+      route += rbox(182, 53, 92, 42, "CROSSFADER", "", "rgba(236,236,244,0.35)", "Crossfader \u2014 blends the two channels into one signal");
+      route += rbox(318, 53, 122, 42, "MASTER", "Beat FX", "#FF3D9A", "Beat FX \u2014 on the master, after the crossfader; works on the blended output");
+      route += rarr(122, 39, 182, 66) + rarr(122, 107, 182, 82) + rarr(274, 74, 318, 74) + rarr(440, 74, 486, 74);
+      route += '<text x="500" y="78" fill="#ECECF4" font-family="Space Mono,monospace" font-size="9" font-weight="700" text-anchor="middle">OUT</text>';
+      route += '<text x="64" y="140" fill="#2FE6FF" font-family="Space Mono,monospace" font-size="8" text-anchor="middle">per-channel (pre)</text>';
+      route += '<text x="379" y="140" fill="#FF3D9A" font-family="Space Mono,monospace" font-size="8" text-anchor="middle">master (post)</text>';
+      route += '</svg>';
+      var combos = [["Clean hand-off", "HPF", "Echo 1/1", "Thin the outgoing and echo it away; incoming keeps the lows", "#2FE6FF", "#FF3D9A"], ["Riser into the drop", "Noise", "Reverb / Roll", "Noise builds the top, Beat FX builds the tail \u2014 release on the 1", "#FF9A3C", "#FF3D9A"], ["Deep breakdown", "LPF", "Spiral / Reverb", "Dark and wide with no beat clash", "#2FE6FF", "#8A63FF"], ["Dub groove", "Dub Echo", "Delay 1/2", "Rhythmic, spacious stabs", "#8A63FF", "#2FE6FF"], ["Hard slam", "Crush", "Reverb 1/8", "Aggressive impact at 80\u2013100% for hard genres", "#FF3D9A", "#FF6A6A"], ["Filter blend", "Filter sweep", "Echo tail", "Smooth hand-off across the phrase", "#C6F000", "#FF3D9A"]];
+      var comboh = '<div class="gd-combo">';
+      combos.forEach(function (c) { comboh += '<div class="gd-comboc" data-tip="' + c[0] + ' \u2014 ' + c[1] + ' (Colour) + ' + c[2] + ' (Beat FX): ' + c[3] + '"><h6>' + c[0] + '</h6><div class="gd-comborow"><span class="gd-fxpill" style="color:' + c[4] + ';border-color:' + c[4] + '">' + c[1] + '</span><span class="gd-plus">+</span><span class="gd-fxpill" style="color:' + c[5] + ';border-color:' + c[5] + '">' + c[2] + '</span></div><p>' + c[3] + '</p></div>'; });
+      comboh += '</div>';
+      function fxCurve(curves, marks) {
+        var W = 520, H = 120, pl = 8, pr = 10, pt = 16, pb = 20;
+        var cx = function (f) { return (pl + f * (W - pl - pr)).toFixed(1); }, cy = function (v) { return (H - pb - v * (H - pb - pt)).toFixed(1); };
+        var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block" aria-hidden="true">';
+        [0, 0.5, 1].forEach(function (g) { s += '<line x1="' + pl + '" y1="' + cy(g) + '" x2="' + (W - pr) + '" y2="' + cy(g) + '" stroke="rgba(255,255,255,0.05)"/>'; });
+        marks.forEach(function (m) { s += '<line x1="' + cx(m[0]) + '" y1="' + pt + '" x2="' + cx(m[0]) + '" y2="' + (H - pb) + '" stroke="rgba(198,240,0,0.4)" stroke-dasharray="3 3"/><text x="' + cx(m[0]) + '" y="' + (pt - 4) + '" fill="#C6F000" font-family="Space Mono,monospace" font-size="7.5" text-anchor="middle">' + m[1] + '</text>'; });
+        curves.forEach(function (c) { var p = c[2], d = 'M' + cx(p[0][0]) + ' ' + cy(p[0][1]); for (var i = 1; i < p.length; i++) d += ' L' + cx(p[i][0]) + ' ' + cy(p[i][1]); s += '<path d="' + d + '" fill="none" stroke="' + c[1] + '" stroke-width="2" stroke-linejoin="round" data-tip="' + c[0] + '" style="cursor:pointer"/>'; });
+        s += '<text x="' + pl + '" y="' + (H - 5) + '" fill="rgba(236,236,244,0.4)" font-family="Space Mono,monospace" font-size="7.5">transition time \u2192</text>';
+        return s + '</svg>';
+      }
+      var fxc2 = [["Out fader", "#FF3D9A", [[0, 1], [0.55, 1], [0.8, 0]]], ["HPF (Colour)", "#2FE6FF", [[0, 0], [0.3, 0], [0.7, 1], [0.8, 1]]], ["Echo depth (Beat FX)", "#C6F000", [[0, 0], [0.4, 0], [0.55, 0.7], [0.8, 0]]]];
+      var fauto = fxCurve(fxc2, [[0.4, "HPF up"], [0.55, "echo feed"], [0.8, "pull fader"]]);
+      var flegend = '<div class="gi-legend" style="margin-top:8px">';
+      fxc2.forEach(function (c) { flegend += '<span class="gi-chip"><i class="gi-dot" style="background:' + c[1] + '"></i>' + c[0] + '</span>'; });
+      flegend += '</div>';
+      D.push(["Combining Sound Colour", '<div class="gi"><div class="gi-title">Where each FX sits in the signal path</div><div class="gi-card">' + route + '<p class="gi-note">Colour FX shapes each track <b>before</b> the master (per channel); Beat FX works on the <b>blend</b> after the crossfader \u2014 so Colour decides what the Beat FX chews on.</p></div></div>' +
+        '<div class="gi"><div class="gi-title">Combos \u2014 pair a Colour move with a Beat FX</div>' + comboh + '</div>' +
+        '<div class="gi"><div class="gi-title">Both at once \u2014 a clean hand-off</div><div class="gi-card">' + fauto + flegend + '<p class="gi-note">HPF the outgoing (Colour) as you feed Echo (Beat FX), then pull the fader \u2014 the track thins, echoes, and clears while the incoming takes over.</p></div></div>']);
       D.push(["Scenarios", '<div class="gi"><div class="gi-title">Scenario recipes — situation \u2192 settings</div>' + scc + '</div>']);
 
     }
@@ -2400,7 +2435,7 @@
     aboutEl = document.createElement("div"); aboutEl.className = "overlay about"; aboutEl.id = "aboutOverlay"; aboutEl.setAttribute("role", "dialog");
     aboutEl.innerHTML = '<div class="aboutsheet"><div class="cmphead"><span>About Me</span><button class="x" id="aboutClose">✕ close</button></div>' +
       '<div class="aboutbody">' +
-      '<div class="aboutpic"><div class="apic-frame"><img src="assets/about-me.jpg?v=95" alt="DJ7 - Wilsonlicioussss" onerror="this.parentNode.classList.add(\'empty\');this.remove()"></div><span class="aname">DJ7 · Wilsonlicioussss</span></div>' +
+      '<div class="aboutpic"><div class="apic-frame"><img src="assets/about-me.jpg?v=96" alt="DJ7 - Wilsonlicioussss" onerror="this.parentNode.classList.add(\'empty\');this.remove()"></div><span class="aname">DJ7 · Wilsonlicioussss</span></div>' +
       '<div class="aboutsec"><h4>★ Things I Love</h4><p>Thoughtful spaces, quiet details, electronic music, new technology and ideas that feel slightly ahead of their time.</p></div>' +
       '<div class="aboutsec"><h4>Always Learning</h4><p>Everything begins with curiosity. I explore how design, data, people and culture connect.</p></div>' +
       '<div class="aboutsec"><h4>I DJ</h4><p>A personal journey through electronic music — from high-energy moments to deeper, melodic and atmospheric sounds.</p></div>' +
@@ -2656,5 +2691,5 @@
     if (!_scAC || !_scGain) return;
     try { _scGain.gain.setTargetAtTime(0, _scAC.currentTime, 0.05); } catch (e) {}
   }
-  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, version: "V95" };
+  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, version: "V96" };
 })();
