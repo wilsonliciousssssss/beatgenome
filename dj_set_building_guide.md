@@ -21,13 +21,25 @@ Energy
 
 A night is a **relay, not a race**. The opener and the headliner are handed the same crowd at different points, and their jobs are opposites.
 
-**The warm-up DJ (opener)** fills the room and sets the mood. Lower energy (2–6), slower tempo (~110–124 BPM rising gently), deeper and groovier selection, long patient blends. The skill is **restraint**: build a foundation and *leave headroom* — never peak, and never drop the anthems the headliner needs. Read a sparse early floor and give it somewhere to grow.
+**The warm-up DJ (opener)** fills the room and sets the mood. Lower energy (2–6), slower tempo (~110–124 BPM rising gently), deeper and groovier selection, long patient blends. The skill is **restraint**: build a foundation and *leave headroom* — never peak, and never drop the anthems the headliner needs. Read a sparse early floor and give it somewhere to grow. A warm-up slot typically runs **~3–4 hrs** (60–90 min at a festival).
 
-**The main DJ (peak-time / headliner)** takes that built energy to the top. Higher energy (6–10), faster tempo (~124–140+ BPM), the anthems, drops and recognisable hooks, tighter punchier mixing and the big moments (double-drops, genre switches). Read a full, hot floor, command it, then manage the plateau and a graceful comedown at the end of the slot.
+**The main DJ (peak-time / headliner)** takes that built energy to the top. Higher energy (6–10), faster tempo (~124–140+ BPM), the anthems, drops and recognisable hooks, tighter punchier mixing and the big moments (double-drops, genre switches). Read a full, hot floor, command it, then manage the plateau and a graceful comedown at the end of the slot. A headline slot typically runs **~2–3 hrs** (60–90 min at a festival).
 
 **The hand-off** is the hinge: the incoming DJ should **match the outgoing energy and BPM, not reset it.** Coming on after a warm-up that reached 6 and dropping back to 2 empties the floor as surely as the warm-up peaking too early would.
 
 Common warm-up mistakes: peaking too soon, playing bangers, going too hard too fast. Common main-DJ mistakes: resetting the energy on arrival, or hammering flat at 10 with no light and shade.
+
+## The all-night set — one DJ, whole event
+
+Sometimes you play the entire event — open to close, 4–8 hours, no hand-off. Now you **are** the warm-up, the main and the closer, and you own the whole arc.
+
+- **Pace over hours, not minutes.** Start deep and slow (energy 2–3), build patiently through the first third, and don't touch peak territory until you've earned it — you have the time, so use it.
+- **Think in waves, not one peak.** You can't hold energy 9 for six hours. Ride up to a peak, pull back for a breather, then climb higher next time — several rises and dips across the night.
+- **Reset to rebuild.** Dropping an energy level (a deeper track, a breakdown) gives the floor a breather and makes the next lift hit harder.
+- **Deep bag, long story.** A long set needs range — genres, tempos, moods — and rewards patience: intros you would skip in a 90-minute slot become the glue over six hours.
+- **Manage stamina** — yours and theirs. Pace the big moments and save one or two real anthems for late, when you need to re-grab the room.
+
+Open-to-close typically runs 4–8 hrs (a long residency or b2b marathon can go further). The shape below maps a 6-hour night.
 
 ## Slots, and which genres fit (from the Energy + Set Placement columns)
 
