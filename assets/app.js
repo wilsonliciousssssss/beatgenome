@@ -32,12 +32,12 @@
       for (var k = 0; k < olds.length; k++) { if (olds[k].parentNode) olds[k].parentNode.removeChild(olds[k]); }
       var link = document.createElement("link");
       link.rel = "icon"; link.type = "image/png"; link.setAttribute("sizes", "48x48");
-      link.href = "assets/icons/favicon-" + col + "-48.png?v=98";
+      link.href = "assets/icons/favicon-" + col + "-48.png?v=99";
       document.head.appendChild(link);
     } catch (e) {}
     try {
       var badge = document.querySelector(".badge");
-      if (badge) badge.style.backgroundImage = 'url("assets/icons/product-' + col + '-216.png?v=98")';
+      if (badge) badge.style.backgroundImage = 'url("assets/icons/product-' + col + '-216.png?v=99")';
     } catch (e) {}
   }
   function applyChannel(i) {
@@ -2491,7 +2491,7 @@
     aboutEl = document.createElement("div"); aboutEl.className = "overlay about"; aboutEl.id = "aboutOverlay"; aboutEl.setAttribute("role", "dialog");
     aboutEl.innerHTML = '<div class="aboutsheet"><div class="cmphead"><span>About Me</span><button class="x" id="aboutClose">✕ close</button></div>' +
       '<div class="aboutbody">' +
-      '<div class="aboutpic"><div class="apic-frame"><img src="assets/about-me.jpg?v=98" alt="DJ7 - Wilsonlicioussss" onerror="this.parentNode.classList.add(\'empty\');this.remove()"></div><span class="aname">DJ7 · Wilsonlicioussss</span></div>' +
+      '<div class="aboutpic"><div class="apic-frame"><img src="assets/about-me.jpg?v=99" alt="DJ7 - Wilsonlicioussss" onerror="this.parentNode.classList.add(\'empty\');this.remove()"></div><span class="aname">DJ7 · Wilsonlicioussss</span></div>' +
       '<div class="aboutsec"><h4>★ Things I Love</h4><p>Thoughtful spaces, quiet details, electronic music, new technology and ideas that feel slightly ahead of their time.</p></div>' +
       '<div class="aboutsec"><h4>Always Learning</h4><p>Everything begins with curiosity. I explore how design, data, people and culture connect.</p></div>' +
       '<div class="aboutsec"><h4>I DJ</h4><p>A personal journey through electronic music — from high-energy moments to deeper, melodic and atmospheric sounds.</p></div>' +
@@ -2747,5 +2747,191 @@
     if (!_scAC || !_scGain) return;
     try { _scGain.gain.setTargetAtTime(0, _scAC.currentTime, 0.05); } catch (e) {}
   }
-  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, version: "V98" };
+  // ============================================================
+  // V99: FIND YOUR SOUND — genre flavour finder (10-question quiz)
+  // ============================================================
+  (function () {
+    var fvBtn = document.getElementById("flavourBtn");
+    if (!fvBtn) return;
+    var RX = {
+      org: /organic|acoustic|\blive\b|african|latin|percussion|conga|djembe|marimba|balafon|disco|funk|guitar|\bjazz\b|soul|handdrum|hand-drum|vinyl|analog|analogue|\bband\b|horn|\bsax\b|nylon|folk/i,
+      syn: /synth|digital|distort|\bsaw\b|reese|\bfm\b|bitcrush|bit-crush|supersaw|hoover|\b303\b|acid|wobble|growl|neuro|subbass|sub-bass|riser|sidechain|preset|square|serum|virus/i,
+      euphoric: /euphoric|uplift|anthem|hands|\bepic\b|emotional|melodic|soaring|festival|bright|\bjoy|ecstatic|trance|blissful|celebratory/i,
+      dark: /\bdark|menacing|hypnotic|driving|brooding|industrial|moody|warehouse|dystop|sinister|\bcold\b|\braw\b|underground|rumbl|gritty|tunnel|peakhour/i,
+      dreamy: /dreamy|lush|ethereal|ambient|spacious|melanchol|\bdeep\b|meditat|floaty|nostalg|\bwarm\b|cosmic|celestial|\bsoft\b|hazy|introspect/i,
+      aggressive: /aggress|heavy|\bhard\b|banging|intense|militant|brutal|distort|peak-time|\bslam|relentless|pounding|ferocious|furious|angry/i,
+      sexy: /sexy|groovy|bouncy|funky|disco|sultry|rolling|\bswing|shuffl|sensual|smooth|late-night|hips|slinky|seductive/i
+    };
+    function firstTok(s) { return (s || "").split(/[,;\/]| - /)[0].trim().toLowerCase(); }
+    function vocalNum(s) { var t = (s || "").toLowerCase(); if (/med-high/.test(t)) return 0.75; if (/low-med/.test(t)) return 0.25; if (/high/.test(t)) return 1; if (/med/.test(t)) return 0.5; if (/low/.test(t)) return 0; return 0.5; }
+    function keyNum(d) { var c = d.Camelot || "", A = (c.match(/\d+A/g) || []).length, B = (c.match(/\d+B/g) || []).length; if (A + B) return B / (A + B); var k = d["Common Keys"] || ""; if (/major/i.test(k) && !/minor/i.test(k)) return 1; if (/minor/i.test(k)) return 0; return 0.5; }
+    function drumClass(d) { var t = (d["Drum Feel"] || "").toLowerCase(); if (!t) return "none"; if (/four/.test(t)) return "four"; if (/half/.test(t)) return "halftime"; if (/sync|break|2-step|dembow|bounce|broken|shuffl/.test(t)) return "broken"; if (/beatless|ambient/.test(t)) return "beatless"; return "other"; }
+    function placeClass(d) { var t = firstTok(d["DJ Set Placement"]); if (/festival/.test(t)) return "festival"; if (/peak/.test(t)) return "peak"; if (/warm/.test(t)) return "warmup"; if (/after/.test(t)) return "afterhours"; if (/listen|chill|radio/.test(t)) return "listening"; return t ? "other" : "none"; }
+    function feat(n) {
+      var d = n.d, txt = (d["Sound Signature"] || "") + " " + (d["Sound Design / Instrumentation"] || "") + " " + (d["Drum Programming"] || "");
+      var moodTxt = (d["Sound Signature"] || "") + " " + (d["Drop/Main Feel"] || "") + " " + (d["Intro Feel"] || "") + " " + (d["Breakdown Feel"] || "") + " " + n.name;
+      var oh = (txt.match(RX.org) || []).length, sh = (txt.match(RX.syn) || []).length;
+      var mood = {}; ["euphoric", "dark", "dreamy", "aggressive", "sexy"].forEach(function (m) { mood[m] = (moodTxt.match(RX[m]) || []).length; });
+      var mmax = Math.max(1, mood.euphoric, mood.dark, mood.dreamy, mood.aggressive, mood.sexy);
+      var pc = placeClass(d), e = +n.energy || 5;
+      var hyp = 0.5; if (pc === "afterhours" || pc === "warmup" || pc === "listening") hyp += 0.3; if (pc === "peak" || pc === "festival") hyp -= 0.3; if (e <= 5) hyp += 0.12; if (e >= 8) hyp -= 0.12; hyp = Math.max(0, Math.min(1, hyp));
+      var era = 0.5, et = ((d.Era || "") + " " + (d.Origin || "")).toLowerCase(); if (/19\d\d|classic|early|origin of|golden|retro|old-?school/.test(et)) era = 0.15; if (/20[12]\d|modern|current|contemporary|new-?school|recent/.test(et)) era = 0.85;
+      return { e: e, bpm: (n.bpmMin && n.bpmMax) ? (n.bpmMin + n.bpmMax) / 2 : (n.bpm || 125), vocal: vocalNum(d["Vocal Density / Layerability"]), key: keyNum(d), drum: drumClass(d), org: (oh + sh) ? oh / (oh + sh) : 0.5, place: pc, hyp: hyp, era: era, mood: mood, mmax: mmax };
+    }
+    var pool = (window.__GENOME ? window.__GENOME.nodes : nodes).filter(function (n) { return n.d && n.energy != null; });
+    pool.forEach(function (n) { n._fv = feat(n); });
+
+    var Q = [
+      { t: "How hard do you want it?", a: "energy", o: [["Chilled", 2, "#2FE6FF"], ["Groovy", 5, "#7CE88A"], ["Driving", 7, "#FFC24B"], ["Peak-time", 9, "#FF3D9A"], ["Extreme", 10, "#FF4D4D"]] },
+      { t: "What tempo moves you?", a: "bpm", o: [["Slow · 60–110", 92, "#2FE6FF"], ["Groove · 118–124", 122, "#7CE88A"], ["Driving · 124–132", 128, "#FFC24B"], ["Fast · 134–150", 140, "#FF3D9A"], ["Rolling · 160–175", 170, "#FF4D4D"]] },
+      { t: "Pick your vibe", a: "mood", o: [["Euphoric ↑", "euphoric", "#FFC24B"], ["Dark & hypnotic", "dark", "#8A63FF"], ["Dreamy & deep", "dreamy", "#2FE6FF"], ["Raw & aggressive", "aggressive", "#FF4D4D"], ["Sexy & groovy", "sexy", "#FF3D9A"]] },
+      { t: "Vocals, or instrumental?", a: "vocal", o: [["Vocal-led", 1, "#FF3D9A"], ["Some hooks", 0.5, "#FFC24B"], ["Instrumental", 0, "#2FE6FF"]] },
+      { t: "What rhythm feel?", a: "drum", o: [["Four-on-the-floor", "four", "#7CE88A"], ["Broken / syncopated", "broken", "#FFC24B"], ["Halftime / heavy", "halftime", "#8A63FF"], ["Doesn't matter", "any", "#9a9ab0"]] },
+      { t: "Sound palette?", a: "org", o: [["Organic / live", 1, "#7CE88A"], ["A bit of both", 0.5, "#FFC24B"], ["Synthetic / digital", 0, "#FF3D9A"]] },
+      { t: "Where do you hear it?", a: "setting", o: [["Festival mainstage", "festival", "#FFC24B"], ["Underground warehouse", "peak", "#FF3D9A"], ["Sunset / beach", "warmup", "#7CE88A"], ["Afterhours", "afterhours", "#8A63FF"], ["Home / headphones", "listening", "#2FE6FF"]] },
+      { t: "Bright or moody?", a: "key", o: [["Bright / major", 1, "#FFC24B"], ["Moody / minor", 0, "#8A63FF"], ["Either", 0.5, "#9a9ab0"]] },
+      { t: "Steady or dynamic?", a: "hyp", o: [["Hypnotic & steady", 1, "#8A63FF"], ["A balance", 0.5, "#FFC24B"], ["Big builds & drops", 0, "#FF3D9A"]] },
+      { t: "Sound era?", a: "era", o: [["Timeless classics", 0.15, "#7CE88A"], ["Modern & current", 0.85, "#2FE6FF"], ["Don't care", "any", "#9a9ab0"]] }
+    ];
+
+    var W = { energy: 1.4, bpm: 1.2, mood: 1.3, vocal: 1.0, drum: 0.8, org: 1.0, setting: 1.0, key: 0.7, hyp: 0.9, era: 0.5 };
+    function relPlace(g, a) { if (g === a) return 1; if ((g === "festival" && a === "peak") || (g === "peak" && a === "festival")) return 0.6; if ((g === "warmup" && a === "listening") || (g === "listening" && a === "warmup")) return 0.55; if (g === "none") return 0.5; return 0.2; }
+    function scoreNode(f, A) {
+      var s = {};
+      s.energy = 1 - Math.abs(f.e - A.energy) / 9;
+      s.bpm = 1 - Math.min(Math.abs(f.bpm - A.bpm), 70) / 70;
+      s.mood = f.mmax ? (f.mood[A.mood] / f.mmax) : 0.4; if (!f.mood[A.mood]) s.mood = f.mmax > 1 ? 0.12 : 0.4;
+      s.vocal = 1 - Math.abs(f.vocal - A.vocal);
+      s.drum = A.drum === "any" ? 1 : (f.drum === "none" ? 0.5 : (f.drum === A.drum ? 1 : 0.18));
+      s.org = 1 - Math.abs(f.org - A.org);
+      s.setting = relPlace(f.place, A.setting);
+      s.key = A.key === 0.5 ? 1 : 1 - Math.abs(f.key - A.key);
+      s.hyp = 1 - Math.abs(f.hyp - A.hyp);
+      s.era = A.era === "any" ? 1 : 1 - Math.abs(f.era - A.era);
+      var tot = 0, wt = 0, contrib = [];
+      for (var k in W) { tot += s[k] * W[k]; wt += W[k]; contrib.push([k, s[k] * W[k]]); }
+      contrib.sort(function (a, b) { return b[1] - a[1]; });
+      return { pct: Math.round(tot / wt * 100), why: contrib };
+    }
+    function whyPhrase(n, axis, A) {
+      var f = n._fv;
+      if (axis === "energy") return f.e >= 8 ? "peak energy" : f.e >= 6 ? "driving energy" : f.e >= 4 ? "groovy energy" : "chilled energy";
+      if (axis === "bpm") return Math.round(f.bpm) + " BPM";
+      if (axis === "mood") return A.mood + " mood";
+      if (axis === "vocal") return f.vocal >= 0.75 ? "vocal-led" : f.vocal <= 0.25 ? "instrumental" : "some vocals";
+      if (axis === "drum") return f.drum === "four" ? "four-on-the-floor" : f.drum === "halftime" ? "halftime" : f.drum === "broken" ? "syncopated" : "its groove";
+      if (axis === "org") return f.org >= 0.6 ? "organic feel" : f.org <= 0.4 ? "synthetic feel" : "hybrid feel";
+      if (axis === "setting") return f.place !== "none" ? f.place + " placement" : "its setting";
+      if (axis === "key") return f.key >= 0.6 ? "bright/major" : f.key <= 0.4 ? "moody/minor" : "its key";
+      if (axis === "hyp") return f.hyp >= 0.6 ? "hypnotic & steady" : f.hyp <= 0.4 ? "big builds" : "balanced flow";
+      if (axis === "era") return f.era >= 0.6 ? "modern" : "classic";
+      return axis;
+    }
+    var NOUN = { euphoric: "Festival Heart", dark: "Underground Soul", dreamy: "Deep Diver", aggressive: "Hard Head", sexy: "Groove Cat" };
+    var MADJ = { euphoric: "Euphoric", dark: "Dark", dreamy: "Dreamy", aggressive: "Raw", sexy: "Sultry" };
+    function flavourName(A) { var e = A.energy, ea = e <= 3 ? "mellow" : e <= 5 ? "groovy" : e <= 7 ? "driving" : "high-octane"; return { adj: MADJ[A.mood] + ", " + ea, noun: NOUN[A.mood] || "Selector" }; }
+    function artistsOf(n) { var a = n.d["Representative Artists"]; if (a && a.trim()) return a.split(/[,;]/).slice(0, 3).map(function (x) { return x.trim(); }).join(", "); var t = [n.d["Top Track 1"], n.d["Top Track 2"]].filter(Boolean).join(" · "); return t || ""; }
+
+    // ---- radar ----
+    function radar(A) {
+      var axes = [["Energy", A.energy / 10], ["Tempo", Math.max(0, Math.min(1, (A.bpm - 80) / 95))], ["Vocals", A.vocal], ["Bright", A.key === 0.5 ? 0.5 : A.key], ["Organic", A.org], ["Steady", A.hyp]];
+      var cx = 130, cy = 118, R = 84, N = axes.length, s = '<svg viewBox="0 0 260 240" width="100%" style="max-width:260px;display:block;margin:0 auto" aria-hidden="true">';
+      function pt(i, r) { var a = -Math.PI / 2 + i / N * 2 * Math.PI; return [(cx + r * Math.cos(a)).toFixed(1), (cy + r * Math.sin(a)).toFixed(1)]; }
+      [0.25, 0.5, 0.75, 1].forEach(function (g) { var d = ""; for (var i = 0; i < N; i++) { var p = pt(i, R * g); d += (i ? "L" : "M") + p[0] + " " + p[1] + " "; } s += '<path d="' + d + 'Z" fill="none" stroke="rgba(255,255,255,0.07)"/>'; });
+      for (var i = 0; i < N; i++) { var e = pt(i, R); s += '<line x1="' + cx + '" y1="' + cy + '" x2="' + e[0] + '" y2="' + e[1] + '" stroke="rgba(255,255,255,0.08)"/>'; var l = pt(i, R + 16); s += '<text x="' + l[0] + '" y="' + (+l[1] + 3) + '" fill="rgba(236,236,244,0.6)" font-family="Space Mono,monospace" font-size="8.5" text-anchor="middle">' + axes[i][0] + '</text>'; }
+      var d = ""; for (i = 0; i < N; i++) { var p = pt(i, R * Math.max(0.05, axes[i][1])); d += (i ? "L" : "M") + p[0] + " " + p[1] + " "; }
+      s += '<path d="' + d + 'Z" fill="rgba(255,61,154,0.18)" stroke="#FF3D9A" stroke-width="2"/>';
+      for (i = 0; i < N; i++) { var p2 = pt(i, R * Math.max(0.05, axes[i][1])); s += '<circle cx="' + p2[0] + '" cy="' + p2[1] + '" r="3" fill="#FF3D9A"/>'; }
+      return s + "</svg>";
+    }
+
+    // ---- overlay ----
+    var ov = document.createElement("div"); ov.className = "overlay flav"; ov.id = "flavOverlay"; ov.setAttribute("role", "dialog");
+    ov.innerHTML = '<div class="sheet flavsheet"><button class="fv-x" aria-label="Close">✕ close</button><div id="fvBody"></div></div>';
+    document.body.appendChild(ov);
+    var body = ov.querySelector("#fvBody"), sheet = ov.querySelector(".flavsheet");
+    ov.addEventListener("click", function (e) { if (e.target === ov) close(); });
+    ov.querySelector(".fv-x").addEventListener("click", close);
+    function close() { ov.classList.remove("show"); }
+    function open() { A = {}; qi = 0; sheet.style.setProperty("--fv", "#FF3D9A"); renderIntro(); ov.classList.add("show"); }
+    fvBtn.addEventListener("click", open);
+
+    var A = {}, qi = 0;
+    function renderIntro() {
+      body.innerHTML = '<div class="fv-intro"><div class="fv-kick">BeatGenome</div><h2 class="fv-title">Find Your Sound</h2>' +
+        '<p class="fv-sub">Ten quick taps. We read your flavour against ' + pool.length + ' genres and hand you your top matches.</p>' +
+        '<button class="fv-start">START ▸</button><p class="fv-note">A discovery tool, not a science — trust your ears over the %.</p></div>';
+      body.querySelector(".fv-start").addEventListener("click", function () { qi = 0; renderQ(); });
+    }
+    function renderQ() {
+      var q = Q[qi];
+      var h = '<div class="fv-prog"><i style="width:' + ((qi) / Q.length * 100) + '%"></i></div><div class="fv-qn">' + (qi + 1) + ' / ' + Q.length + '</div>';
+      h += '<h3 class="fv-q">' + q.t + '</h3><div class="fv-opts">';
+      q.o.forEach(function (o, idx) { h += '<button class="fv-opt" data-i="' + idx + '" style="--oc:' + o[2] + '"><span class="fv-dot"></span>' + o[0] + '</button>'; });
+      h += '</div>' + (qi > 0 ? '<button class="fv-back">‹ back</button>' : '');
+      body.innerHTML = h;
+      body.parentNode.scrollTop = 0;
+      Array.prototype.forEach.call(body.querySelectorAll(".fv-opt"), function (b) {
+        b.addEventListener("click", function () { var o = q.o[+b.getAttribute("data-i")]; A[q.a] = o[1]; sheet.style.setProperty("--fv", o[2]); qi++; if (qi >= Q.length) renderResult(); else renderQ(); });
+      });
+      var bk = body.querySelector(".fv-back"); if (bk) bk.addEventListener("click", function () { qi--; renderQ(); });
+    }
+    var lastTop = [];
+    function renderResult() {
+      var ranked = pool.map(function (n) { var r = scoreNode(n._fv, A); return { n: n, pct: r.pct, why: r.why }; }).sort(function (a, b) { return b.pct - a.pct; });
+      lastTop = ranked.slice(0, 5);
+      var fn = flavourName(A);
+      var h = '<div class="fv-prog"><i style="width:100%"></i></div><div class="fv-res">';
+      h += '<div class="fv-kick">Your flavour</div><h2 class="fv-flav">' + fn.adj + '</h2><div class="fv-noun">you\'re a ' + fn.noun + '</div>';
+      h += radar(A);
+      h += '<div class="fv-topttl">Your top 5 genres</div>';
+      lastTop.forEach(function (r, i) {
+        var a = whyPhrase(r.n, r.why[0][0], A), b = whyPhrase(r.n, r.why[1][0], A);
+        var art = artistsOf(r.n);
+        h += '<div class="fv-match" data-id="' + r.n.id + '"><div class="fv-rank">' + (i + 1) + '</div><div class="fv-mbody"><div class="fv-mtop"><b>' + r.n.name + '</b><span class="fv-pct">' + r.pct + '%</span></div><div class="fv-why">' + a + ' · ' + b + '</div>' + (art ? '<div class="fv-art">' + art + '</div>' : '') + '</div><button class="fv-goto" title="Show on the map">▸</button></div>';
+      });
+      h += '<div class="fv-actions"><button class="fv-share">◇ SHARE CARD</button><button class="fv-retake">↺ RETAKE</button></div></div>';
+      body.innerHTML = h;
+      body.parentNode.scrollTop = 0;
+      Array.prototype.forEach.call(body.querySelectorAll(".fv-match"), function (el) {
+        el.querySelector(".fv-goto").addEventListener("click", function () { gotoNode(el.getAttribute("data-id")); });
+      });
+      body.querySelector(".fv-retake").addEventListener("click", function () { A = {}; qi = 0; renderIntro(); });
+      body.querySelector(".fv-share").addEventListener("click", function () { shareCard(fn); });
+    }
+    function gotoNode(id) {
+      var n = (window.__GENOME && window.__GENOME.byId) ? window.__GENOME.byId[id] : byId[id];
+      if (!n) return; close();
+      try { select(n); } catch (e) {}
+      try { centerOn(n); } catch (e) {}
+    }
+
+    // ---- shareable AOC card (canvas -> PNG) ----
+    function shareCard(fn) {
+      var W2 = 1080, H2 = 1350, cv = document.createElement("canvas"); cv.width = W2; cv.height = H2; var g = cv.getContext("2d");
+      g.fillStyle = "#08080F"; g.fillRect(0, 0, W2, H2);
+      var grd = g.createLinearGradient(0, 0, W2, H2); grd.addColorStop(0, "rgba(255,61,154,0.14)"); grd.addColorStop(1, "rgba(138,99,255,0.05)"); g.fillStyle = grd; g.fillRect(0, 0, W2, H2);
+      g.textAlign = "center";
+      g.fillStyle = "#9a9ab0"; g.font = "600 30px 'Space Mono', monospace"; g.fillText("BEATGENOME · ΛΩ COLLECTIVE", W2 / 2, 120);
+      g.fillStyle = "#ECECF4"; g.font = "700 40px 'Space Mono', monospace"; g.fillText("FIND YOUR SOUND", W2 / 2, 185);
+      var lg = g.createLinearGradient(120, 0, 960, 0); lg.addColorStop(0, "#FF3D9A"); lg.addColorStop(1, "#8A63FF");
+      g.fillStyle = lg; g.font = "800 96px 'Archivo','Space Grotesk',sans-serif"; g.fillText(fn.adj.toUpperCase(), W2 / 2, 330);
+      g.fillStyle = "#C6F000"; g.font = "700 44px 'Space Mono', monospace"; g.fillText("you're a " + fn.noun, W2 / 2, 400);
+      g.textAlign = "left"; var y = 560;
+      g.fillStyle = "#9a9ab0"; g.font = "700 30px 'Space Mono', monospace"; g.fillText("YOUR TOP MATCHES", 120, y - 40);
+      lastTop.slice(0, 5).forEach(function (r, i) {
+        g.fillStyle = i === 0 ? "#FF3D9A" : "rgba(255,255,255,0.06)"; g.fillRect(120, y - 42, 840, 78); g.strokeStyle = "rgba(255,255,255,0.1)"; g.strokeRect(120, y - 42, 840, 78);
+        g.fillStyle = i === 0 ? "#08080F" : "#ECECF4"; g.font = "700 40px 'Archivo','Space Grotesk',sans-serif"; g.fillText((i + 1) + ".  " + r.n.name, 150, y + 10);
+        g.textAlign = "right"; g.fillStyle = i === 0 ? "#08080F" : "#C6F000"; g.font = "700 40px 'Space Mono', monospace"; g.fillText(r.pct + "%", 940, y + 10); g.textAlign = "left";
+        y += 100;
+      });
+      g.textAlign = "center"; g.fillStyle = "#6f6f86"; g.font = "500 28px 'Space Mono', monospace"; g.fillText("wilsonliciousssssss.github.io/beatgenome", W2 / 2, H2 - 70);
+      try {
+        var url = cv.toDataURL("image/png"); var a = document.createElement("a"); a.href = url; a.download = "beatgenome-flavour.png"; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      } catch (e) { alert("Card generated — long-press / right-click to save."); }
+    }
+  })();
+
+
+  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, centerOn: centerOn, version: "V99" };
 })();
