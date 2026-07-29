@@ -32,12 +32,12 @@
       for (var k = 0; k < olds.length; k++) { if (olds[k].parentNode) olds[k].parentNode.removeChild(olds[k]); }
       var link = document.createElement("link");
       link.rel = "icon"; link.type = "image/png"; link.setAttribute("sizes", "48x48");
-      link.href = "assets/icons/favicon-" + col + "-48.png?v=97";
+      link.href = "assets/icons/favicon-" + col + "-48.png?v=98";
       document.head.appendChild(link);
     } catch (e) {}
     try {
       var badge = document.querySelector(".badge");
-      if (badge) badge.style.backgroundImage = 'url("assets/icons/product-' + col + '-216.png?v=97")';
+      if (badge) badge.style.backgroundImage = 'url("assets/icons/product-' + col + '-216.png?v=98")';
     } catch (e) {}
   }
   function applyChannel(i) {
@@ -1898,7 +1898,7 @@
       relay += '<line x1="' + raX(0.5) + '" y1="' + raPt + '" x2="' + raX(0.5) + '" y2="' + (raH - raPb) + '" stroke="rgba(198,240,0,0.5)" stroke-dasharray="4 3"/><text x="' + raX(0.5) + '" y="' + (raPt + 1) + '" fill="#C6F000" font-family="Space Mono,monospace" font-size="8" text-anchor="middle">HAND-OFF</text>';
       relay += '<text x="' + raX(0.24) + '" y="' + (raH - 7) + '" fill="#2FE6FF" font-family="Space Mono,monospace" font-size="9" text-anchor="middle">WARM-UP</text><text x="' + raX(0.76) + '" y="' + (raH - 7) + '" fill="#FF3D9A" font-family="Space Mono,monospace" font-size="9" text-anchor="middle">MAIN / PEAK</text>';
       relay += '</svg>';
-      var roles = [["WARM-UP DJ", "opener", "#2FE6FF", [["Job", "Fill the room, set the mood, build a foundation"], ["Energy", "2\u20136 \u2014 never peak"], ["Tempo", "~110\u2013124 BPM, rising gently"], ["Selection", "Deep, groovy, atmospheric \u2014 save the anthems"], ["Blends", "Long & patient (16\u201332 bars)"], ["Mindset", "Restraint \u2014 leave headroom"], ["Avoid", "Peaking early / dropping the big tracks"]]], ["MAIN DJ", "peak-time \u00b7 headliner", "#FF3D9A", [["Job", "Take the built energy to the peak"], ["Energy", "6\u201310 \u2014 big moments"], ["Tempo", "~124\u2013140+ BPM"], ["Selection", "Anthems, drops, recognisable hooks"], ["Blends", "Tighter, punchier, double-drops"], ["Mindset", "Command the room, then land it"], ["Avoid", "Resetting the floor / flat at 10"]]]];
+      var roles = [["WARM-UP DJ", "opener", "#2FE6FF", [["Job", "Fill the room, set the mood, build a foundation"], ["Slot length", "\u2248 3\u20134 hrs \u00b7 60\u201390 min at festivals"], ["Energy", "2\u20136 \u2014 never peak"], ["Tempo", "~110\u2013124 BPM, rising gently"], ["Selection", "Deep, groovy, atmospheric \u2014 save the anthems"], ["Blends", "Long & patient (16\u201332 bars)"], ["Mindset", "Restraint \u2014 leave headroom"], ["Avoid", "Peaking early / dropping the big tracks"]]], ["MAIN DJ", "peak-time \u00b7 headliner", "#FF3D9A", [["Job", "Take the built energy to the peak"], ["Slot length", "\u2248 2\u20133 hrs \u00b7 60\u201390 min at festivals"], ["Energy", "6\u201310 \u2014 big moments"], ["Tempo", "~124\u2013140+ BPM"], ["Selection", "Anthems, drops, recognisable hooks"], ["Blends", "Tighter, punchier, double-drops"], ["Mindset", "Command the room, then land it"], ["Avoid", "Resetting the floor / flat at 10"]]]];
       var rolh = '<div class="gd-roles">';
       roles.forEach(function (r) { rolh += '<div class="gd-role" style="--rlc:' + r[2] + '" data-tip="' + r[0] + ' \u2014 ' + r[3][0][1] + '"><div class="gd-rolehd"><b>' + r[0] + '</b><span>' + r[1] + '</span></div>'; r[3].forEach(function (row) { rolh += '<div class="gd-rolerow"><span class="k">' + row[0] + '</span><span class="v">' + row[1] + '</span></div>'; }); rolh += '</div>'; });
       rolh += '</div>';
@@ -1913,6 +1913,28 @@
       ow += '<text x="' + ((owPl + owW - 14) / 2) + '" y="' + (owH - 4) + '" fill="rgba(236,236,244,0.5)" font-family="Space Mono,monospace" font-size="8" text-anchor="middle">BPM \u2192</text><text x="12" y="' + ((owPt + owH - owPb) / 2) + '" fill="rgba(236,236,244,0.5)" font-family="Space Mono,monospace" font-size="8" text-anchor="middle" transform="rotate(-90 12 ' + ((owPt + owH - owPb) / 2) + ')">ENERGY \u2191</text></svg>';
       function miniE(pts, col) { var W = 210, H = 58, pl = 6, pb = 8, pt = 8, x = function (f) { return (pl + f * (W - pl - 6)).toFixed(1); }, y = function (v) { return (H - pb - v * (H - pb - pt)).toFixed(1); }; var d = 'M' + x(pts[0][0]) + ' ' + y(pts[0][1]); for (var i = 1; i < pts.length; i++) d += ' L' + x(pts[i][0]) + ' ' + y(pts[i][1]); return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block;margin-top:6px" aria-hidden="true"><line x1="' + x(0.5) + '" y1="' + pt + '" x2="' + x(0.5) + '" y2="' + (H - pb) + '" stroke="rgba(198,240,0,0.4)" stroke-dasharray="3 3"/><text x="' + x(0.5) + '" y="' + (pt + 1) + '" fill="#C6F000" font-family="Space Mono,monospace" font-size="7" text-anchor="middle">hand-off</text><path d="' + d + '" fill="none" stroke="' + col + '" stroke-width="2.5" stroke-linejoin="round"/></svg>'; }
       var handoff = '<div class="gd-two"><div class="gd-ex good" data-tip="Match the outgoing energy & BPM — the floor keeps climbing"><span class="tag">\u2713 MATCH THE ENERGY</span>' + miniE([[0, 0.45], [0.35, 0.5], [0.5, 0.55], [0.72, 0.78], [1, 0.9]], "#7CE88A") + '</div><div class="gd-ex bad" data-tip="Resetting to zero on arrival empties the floor"><span class="tag">\u2717 RESET TO ZERO</span>' + miniE([[0, 0.55], [0.5, 0.55], [0.56, 0.15], [1, 0.2]], "#FF6A6A") + '</div></div>';
+
+      var hats = '<div class="gd-hats"><span class="gd-hat" style="--hc:#2FE6FF">WARM-UP</span><span class="gd-hplus">+</span><span class="gd-hat" style="--hc:#FF3D9A">MAIN</span><span class="gd-hplus">+</span><span class="gd-hat" style="--hc:#8A63FF">CLOSER</span><span class="gd-heq">=</span><span class="gd-hyou">YOU \u00b7 all night</span></div>';
+      var anW = 520, anH = 190, anPl = 30, anPb = 30, anPt = 12;
+      var anX = function (f) { return (anPl + f * (anW - anPl - 10)).toFixed(1); }, anY = function (e) { return (anH - anPb - (e / 10) * (anH - anPb - anPt)).toFixed(1); };
+      var anPts = [[0, 2], [0.083, 3], [0.167, 4], [0.25, 6], [0.333, 7], [0.417, 5], [0.5, 7], [0.583, 8], [0.667, 9], [0.75, 9], [0.833, 7], [0.917, 5], [1, 3]];
+      var anD = 'M' + anX(anPts[0][0]) + ' ' + anY(anPts[0][1]); for (var ani = 1; ani < anPts.length; ani++) anD += ' L' + anX(anPts[ani][0]) + ' ' + anY(anPts[ani][1]);
+      var wave = '<svg viewBox="0 0 ' + anW + ' ' + anH + '" width="100%" style="display:block" aria-hidden="true"><defs><linearGradient id="anG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FF3D9A" stop-opacity="0.28"/><stop offset="1" stop-color="#8A63FF" stop-opacity="0.02"/></linearGradient></defs>';
+      [2, 4, 6, 8, 10].forEach(function (e) { wave += '<line x1="' + anPl + '" y1="' + anY(e) + '" x2="' + (anW - 10) + '" y2="' + anY(e) + '" stroke="rgba(255,255,255,0.05)"/><text x="' + (anPl - 5) + '" y="' + (+anY(e) + 3) + '" fill="rgba(236,236,244,0.4)" font-family="Space Mono,monospace" font-size="7.5" text-anchor="end">' + e + '</text>'; });
+      wave += '<path d="' + anD + ' L' + anX(1) + ' ' + anY(0) + ' L' + anX(0) + ' ' + anY(0) + ' Z" fill="url(#anG)"/><path d="' + anD + '" fill="none" stroke="#FF3D9A" stroke-width="2.5" stroke-linejoin="round"/>';
+      var anPh = [["Open", 0, 0.14, "Hr 0\u20131 \u00b7 energy 2\u20133 \u00b7 deep & slow, fill the room"], ["Build", 0.14, 0.29, "Hr 1\u20132 \u00b7 energy 3\u20135 \u00b7 introduce groove"], ["Peak 1", 0.29, 0.46, "Hr 2\u20133 \u00b7 energy 6\u20137 \u00b7 first wave, then a breather"], ["Rebuild", 0.46, 0.63, "Hr 3\u20134 \u00b7 energy 6\u20138 \u00b7 climb again"], ["Main peak", 0.63, 0.83, "Hr 4\u20135 \u00b7 energy 8\u20139 \u00b7 the big moment + plateau"], ["Close", 0.83, 1, "Hr 5\u20136 \u00b7 energy 5\u21923 \u00b7 comedown, land it"]];
+      anPh.forEach(function (p) { wave += '<rect x="' + anX(p[1]) + '" y="' + anPt + '" width="' + (anX(p[2]) - anX(p[1])).toFixed(1) + '" height="' + (anH - anPb - anPt) + '" fill="transparent" pointer-events="all" data-tip="' + p[0] + ' \u2014 ' + p[3] + '" style="cursor:pointer"/>'; });
+      wave += '<text x="' + anX(0.333) + '" y="' + (+anY(7) - 6) + '" fill="#C6F000" font-family="Space Mono,monospace" font-size="7.5" text-anchor="middle">peak 1</text><text x="' + anX(0.7) + '" y="' + (+anY(9) - 6) + '" fill="#FF3D9A" font-family="Space Mono,monospace" font-size="8" text-anchor="middle">MAIN PEAK</text><text x="' + anX(0.417) + '" y="' + (+anY(5) + 12) + '" fill="rgba(236,236,244,0.5)" font-family="Space Mono,monospace" font-size="7" text-anchor="middle">reset</text>';
+      [0, 0.167, 0.333, 0.5, 0.667, 0.833, 1].forEach(function (f, i) { wave += '<text x="' + anX(f) + '" y="' + (anH - 10) + '" fill="rgba(236,236,244,0.45)" font-family="Space Mono,monospace" font-size="7.5" text-anchor="middle">' + i + 'h</text>'; });
+      wave += '</svg>';
+      var hrs = [["Hr 0\u20131", "Open", "2\u20133", "#2FE6FF", "deep, slow, atmospheric"], ["Hr 1\u20132", "Build", "3\u20135", "#2FE6FF", "introduce groove, lift gently"], ["Hr 2\u20133", "First peak", "6\u20137", "#C6F000", "a wave up, then a breather"], ["Hr 3\u20134", "Rebuild", "6\u20138", "#FFC24B", "climb toward the main peak"], ["Hr 4\u20135", "Main peak", "8\u20139", "#FF3D9A", "big-room moment + plateau"], ["Hr 5\u20136", "Comedown", "4\u21923", "#8A63FF", "wind down, land the night"]];
+      var hrh = '<div class="gd-hrs">';
+      hrs.forEach(function (h) { hrh += '<div class="gd-hrc" style="--hc:' + h[3] + '" data-tip="' + h[0] + ' \u00b7 ' + h[1] + ' \u2014 energy ' + h[2] + ' \u00b7 ' + h[4] + '"><div class="hr">' + h[0] + '</div><b>' + h[1] + '</b><span class="e">energy ' + h[2] + '</span><div class="v">' + h[4] + '</div></div>'; });
+      hrh += '</div>';
+      D.push(["all-night set", '<div class="gi"><div class="gi-title">One DJ wears all three hats</div><div class="gi-card">' + hats + '</div></div>' +
+        '<div class="gi"><div class="gi-title">A 6-hour set moves in waves, not one peak</div><div class="gi-card">' + wave + '</div></div>' +
+        '<div class="gi"><div class="gi-title">Hour by hour \u2014 a 6-hour shape</div>' + hrh + '</div>']);
+
       D.push(["Warm-up DJ vs main DJ", '<div class="gi"><div class="gi-title">The night is a relay \u2014 two energy arcs, one hand-off</div><div class="gi-card">' + relay + '</div></div>' +
         '<div class="gi"><div class="gi-title">Two jobs, side by side</div>' + rolh + '</div>' +
         '<div class="gi"><div class="gi-title">Operating windows \u2014 BPM \u00d7 energy</div><div class="gi-card">' + ow + '</div></div>' +
@@ -2469,7 +2491,7 @@
     aboutEl = document.createElement("div"); aboutEl.className = "overlay about"; aboutEl.id = "aboutOverlay"; aboutEl.setAttribute("role", "dialog");
     aboutEl.innerHTML = '<div class="aboutsheet"><div class="cmphead"><span>About Me</span><button class="x" id="aboutClose">✕ close</button></div>' +
       '<div class="aboutbody">' +
-      '<div class="aboutpic"><div class="apic-frame"><img src="assets/about-me.jpg?v=97" alt="DJ7 - Wilsonlicioussss" onerror="this.parentNode.classList.add(\'empty\');this.remove()"></div><span class="aname">DJ7 · Wilsonlicioussss</span></div>' +
+      '<div class="aboutpic"><div class="apic-frame"><img src="assets/about-me.jpg?v=98" alt="DJ7 - Wilsonlicioussss" onerror="this.parentNode.classList.add(\'empty\');this.remove()"></div><span class="aname">DJ7 · Wilsonlicioussss</span></div>' +
       '<div class="aboutsec"><h4>★ Things I Love</h4><p>Thoughtful spaces, quiet details, electronic music, new technology and ideas that feel slightly ahead of their time.</p></div>' +
       '<div class="aboutsec"><h4>Always Learning</h4><p>Everything begins with curiosity. I explore how design, data, people and culture connect.</p></div>' +
       '<div class="aboutsec"><h4>I DJ</h4><p>A personal journey through electronic music — from high-energy moments to deeper, melodic and atmospheric sounds.</p></div>' +
@@ -2725,5 +2747,5 @@
     if (!_scAC || !_scGain) return;
     try { _scGain.gain.setTargetAtTime(0, _scAC.currentTime, 0.05); } catch (e) {}
   }
-  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, version: "V97" };
+  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, version: "V98" };
 })();

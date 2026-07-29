@@ -46,7 +46,7 @@ body::before{
 .badge{
   width:42px;height:42px;border-radius:11px;flex:none;
   background:#08080F center/cover no-repeat;
-  background-image:url("icons/product-magenta-216.png?v=97");
+  background-image:url("icons/product-magenta-216.png?v=98");
   box-shadow:0 0 18px color-mix(in srgb,var(--c1) 45%, transparent), inset 0 0 0 1px rgba(255,255,255,.08);
 }
 .title{display:flex;flex-direction:column;line-height:1;min-width:0}
@@ -1156,3 +1156,15 @@ svg [data-tip]:hover{filter:brightness(1.28)}
 .gd-rolerow .k{font-family:"Space Mono",monospace;font-size:9px;color:var(--fog);min-width:62px;flex:none;text-transform:uppercase;padding-top:2px}
 .gd-rolerow .v{color:var(--ink);line-height:1.35}
 @media(max-width:600px){.gd-roles{grid-template-columns:1fr}}
+
+/* ---------- V98: all-night set ---------- */
+.gd-hats{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;padding:8px 0}
+.gd-hat{font-family:"Space Mono",monospace;font-size:11px;font-weight:700;color:var(--hc);border:1px solid var(--hc);border-radius:20px;padding:4px 12px}
+.gd-hplus,.gd-heq{color:var(--fog);font-family:"Space Mono",monospace;font-size:13px}
+.gd-hyou{font-family:"Archivo","Space Grotesk",sans-serif;font-weight:800;font-size:14px;background:linear-gradient(135deg,var(--c1),var(--c2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.gd-hrs{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:9px}
+.gd-hrc{background:rgba(255,255,255,.03);border:1px solid var(--line);border-left:3px solid var(--hc);border-radius:0 9px 9px 0;padding:10px 11px}
+.gd-hrc .hr{font-family:"Space Mono",monospace;font-size:9px;color:var(--fog);letter-spacing:.05em}
+.gd-hrc b{display:block;font-family:"Archivo","Space Grotesk",sans-serif;font-weight:700;font-size:13px;color:var(--hc);margin:1px 0 5px}
+.gd-hrc .e{font-family:"Space Mono",monospace;font-size:9.5px;color:var(--ink);background:rgba(255,255,255,.05);border-radius:5px;padding:1px 6px}
+.gd-hrc .v{font-size:11px;color:var(--fog);line-height:1.35;margin-top:5px}
