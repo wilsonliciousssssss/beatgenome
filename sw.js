@@ -1,5 +1,5 @@
 /* BeatGenome service worker (V53) - network-first with offline fallback */
-var CACHE = "beatgenome-v110";
+var CACHE = "beatgenome-v111";
 var CORE = [
   "./", "./index.html",
   "./assets/styles.css?v=109", "./assets/data.js?v=109", "./assets/layout-manager.js?v=109",
