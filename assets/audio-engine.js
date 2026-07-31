@@ -1,5 +1,5 @@
 /* ============================================================
-   BeatGenome — audio-engine.js  (V11 / Stage 2: better synth drums — kick click + layered clap + open hat)
+   BeatGenome — audio-engine.js  (V12 / Stage 3: per-genre bass — clean sub sine + saturated/widened character)
    Procedural, in-browser genre audio on Tone.js.
    window.BeatGenomeAudio. App works fully if Tone.js is missing.
    ============================================================ */
@@ -58,13 +58,18 @@
     nodes.openHat = new T.NoiseSynth({ noise: { type: "white" }, envelope: { attack: 0.001, decay: 0.28, sustain: 0 } });
     nodes.openHatGain = new T.Gain(0.22); nodes.openHat.connect(nodes.openHatGain); nodes.openHatGain.connect(nodes.hatFilt);
 
-    // ---- bass bus (ducked): filter -> EQ -> saturation -> musicDuck ----
-    nodes.bassSat = new T.Distortion(0).connect(nodes.musicDuck);
-    nodes.bassEQ = new T.EQ3(2, -1.5, -2).connect(nodes.bassSat);
+    // ---- bass bus: CHARACTER layer (ducked, saturated, stereo-widened) ----
+    nodes.bassWiden = new T.StereoWidener(0.5).connect(nodes.musicDuck);
+    nodes.bassSat = new T.Distortion(0).connect(nodes.bassWiden);
+    nodes.bassEQ = new T.EQ3(0, -1, -2).connect(nodes.bassSat);
     nodes.bassFilt = new T.Filter(600, "lowpass").connect(nodes.bassEQ);
     nodes.bass = new T.MonoSynth({ oscillator: { type: "sawtooth" }, filter: { Q: 2 }, envelope: { attack: 0.005, decay: 0.2, sustain: 0.5, release: 0.2 }, filterEnvelope: { attack: 0.01, decay: 0.2, baseFrequency: 120, octaves: 2.5 } });
     nodes.bassGain = new T.Gain(0.5); nodes.bass.connect(nodes.bassGain); nodes.bassGain.connect(nodes.bassFilt);
     nodes.wobble = new T.LFO("8n", 300, 300).connect(nodes.bassFilt.frequency); nodes.wobble.start();  // static unless wobble genre
+    // ---- SUB layer (ducked, clean sine, mono/centered — owns the fundamental) ----
+    nodes.subFilt = new T.Filter(110, "lowpass").connect(nodes.musicDuck);
+    nodes.subBass = new T.Synth({ oscillator: { type: "sine" }, envelope: { attack: 0.006, decay: 0.24, sustain: 0.7, release: 0.18 } });
+    nodes.subGain = new T.Gain(0); nodes.subBass.connect(nodes.subGain); nodes.subGain.connect(nodes.subFilt);
 
     // ---- chords + lead (ducked, dry) with parallel FX sends ----
     nodes.musicBus = new T.Gain(1).connect(nodes.musicDuck);
@@ -123,9 +128,11 @@
       if (p.openHatPattern[s]) { nodes.openHat.triggerAttackRelease("8n", when, 0.5); RS.hat = 1; }
       if (!state.lowPerf && p.percPattern[s]) { nodes.perc.triggerAttackRelease("C4", "32n", when, 0.22); }
       if (p.bassPattern[s]) {
-        var bn = noteFor(p, (s % 8 === 4 ? 4 : 0), p.bass === "sub" ? 1 : 1);
-        var dur = (p.bass === "roll") ? "16n" : (p.bass === "wobble" || p.bass === "reese") ? "8n" : "8n";
-        nodes.bass.triggerAttackRelease(bn, dur, when, 0.85); RS.bass = 1;
+        var bn = noteFor(p, (s % 8 === 4 ? 4 : 0), 1);
+        var dur = (p.bass === "roll") ? "16n" : "8n";
+        nodes.bass.triggerAttackRelease(bn, dur, when, 0.85);
+        nodes.subBass.triggerAttackRelease(bn, dur, when, 0.9);
+        RS.bass = 1;
       }
       // chords: arp (trance/melodic) vs block (house/techno)
       if (p.chords !== "none" && p.chordDensity > 0.12) {
@@ -152,9 +159,18 @@
       // kick tone: harder & tighter for dark/high-energy genres
       nodes.kick.set({ octaves: 4 + p.darkness * 5, pitchDecay: 0.02 + (1 - p.energy) * 0.06 });
       // bass voice by style
-      var bt = (p.bass === "sub" || p.bass === "logdrum") ? "sine" : (p.bass === "wobble" || p.bass === "reese") ? "fatsawtooth" : (p.bass === "acid") ? "square" : "sawtooth";
-      nodes.bass.set({ oscillator: { type: bt } });
-      nodes.bass.set({ filter: { Q: p.bass === "acid" ? 6 : 2 }, filterEnvelope: { octaves: p.bass === "acid" ? 4 : 2.5, baseFrequency: p.bass === "sub" ? 55 : 120 } });
+      var b = p.bass;
+      var bt = (b === "sub" || b === "logdrum") ? "sine" : (b === "wobble" || b === "reese") ? "fatsawtooth" : (b === "acid") ? "square" : "sawtooth";
+      var benv = (b === "offbeat" || b === "funk") ? { attack: 0.004, decay: 0.13, sustain: 0.12, release: 0.1 }
+               : (b === "roll") ? { attack: 0.006, decay: 0.2, sustain: 0.55, release: 0.16 }
+               : (b === "wobble" || b === "reese") ? { attack: 0.006, decay: 0.26, sustain: 0.7, release: 0.2 }
+               : (b === "acid") ? { attack: 0.005, decay: 0.18, sustain: 0.2, release: 0.12 }
+               : { attack: 0.008, decay: 0.3, sustain: 0.5, release: 0.2 };
+      nodes.bass.set({ oscillator: { type: bt }, envelope: benv, filter: { Q: b === "acid" ? 6 : 2 },
+        filterEnvelope: { octaves: b === "acid" ? 4 : (b === "offbeat" || b === "funk") ? 3 : 2.5, baseFrequency: b === "sub" ? 55 : (b === "offbeat" || b === "funk") ? 90 : 120 } });
+      var subMix = (b === "wobble" || b === "reese") ? 0.55 : (b === "sub" || b === "logdrum") ? 0.14 : (b === "acid") ? 0.22 : 0.32;
+      var bwiden = (b === "wobble" || b === "reese") ? 0.64 : 0.52;
+      try { nodes.subGain.gain.rampTo(subMix, 0.2); nodes.bassWiden.width.rampTo(bwiden, 0.2); } catch (e) {}
       var chOsc = p.chordVoice === "keys" ? "triangle" : p.chordVoice === "square" ? "square" : p.chordVoice === "supersaw" ? "fatsawtooth" : (p.chords === "stab") ? "square" : "fatsawtooth";
       var chAtk = (p.chords === "pad") ? 0.6 : 0.02, chRel = p.chordVoice === "keys" ? 0.7 : (p.chords === "pad") ? 2.4 : (p.chords === "stab") ? 0.25 : 1.3;
       nodes.chords.set({ oscillator: { type: chOsc }, envelope: { attack: chAtk, decay: 0.3, sustain: p.chords === "stab" ? 0.2 : 0.6, release: chRel } });
