@@ -1,5 +1,5 @@
 /* ============================================================
-   BeatGenome — audio-engine.js  (V18 / mixing correction: 100% wet FX sends + send gains + bass HP crossover (mono sub) + bar-quantized genre switch)
+   BeatGenome — audio-engine.js  (V19 / genre engines: 7 dedicated bass engines (house/acid/reese/wobble/psy/logdrum/sub808) + per-family drum presets)
    Procedural, in-browser genre audio on Tone.js.
    window.BeatGenomeAudio. App works fully if Tone.js is missing.
    ============================================================ */
@@ -80,6 +80,11 @@
     nodes.subFilt = new T.Filter(110, "lowpass").connect(nodes.musicDuck);
     nodes.subBass = new T.Synth({ oscillator: { type: "sine" }, envelope: { attack: 0.006, decay: 0.24, sustain: 0.7, release: 0.18 } });
     nodes.subGain = new T.Gain(0); nodes.subBass.connect(nodes.subGain); nodes.subGain.connect(nodes.subFilt);
+    // ---- log-drum engine layers: percussive MembraneSynth body (mono, ducked) + tonal sine tail (into sub bus) ----
+    nodes.logBody = new T.MembraneSynth({ pitchDecay: 0.06, octaves: 4, envelope: { attack: 0.001, decay: 0.22, sustain: 0 } });
+    nodes.logGain = new T.Gain(0).connect(nodes.musicDuck); nodes.logBody.connect(nodes.logGain);
+    nodes.logTail = new T.Synth({ oscillator: { type: "triangle" }, envelope: { attack: 0.003, decay: 0.3, sustain: 0.15, release: 0.28 } });
+    nodes.logTailGain = new T.Gain(0).connect(nodes.subFilt); nodes.logTail.connect(nodes.logTailGain);
 
     // ---- chords + lead (ducked, dry) with parallel FX sends ----
     nodes.musicBus = new T.Gain(1).connect(nodes.musicDuck);
@@ -163,6 +168,7 @@
       if (s === 0) {
         var sf = (arrBar < 2) ? 0.55 : (arrBar === 6 || arrBar === 7) ? 0.85 : (arrBar >= 8 && arrBar <= 13) ? 1.08 : (arrBar === 14) ? 0.45 : 1.0;
         try { nodes.chordFilt.frequency.rampTo(p.filterCutoff * sf, 0.35); } catch (e) {}
+        updateBassMotion(p, arrBar);   // reese/wobble LFO phrase automation
       }
       if (sec.kick && p.kickPattern[s]) { nodes.kick.triggerAttackRelease("C1", "8n", when, 0.9 + (p.energy - 0.5) * 0.2); nodes.kickClick.triggerAttackRelease("64n", when, 0.9); triggerSidechain(when, p); RS.kick = 1; RS.master = 0.9; }
       if (sec.clap && p.clapPattern[s]) { nodes.snare.triggerAttackRelease("16n", when, 0.55); nodes.snare.triggerAttackRelease("16n", when + 0.008, 0.72); nodes.snare.triggerAttackRelease("16n", when + 0.018, 0.5); RS.snare = 1; }
@@ -170,10 +176,7 @@
       if (p.openHatPattern[s]) { nodes.openHat.triggerAttackRelease("8n", when, 0.5); RS.hat = 1; }
       if (!state.lowPerf && p.percPattern[s]) { nodes.perc.triggerAttackRelease("C4", "32n", when, 0.22); }
       if (sec.bass && p.bassPattern[s]) {
-        var bn = noteFor(p, (s % 8 === 4 ? 4 : 0), 1);
-        var dur = (p.bass === "roll") ? "16n" : "8n";
-        nodes.bass.triggerAttackRelease(bn, dur, when, 0.85);
-        nodes.subBass.triggerAttackRelease(bn, dur, when, 0.9);
+        triggerBass(p, s, arrBar, when);
         RS.bass = 1;
       }
       // chords: arp (trance/melodic) vs block (house/techno)
@@ -211,29 +214,188 @@
     state.step++;
   }
 
+  // ============================================================
+  //  V19 — dedicated bass engines + per-family drum presets
+  // ============================================================
+  function selectBassEngine(p) {
+    var b = p.bass, fam = p.family, id = p.id || "";
+    if (b === "acid") return "acid";
+    if (b === "reese") return "reese";
+    if (b === "wobble") return "wobble";
+    if (b === "logdrum") return "logdrum";
+    if (b === "sub") return "sub808";
+    if (b === "roll") {   // psytrance rolls are their own KBBB engine; techno/hardcore rolls use the house pluck
+      if (fam === "trance" && (/psy|goa|forest|fullon|full ?on|dark/.test(id) || p.energy > 0.85)) return "psy";
+      return "housePluck";
+    }
+    return "housePluck";   // offbeat, funk, default
+  }
+
+  function configureBassEngine(eng, p) {
+    var cut = p.filterCutoff * 0.5, osc, env, fenv, Q = 2, subMix = 0.3, width = 0.5;
+    // log layers only audible for the logdrum engine
+    try { nodes.logGain.gain.rampTo(eng === "logdrum" ? 0.5 : 0, 0.2); nodes.logTailGain.gain.rampTo(eng === "logdrum" ? 0.3 : 0, 0.2); } catch (e) {}
+    // static character-filter unless a movement engine drives the LFO
+    if (eng !== "wobble" && eng !== "reese") { nodes.wobble.min = cut; nodes.wobble.max = cut; }
+    if (eng === "acid") {
+      osc = { type: "square" }; env = { attack: 0.004, decay: 0.18, sustain: 0.2, release: 0.1 };
+      fenv = { attack: 0.002, decay: 0.16, sustain: 0.05, release: 0.08, baseFrequency: 90, octaves: 4 };
+      Q = 7; subMix = 0.2; width = 0.35;
+    } else if (eng === "psy") {
+      osc = { type: "sawtooth" }; env = { attack: 0.001, decay: 0.075, sustain: 0.02, release: 0.035 };
+      fenv = { attack: 0.001, decay: 0.07, sustain: 0, release: 0.025, baseFrequency: 80, octaves: 2.8 };
+      Q = 1.5; subMix = 0.28; width = 0.12;
+      p.bassPattern = [0,1,1,1,0,1,1,1,0,1,1,1,0,1,1,1];   // KBBB — bass fills the three 16ths after each kick
+    } else if (eng === "reese") {
+      osc = { type: "fatsawtooth", count: 3, spread: 40 }; env = { attack: 0.006, decay: 0.26, sustain: 0.7, release: 0.2 };
+      fenv = { attack: 0.02, decay: 0.2, sustain: 0.4, baseFrequency: 160, octaves: 2.5 };
+      Q = 2.5; subMix = 0.55; width = 0.66;
+    } else if (eng === "wobble") {
+      osc = { type: "fatsawtooth", count: 3, spread: 40 }; env = { attack: 0.006, decay: 0.26, sustain: 0.7, release: 0.2 };
+      fenv = { attack: 0.01, decay: 0.2, sustain: 0.5, baseFrequency: 120, octaves: 2.5 };
+      Q = 4; subMix = 0.5; width = 0.6;
+    } else if (eng === "sub808") {
+      osc = { type: "sine" }; env = { attack: 0.006, decay: 0.3, sustain: 0.8, release: 0.3 };
+      fenv = { attack: 0.01, decay: 0.2, baseFrequency: 55, octaves: 2 };
+      Q = 1; subMix = 0.5; width = 0.2;
+      try { nodes.subBass.set({ envelope: { attack: 0.008, decay: 0.32, sustain: 0.85, release: 0.35 } }); } catch (e) {}
+    } else if (eng === "logdrum") {
+      osc = { type: "sine" }; env = { attack: 0.004, decay: 0.2, sustain: 0.1, release: 0.15 };
+      fenv = { attack: 0.01, decay: 0.2, baseFrequency: 70, octaves: 2 };
+      Q = 1; subMix = 0.14; width = 0.25;
+      try { nodes.logBody.set({ pitchDecay: 0.06, octaves: 4 }); } catch (e) {}
+    } else {   // housePluck (also techno/hardcore roll, offbeat, funk)
+      var roll = (p.bass === "roll");
+      osc = { type: "sawtooth" };
+      env = roll ? { attack: 0.006, decay: 0.2, sustain: 0.5, release: 0.16 }
+                 : { attack: 0.004, decay: 0.12, sustain: 0.08, release: 0.09 };
+      fenv = { attack: 0.002, decay: 0.15, sustain: 0.05, release: 0.08,
+               baseFrequency: (p.bass === "offbeat" || p.bass === "funk") ? 90 : 75, octaves: 3 };
+      Q = 2.5; subMix = 0.3; width = 0.5;
+    }
+    try {
+      nodes.bass.set({ oscillator: osc, envelope: env, filter: { Q: Q }, portamento: 0, filterEnvelope: fenv });
+      nodes.subGain.gain.rampTo(subMix, 0.2);
+      nodes.bassWiden.width.rampTo(width, 0.2);
+    } catch (e) {}
+  }
+
+  function updateBassMotion(p, arrBar) {
+    var eng = nodes.bassEngine;
+    if (!nodes.wobble || (eng !== "wobble" && eng !== "reese")) return;
+    try {
+      if (eng === "wobble") {                       // LFO rate steps through the phrase (2n..16n)
+        var rates = ["4n", "8n", "8t", "16n"];
+        nodes.wobble.frequency.value = rates[arrBar % rates.length];
+        nodes.wobble.min = 90; nodes.wobble.max = 1400;
+      } else {                                       // reese — slow evolving/reversing filter movement
+        var q = arrBar % 4;
+        nodes.wobble.min = 180 + q * 40; nodes.wobble.max = 900 + q * 220;
+        nodes.wobble.frequency.value = (q % 2 === 0) ? "2n" : "1n";
+      }
+    } catch (e) {}
+  }
+
+  function bassNote(p, s) {
+    var deg = (s % 8 === 4) ? 4 : (s % 16 === 14) ? 5 : 0;   // root, with a 5th on the '&', octave-ish lift near the turnaround
+    return noteFor(p, deg, 1);
+  }
+  function triggerBass(p, s, arrBar, when) {
+    var eng = nodes.bassEngine || "housePluck", note = bassNote(p, s);
+    try {
+      if (eng === "acid") {
+        var acc = (s % 8 === 3 || s % 8 === 6), slide = (s % 8 === 6);
+        nodes.bass.set({ portamento: slide ? 0.06 : 0, filterEnvelope: { octaves: acc ? 5.5 : 4, baseFrequency: 90 } });
+        nodes.bass.triggerAttackRelease(note, slide ? "8n" : "16n", when, acc ? 0.98 : 0.7);
+      } else if (eng === "psy") {
+        var pos = s % 4, v = (pos === 1) ? 0.76 : (pos === 2) ? 0.9 : 0.82;   // first note after the kick is softer
+        nodes.bass.triggerAttackRelease(note, "16n", when, v);
+      } else if (eng === "reese") {
+        nodes.bass.triggerAttackRelease(note, "8n", when, 0.85);
+        nodes.subBass.triggerAttackRelease(note, "8n", when, 0.9);
+      } else if (eng === "wobble") {
+        nodes.bass.triggerAttackRelease(note, "4n", when, 0.9);
+        nodes.subBass.triggerAttackRelease(note, "4n", when, 0.9);
+      } else if (eng === "sub808") {
+        nodes.subBass.set({ portamento: 0.04 });
+        nodes.subBass.triggerAttackRelease(note, "4n", when, 0.95);
+        nodes.bass.triggerAttackRelease(note, "16n", when, 0.22);   // faint transient click
+      } else if (eng === "logdrum") {
+        nodes.logBody.triggerAttackRelease(note, "8n", when, 0.9);
+        nodes.logTail.triggerAttackRelease(note, "8n", when, 0.5);
+      } else {   // housePluck
+        var roll = (p.bass === "roll"), dur = roll ? "16n" : "8n";
+        nodes.bass.triggerAttackRelease(note, dur, when, 0.82 + (s % 4 === 0 ? 0.06 : 0));
+        if (nodes.subGain.gain.value > 0.02) nodes.subBass.triggerAttackRelease(note, dur, when, 0.85);
+      }
+    } catch (e) {}
+  }
+
+  // ---- per-family drum presets ----
+  function selectDrumKit(p) {
+    var fam = p.family, id = p.id || "";
+    if (fam === "ambient") return "ambient";
+    if (fam === "dnb") return /jungle/.test(id) ? "jungle" : "dnb";
+    if (fam === "dubstep") return /riddim/.test(id) ? "riddim" : "dubstep";
+    if (fam === "trance") return /psy|goa|forest|fullon|full ?on/.test(id) ? "psytrance" : "trance";
+    if (fam === "techno") return "techno";
+    if (fam === "breaks") return "breaks";
+    if (fam === "garage") return "garage";
+    if (fam === "hardcore") return /hardstyle/.test(id) ? "hardstyle" : "hardcore";
+    if (fam === "trap") return /future/.test(id) ? "futurebass" : "trap";
+    if (/amapiano|piano|afro/.test(id)) return "amapiano";
+    if (/deep/.test(id)) return "deephouse";
+    if (/tech/.test(id)) return "techhouse";
+    return "house";
+  }
+  var DRUMKITS = {
+    house:     { kick: { octaves: 5,   pitchDecay: 0.03,  decay: 0.30 }, snareF: 1600, snareDecay: 0.16, hatDecay: 0.030, hatGain: 0.32, openHat: 0.24, perc: 0.12, click: 0.14, sat: 0.05 },
+    deephouse: { kick: { octaves: 4.5, pitchDecay: 0.05,  decay: 0.40 }, snareF: 1400, snareDecay: 0.20, hatDecay: 0.040, hatGain: 0.24, openHat: 0.20, perc: 0.10, click: 0.10, sat: 0.04 },
+    techhouse: { kick: { octaves: 5.5, pitchDecay: 0.02,  decay: 0.24 }, snareF: 1900, snareDecay: 0.12, hatDecay: 0.028, hatGain: 0.34, openHat: 0.20, perc: 0.16, click: 0.16, sat: 0.06 },
+    techno:    { kick: { octaves: 5,   pitchDecay: 0.03,  decay: 0.42 }, snareF: 1500, snareDecay: 0.14, hatDecay: 0.035, hatGain: 0.30, openHat: 0.26, perc: 0.16, click: 0.16, sat: 0.10 },
+    trance:    { kick: { octaves: 6,   pitchDecay: 0.02,  decay: 0.30 }, snareF: 2000, snareDecay: 0.16, hatDecay: 0.030, hatGain: 0.34, openHat: 0.30, perc: 0.12, click: 0.16, sat: 0.05 },
+    psytrance: { kick: { octaves: 6,   pitchDecay: 0.015, decay: 0.26 }, snareF: 2200, snareDecay: 0.10, hatDecay: 0.025, hatGain: 0.32, openHat: 0.22, perc: 0.20, click: 0.18, sat: 0.06 },
+    dnb:       { kick: { octaves: 5,   pitchDecay: 0.02,  decay: 0.20 }, snareF: 1800, snareDecay: 0.22, hatDecay: 0.030, hatGain: 0.32, openHat: 0.22, perc: 0.18, click: 0.14, sat: 0.08 },
+    jungle:    { kick: { octaves: 4.5, pitchDecay: 0.03,  decay: 0.18 }, snareF: 1700, snareDecay: 0.24, hatDecay: 0.028, hatGain: 0.30, openHat: 0.20, perc: 0.20, click: 0.12, sat: 0.10 },
+    dubstep:   { kick: { octaves: 5,   pitchDecay: 0.05,  decay: 0.28 }, snareF: 1400, snareDecay: 0.26, hatDecay: 0.030, hatGain: 0.24, openHat: 0.18, perc: 0.12, click: 0.14, sat: 0.12 },
+    riddim:    { kick: { octaves: 5,   pitchDecay: 0.04,  decay: 0.24 }, snareF: 1500, snareDecay: 0.22, hatDecay: 0.028, hatGain: 0.24, openHat: 0.16, perc: 0.12, click: 0.16, sat: 0.14 },
+    breaks:    { kick: { octaves: 5,   pitchDecay: 0.03,  decay: 0.26 }, snareF: 1700, snareDecay: 0.20, hatDecay: 0.032, hatGain: 0.34, openHat: 0.24, perc: 0.20, click: 0.14, sat: 0.08 },
+    garage:    { kick: { octaves: 5,   pitchDecay: 0.03,  decay: 0.26 }, snareF: 1800, snareDecay: 0.18, hatDecay: 0.030, hatGain: 0.36, openHat: 0.26, perc: 0.18, click: 0.14, sat: 0.06 },
+    amapiano:  { kick: { octaves: 4.5, pitchDecay: 0.05,  decay: 0.36 }, snareF: 1500, snareDecay: 0.16, hatDecay: 0.050, hatGain: 0.30, openHat: 0.22, perc: 0.22, click: 0.10, sat: 0.04 },
+    hardcore:  { kick: { octaves: 4,   pitchDecay: 0.02,  decay: 0.34 }, snareF: 1600, snareDecay: 0.14, hatDecay: 0.030, hatGain: 0.30, openHat: 0.20, perc: 0.14, click: 0.18, sat: 0.30 },
+    hardstyle: { kick: { octaves: 3.5, pitchDecay: 0.06,  decay: 0.50 }, snareF: 1500, snareDecay: 0.16, hatDecay: 0.030, hatGain: 0.28, openHat: 0.20, perc: 0.12, click: 0.16, sat: 0.28 },
+    trap:      { kick: { octaves: 6,   pitchDecay: 0.06,  decay: 0.50 }, snareF: 1500, snareDecay: 0.20, hatDecay: 0.020, hatGain: 0.30, openHat: 0.16, perc: 0.12, click: 0.12, sat: 0.06 },
+    futurebass:{ kick: { octaves: 5.5, pitchDecay: 0.03,  decay: 0.32 }, snareF: 1800, snareDecay: 0.20, hatDecay: 0.025, hatGain: 0.32, openHat: 0.24, perc: 0.14, click: 0.14, sat: 0.05 },
+    ambient:   { kick: { octaves: 4,   pitchDecay: 0.08,  decay: 0.50 }, snareF: 1200, snareDecay: 0.30, hatDecay: 0.060, hatGain: 0.14, openHat: 0.14, perc: 0.08, click: 0.06, sat: 0.03 }
+  };
+  function applyDrumPreset(kitId, p) {
+    var k = DRUMKITS[kitId] || DRUMKITS.house;
+    try {
+      nodes.kick.set({ octaves: k.kick.octaves, pitchDecay: k.kick.pitchDecay, envelope: { attack: 0.001, decay: k.kick.decay, sustain: 0 } });
+      nodes.snareFilt.frequency.rampTo(k.snareF, 0.2);
+      nodes.snare.set({ envelope: { attack: 0.001, decay: k.snareDecay, sustain: 0 } });
+      nodes.hat.set({ envelope: { attack: 0.001, decay: k.hatDecay, sustain: 0 } });
+      nodes.hatGain.gain.rampTo(k.hatGain, 0.2);
+      nodes.openHatGain.gain.rampTo(k.openHat, 0.2);
+      nodes.percGain.gain.rampTo(k.perc, 0.2);
+      nodes.kickClickGain.gain.rampTo(k.click, 0.2);
+      if (nodes.drumSat) nodes.drumSat.distortion = Math.min(0.5, k.sat + p.distortion * 0.15);
+      nodes.drumKit = kitId;
+    } catch (e) {}
+  }
+
   function applyProfile(p, ramp) {
     if (!p) return;
     try {
-      // kick tone: harder & tighter for dark/high-energy genres
-      nodes.kick.set({ octaves: 4 + p.darkness * 5, pitchDecay: 0.02 + (1 - p.energy) * 0.06 });
       // per-genre master tone: bright for melodic/low-dark, warm & dark for high-dark
       try { nodes.masterEQ.high.rampTo(2.5 - p.darkness * 5, 0.4); nodes.masterEQ.low.rampTo((p.warmth - 0.5) * 3, 0.4); } catch (e) {}
       // techno rumble send: four-on-the-floor + dark genres get a rolling sub-rumble
       try { if (nodes.rumbleGain) nodes.rumbleGain.gain.rampTo((p.kick === "four" && p.darkness > 0.55) ? Math.min(0.5, (p.darkness - 0.5) * 0.9) : 0, 0.3); } catch (e) {}
-      // bass voice by style
-      var b = p.bass;
-      var bt = (b === "sub" || b === "logdrum") ? "sine" : (b === "wobble" || b === "reese") ? "fatsawtooth" : (b === "acid") ? "square" : "sawtooth";
-      var benv = (b === "offbeat" || b === "funk") ? { attack: 0.004, decay: 0.13, sustain: 0.12, release: 0.1 }
-               : (b === "roll") ? { attack: 0.006, decay: 0.2, sustain: 0.55, release: 0.16 }
-               : (b === "wobble" || b === "reese") ? { attack: 0.006, decay: 0.26, sustain: 0.7, release: 0.2 }
-               : (b === "acid") ? { attack: 0.005, decay: 0.18, sustain: 0.2, release: 0.12 }
-               : { attack: 0.008, decay: 0.3, sustain: 0.5, release: 0.2 };
-      var bOsc = (bt === "fatsawtooth") ? { type: "fatsawtooth", count: 3, spread: 40 } : { type: bt };
-      nodes.bass.set({ oscillator: bOsc, envelope: benv, filter: { Q: b === "acid" ? 6 : 2 }, portamento: b === "acid" ? 0.05 : 0,
-        filterEnvelope: { octaves: b === "acid" ? 4 : (b === "offbeat" || b === "funk") ? 3 : 2.5, baseFrequency: b === "sub" ? 55 : (b === "offbeat" || b === "funk") ? 90 : 120 } });
-      var subMix = (b === "wobble" || b === "reese") ? 0.55 : (b === "sub" || b === "logdrum") ? 0.14 : (b === "acid") ? 0.22 : 0.32;
-      var bwiden = (b === "wobble" || b === "reese") ? 0.64 : 0.52;
-      try { nodes.subGain.gain.rampTo(subMix, 0.2); nodes.bassWiden.width.rampTo(bwiden, 0.2); } catch (e) {}
+      // ---- per-family drum preset (kick/snare/hat/perc tone + levels) ----
+      applyDrumPreset(selectDrumKit(p), p);
+      // ---- dedicated bass engine (house / acid / reese / wobble / psy / logdrum / sub808) ----
+      nodes.bassEngine = selectBassEngine(p);
+      configureBassEngine(nodes.bassEngine, p);
       // ---- genre-matched chord voice (keys / organ-stab / supersaw / pad / saw) ----
       var cv = p.chordVoice, chOscOpt, chEnv, chWet;
       if (cv === "supersaw") {                                                     // trance / prog / big room / future
@@ -259,13 +421,9 @@
       }
       nodes.chords.set({ oscillator: chOscOpt, envelope: chEnv });
       try { nodes.chorus.wet.rampTo(chWet, 0.3); } catch (e) {}
-      // wobble movement (dubstep) vs static cutoff
-      var cut = p.filterCutoff * 0.5;
-      if (p.bass === "wobble") { nodes.wobble.min = 110; nodes.wobble.max = 1300; try { nodes.wobble.frequency.value = "8n"; } catch (e) {} }
-      else { nodes.wobble.min = cut; nodes.wobble.max = cut; }
       nodes.chordFilt.frequency.rampTo(p.filterCutoff, 0.3);
       try { nodes.reverbSend.gain.rampTo(p.reverbWet, 0.4); nodes.delaySend.gain.rampTo(p.delayWet, 0.3); } catch (e) {}
-      try { nodes.bassSat.distortion = Math.min(0.4, p.distortion * 0.5); nodes.drumSat.distortion = Math.min(0.14, 0.04 + p.distortion * 0.12); } catch (e) {}
+      try { nodes.bassSat.distortion = Math.min(0.4, p.distortion * 0.5); } catch (e) {}   // drumSat now owned by applyDrumPreset
       var jump = state.active && Math.abs(state.active.bpm - p.bpm) > 24;
       if (jump || !ramp) T.Transport.bpm.value = p.bpm; else T.Transport.bpm.rampTo(p.bpm, 0.5);
       RS.bpm = p.bpm;
