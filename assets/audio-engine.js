@@ -1,5 +1,5 @@
 /* ============================================================
-   BeatGenome — audio-engine.js  (V09: more genre-accurate)
+   BeatGenome — audio-engine.js  (V10 / Stage 1: bus mixer + sidechain pump)
    Procedural, in-browser genre audio on Tone.js.
    window.BeatGenomeAudio. App works fully if Tone.js is missing.
    ============================================================ */
@@ -28,12 +28,21 @@
     if (nodes.master) return;
     var dest = T.getDestination ? T.getDestination() : T.Destination;
     nodes.limiter = new T.Limiter(-1).connect(dest);
-    nodes.master = new T.Gain(0.0001).connect(nodes.limiter);
+    nodes.masterComp = new T.Compressor({ threshold: -14, ratio: 2.5, attack: 0.006, release: 0.16 }).connect(nodes.limiter);
+    nodes.master = new T.Gain(0.0001).connect(nodes.masterComp);        // volume node
+
+    // FX bus (reverb + delay) -> master
     nodes.reverb = new T.Reverb({ decay: state.lowPerf ? 1.0 : 2.4, wet: 0.3 }).connect(nodes.master);
     nodes.delay = new T.FeedbackDelay("8n.", 0.22); nodes.delay.wet.value = 0.15; nodes.delay.connect(nodes.master);
 
-    nodes.drive = new T.Distortion(0).connect(nodes.master);            // per-genre grit
-    nodes.drumBus = new T.Gain(0.9).connect(nodes.drive);
+    // sidechain node: bass + chords + lead route through here, ducked by the kick
+    nodes.musicDuck = new T.Gain(1).connect(nodes.master);
+
+    // ---- drum bus (not ducked): EQ -> saturation -> comp -> master ----
+    nodes.drumComp = new T.Compressor({ threshold: -18, ratio: 3, attack: 0.003, release: 0.12 }).connect(nodes.master);
+    nodes.drumSat = new T.Distortion(0.05).connect(nodes.drumComp);
+    nodes.drumEQ = new T.EQ3(1, -1, 1.5).connect(nodes.drumSat);
+    nodes.drumBus = new T.Gain(0.95).connect(nodes.drumEQ);
     nodes.kick = new T.MembraneSynth({ pitchDecay: 0.03, octaves: 6, envelope: { attack: 0.001, decay: 0.32, sustain: 0 } }).connect(nodes.drumBus);
     nodes.snare = new T.NoiseSynth({ noise: { type: "white" }, envelope: { attack: 0.001, decay: 0.16, sustain: 0 } });
     nodes.snareFilt = new T.Filter(1800, "bandpass").connect(nodes.drumBus); nodes.snare.connect(nodes.snareFilt);
@@ -42,20 +51,48 @@
     nodes.perc = new T.MetalSynth({ frequency: 250, envelope: { attack: 0.001, decay: 0.12, release: 0.01 }, harmonicity: 5.1, resonance: 4000, octaves: 1.4 });
     nodes.percGain = new T.Gain(0.1).connect(nodes.drumBus); nodes.perc.connect(nodes.percGain);
 
-    nodes.bassFilt = new T.Filter(600, "lowpass").connect(nodes.drive);
+    // ---- bass bus (ducked): filter -> EQ -> saturation -> musicDuck ----
+    nodes.bassSat = new T.Distortion(0).connect(nodes.musicDuck);
+    nodes.bassEQ = new T.EQ3(2, -1.5, -2).connect(nodes.bassSat);
+    nodes.bassFilt = new T.Filter(600, "lowpass").connect(nodes.bassEQ);
     nodes.bass = new T.MonoSynth({ oscillator: { type: "sawtooth" }, filter: { Q: 2 }, envelope: { attack: 0.005, decay: 0.2, sustain: 0.5, release: 0.2 }, filterEnvelope: { attack: 0.01, decay: 0.2, baseFrequency: 120, octaves: 2.5 } });
     nodes.bassGain = new T.Gain(0.5); nodes.bass.connect(nodes.bassGain); nodes.bassGain.connect(nodes.bassFilt);
     nodes.wobble = new T.LFO("8n", 300, 300).connect(nodes.bassFilt.frequency); nodes.wobble.start();  // static unless wobble genre
 
-    nodes.chordFilt = new T.Filter(1200, "lowpass").connect(nodes.reverb); nodes.chordFilt.connect(nodes.delay);
+    // ---- chords + lead (ducked, dry) with parallel FX sends ----
+    nodes.musicBus = new T.Gain(1).connect(nodes.musicDuck);
+    nodes.chordFilt = new T.Filter(1200, "lowpass");
+    nodes.chordFilt.connect(nodes.musicBus); nodes.chordFilt.connect(nodes.reverb); nodes.chordFilt.connect(nodes.delay);
     nodes.chords = new T.PolySynth(T.Synth); nodes.chords.maxPolyphony = state.lowPerf ? 4 : 8;
     nodes.chords.set({ oscillator: { type: "sawtooth" }, envelope: { attack: 0.02, decay: 0.3, sustain: 0.5, release: 1.4 } });
     nodes.chordGain = new T.Gain(0.32); nodes.chords.connect(nodes.chordGain); nodes.chordGain.connect(nodes.chordFilt);
-
     nodes.lead = new T.FMSynth({ harmonicity: 2, modulationIndex: 6, envelope: { attack: 0.01, decay: 0.2, sustain: 0.2, release: 0.4 } });
-    nodes.leadGain = new T.Gain(0.1).connect(nodes.delay); nodes.lead.connect(nodes.leadGain);
+    nodes.leadGain = new T.Gain(0.1); nodes.lead.connect(nodes.leadGain); nodes.leadGain.connect(nodes.musicBus); nodes.leadGain.connect(nodes.delay);
 
     T.Transport.scheduleRepeat(onStep, "16n");
+  }
+
+  // ---- sidechain pump (kick ducks bass/chords/lead) ----
+  function sidechainParams(p) {
+    var fam = (p.family || p.id || "").toLowerCase(), rel = 0.22, duck = 0.40;
+    if (/techno|industrial/.test(fam)) { rel = 0.12; duck = 0.44; }
+    else if (/hard|gabber|hardcore/.test(fam)) { rel = 0.10; duck = 0.42; }
+    else if (/trance|psy/.test(fam)) { rel = 0.17; duck = 0.34; }
+    else if (/future|melodic|chill|ambient|downtempo|lofi|deep/.test(fam)) { rel = 0.34; duck = 0.26; }
+    else if (/dubstep|dnb|drum|riddim|bass/.test(fam)) { rel = 0.20; duck = 0.36; }
+    duck -= ((p.energy || 0.5) - 0.5) * 0.06;
+    duck = Math.max(0.2, Math.min(0.6, duck));
+    return { rel: rel, duck: duck };
+  }
+  function triggerSidechain(time, p) {
+    if (!nodes.musicDuck) return;
+    var sc = sidechainParams(p), g = nodes.musicDuck.gain;
+    try {
+      g.cancelScheduledValues(time);
+      g.setValueAtTime(1, time);
+      g.linearRampToValueAtTime(sc.duck, time + 0.008);
+      g.exponentialRampToValueAtTime(1, time + sc.rel);
+    } catch (e) {}
   }
 
   var CHORD_PROG = [0, 5, 3, 6];
@@ -73,7 +110,7 @@
     RS.step16 = s;
     var when = time + ((s % 2 === 1) ? (p.swing || 0) * 0.05 : 0);
     try {
-      if (p.kickPattern[s]) { nodes.kick.triggerAttackRelease("C1", "8n", when, 0.9 + (p.energy - 0.5) * 0.2); RS.kick = 1; RS.master = 0.9; }
+      if (p.kickPattern[s]) { nodes.kick.triggerAttackRelease("C1", "8n", when, 0.9 + (p.energy - 0.5) * 0.2); triggerSidechain(when, p); RS.kick = 1; RS.master = 0.9; }
       if (p.clapPattern[s]) { nodes.snare.triggerAttackRelease("16n", when, 0.8); RS.snare = 1; }
       if (p.closedHatPattern[s]) { nodes.hat.triggerAttackRelease("32n", when, 0.35 + Math.random() * 0.2); RS.hat = 1; }
       if (p.openHatPattern[s]) { nodes.hat.triggerAttackRelease("16n", when, 0.5); RS.hat = 1; }
@@ -121,7 +158,7 @@
       nodes.chordFilt.frequency.rampTo(p.filterCutoff, 0.3);
       nodes.reverb.wet.rampTo(p.reverbWet, 0.4);
       nodes.delay.wet.value = p.delayWet;
-      nodes.drive.distortion = Math.min(0.45, p.distortion * 0.5);
+      try { nodes.bassSat.distortion = Math.min(0.4, p.distortion * 0.5); nodes.drumSat.distortion = Math.min(0.14, 0.04 + p.distortion * 0.12); } catch (e) {}
       var jump = state.active && Math.abs(state.active.bpm - p.bpm) > 24;
       if (jump || !ramp) T.Transport.bpm.value = p.bpm; else T.Transport.bpm.rampTo(p.bpm, 0.5);
       RS.bpm = p.bpm;
