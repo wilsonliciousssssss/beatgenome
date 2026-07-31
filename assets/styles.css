@@ -46,7 +46,7 @@ body::before{
 .badge{
   width:42px;height:42px;border-radius:11px;flex:none;
   background:#08080F center/cover no-repeat;
-  background-image:url("icons/product-magenta-216.png?v=99");
+  background-image:url("icons/product-magenta-216.png?v=100");
   box-shadow:0 0 18px color-mix(in srgb,var(--c1) 45%, transparent), inset 0 0 0 1px rgba(255,255,255,.08);
 }
 .title{display:flex;flex-direction:column;line-height:1;min-width:0}
@@ -1207,3 +1207,14 @@ svg [data-tip]:hover{filter:brightness(1.28)}
 .fv-share{color:#08080F;background:linear-gradient(135deg,var(--c1),var(--c2));border:none}
 .fv-retake{color:var(--ink);background:rgba(255,255,255,.04)}
 @media(max-width:600px){.fv-title{font-size:30px}.fv-q{font-size:19px}.fv-opt{font-size:14px;padding:12px 14px}#fvBody{padding:16px 16px 30px}}
+
+/* ---------- V100: attract animation on the 3 CTA buttons ---------- */
+@keyframes bgAttract{0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,0)}50%{box-shadow:0 0 13px 0 var(--c1)}}
+.iconbtn.attract{animation:bgAttract 2.4s ease-in-out infinite;border-color:color-mix(in srgb,var(--c1) 55%,transparent)}
+#guidesBtn.attract{animation-delay:0s}
+#flavourBtn.attract{animation-delay:.45s}
+#compareBtn.attract{animation-delay:.9s}
+.iconbtn.attract:hover,.iconbtn.attract:focus-visible{animation-play-state:paused}
+.menubtn.attract{animation:none}
+@media(max-width:900px){.menubtn.attract{display:inline-flex;animation:bgAttract 2s ease-in-out infinite;border-color:color-mix(in srgb,var(--c1) 55%,transparent)}}
+@media(prefers-reduced-motion:reduce){.iconbtn.attract,.menubtn.attract{animation:none;box-shadow:0 0 8px 0 var(--c1);border-color:color-mix(in srgb,var(--c1) 60%,transparent)}}
