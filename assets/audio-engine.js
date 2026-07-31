@@ -1,5 +1,5 @@
 /* ============================================================
-   BeatGenome — audio-engine.js  (V14 / Stage 5: FX layer — riser / crash / impact)
+   BeatGenome — audio-engine.js  (V15 / Stage 6: 16-bar arrangement — intro/build/drop/break + fills)
    Procedural, in-browser genre audio on Tone.js.
    window.BeatGenomeAudio. App works fully if Tone.js is missing.
    ============================================================ */
@@ -127,19 +127,35 @@
     var m = (p.scale === "major") ? ROMAN_MAJ : ROMAN_MIN;
     return prog.map(function (d) { return m[(((d % 7) + 7) % 7)]; });
   }
+  // ---- Stage 6: 16-bar arrangement — which elements are live in each bar ----
+  function arrSection(ab) {
+    return {
+      kick: ab !== 14,                // kick drops out for the mini-break (bar 15)
+      clap: ab >= 2 && ab !== 14,     // claps enter with the bass, out in the break
+      bass: ab >= 2 && ab !== 14,     // bass from bar 3, out in the break
+      chords: ab >= 4,                // chords / hook from bar 5
+      lead: ab >= 8                   // lead only in the drop + variation
+    };
+  }
   function onStep(time) {
     var p = state.active; if (!p) return;
     if (state.pending && state.step % 16 === 0) { state.active = p = state.pending; state.pending = null; }
-    var s = state.step % 16, bar = Math.floor(state.step / 16) % 4;
+    var s = state.step % 16, bar = Math.floor(state.step / 16) % 4, arrBar = Math.floor(state.step / 16) % 16;
     RS.step16 = s;
+    var sec = arrSection(arrBar);
     var when = time + ((s % 2 === 1) ? (p.swing || 0) * 0.05 : 0);
     try {
-      if (p.kickPattern[s]) { nodes.kick.triggerAttackRelease("C1", "8n", when, 0.9 + (p.energy - 0.5) * 0.2); nodes.kickClick.triggerAttackRelease("64n", when, 0.9); triggerSidechain(when, p); RS.kick = 1; RS.master = 0.9; }
-      if (p.clapPattern[s]) { nodes.snare.triggerAttackRelease("16n", when, 0.55); nodes.snare.triggerAttackRelease("16n", when + 0.008, 0.72); nodes.snare.triggerAttackRelease("16n", when + 0.018, 0.5); RS.snare = 1; }
+      // filter opens through the build, full in the drop, closes in the break
+      if (s === 0) {
+        var sf = (arrBar < 2) ? 0.55 : (arrBar === 6 || arrBar === 7) ? 0.85 : (arrBar >= 8 && arrBar <= 13) ? 1.08 : (arrBar === 14) ? 0.45 : 1.0;
+        try { nodes.chordFilt.frequency.rampTo(p.filterCutoff * sf, 0.35); } catch (e) {}
+      }
+      if (sec.kick && p.kickPattern[s]) { nodes.kick.triggerAttackRelease("C1", "8n", when, 0.9 + (p.energy - 0.5) * 0.2); nodes.kickClick.triggerAttackRelease("64n", when, 0.9); triggerSidechain(when, p); RS.kick = 1; RS.master = 0.9; }
+      if (sec.clap && p.clapPattern[s]) { nodes.snare.triggerAttackRelease("16n", when, 0.55); nodes.snare.triggerAttackRelease("16n", when + 0.008, 0.72); nodes.snare.triggerAttackRelease("16n", when + 0.018, 0.5); RS.snare = 1; }
       if (p.closedHatPattern[s]) { nodes.hat.triggerAttackRelease("32n", when, 0.35 + Math.random() * 0.2); RS.hat = 1; }
       if (p.openHatPattern[s]) { nodes.openHat.triggerAttackRelease("8n", when, 0.5); RS.hat = 1; }
       if (!state.lowPerf && p.percPattern[s]) { nodes.perc.triggerAttackRelease("C4", "32n", when, 0.22); }
-      if (p.bassPattern[s]) {
+      if (sec.bass && p.bassPattern[s]) {
         var bn = noteFor(p, (s % 8 === 4 ? 4 : 0), 1);
         var dur = (p.bass === "roll") ? "16n" : "8n";
         nodes.bass.triggerAttackRelease(bn, dur, when, 0.85);
@@ -147,7 +163,7 @@
         RS.bass = 1;
       }
       // chords: arp (trance/melodic) vs block (house/techno)
-      if (p.chords !== "none" && p.chordDensity > 0.12) {
+      if (sec.chords && p.chords !== "none" && p.chordDensity > 0.12) {
         var prog = (p.chordProg && p.chordProg.length) ? p.chordProg : CHORD_PROG;
         var deg = prog[bar % prog.length];
         RS.chordStep = bar % prog.length;
@@ -158,19 +174,23 @@
           nodes.chords.triggerAttackRelease(triad, p.chords === "stab" ? "8n" : "2n", when, 0.62); RS.chord = 1;
         }
       }
-      if (!state.lowPerf && p.melody > 0.6 && (s === 2 || s === 7 || s === 12) && Math.random() < 0.55) {
+      if (sec.lead && !state.lowPerf && p.melody > 0.6 && (s === 2 || s === 7 || s === 12) && Math.random() < 0.55) {
         nodes.lead.triggerAttackRelease(noteFor(p, (bar * 2 + s) % 7, 4), "8n", when, 0.4);
       }
-      // ---- Stage 5 FX: riser swells over the last bar into a crash + impact on the phrase downbeat ----
+      // build snare-roll on the build bar (7) & the reset fill (15): 8ths -> 16ths, rising
+      if (arrBar === 7 || arrBar === 15) {
+        if ((s % 2 === 0) || (s >= 8)) { nodes.snare.triggerAttackRelease("16n", when, 0.25 + (s / 15) * 0.55); RS.snare = 1; }
+      }
+      // ---- FX (Stage 5) re-aligned to the 16-bar scene ----
       if (!state.lowPerf && p.energy > 0.5) {
-        if (bar === 3 && s === 0) {
+        if ((arrBar === 7 || arrBar === 15) && s === 0) {   // riser swells over the build bar into the drop / loop reset
           var barDur = (60 / (p.bpm || 124)) * 4;
           nodes.riser.envelope.attack = barDur * 0.92; nodes.riser.triggerAttackRelease(barDur, when, 0.5);
           nodes.riserFilt.frequency.setValueAtTime(400, when); nodes.riserFilt.frequency.linearRampToValueAtTime(9000, when + barDur);
         }
-        if (bar === 0 && s === 0) {
-          nodes.crash.triggerAttackRelease("2n", when, 0.6);
-          if (p.energy > 0.7) nodes.impact.triggerAttackRelease("C0", "4n", when, 0.85);
+        if (arrBar === 8 && s === 0) {                       // THE DROP — crash + impact
+          nodes.crash.triggerAttackRelease("2n", when, 0.7);
+          if (p.energy > 0.6) nodes.impact.triggerAttackRelease("C0", "4n", when, 0.9);
         }
       }
     } catch (e) {}
