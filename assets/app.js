@@ -32,12 +32,12 @@
       for (var k = 0; k < olds.length; k++) { if (olds[k].parentNode) olds[k].parentNode.removeChild(olds[k]); }
       var link = document.createElement("link");
       link.rel = "icon"; link.type = "image/png"; link.setAttribute("sizes", "48x48");
-      link.href = "assets/icons/favicon-" + col + "-48.png?v=106";
+      link.href = "assets/icons/favicon-" + col + "-48.png?v=107";
       document.head.appendChild(link);
     } catch (e) {}
     try {
       var badge = document.querySelector(".badge");
-      if (badge) badge.style.backgroundImage = 'url("assets/icons/product-' + col + '-216.png?v=106")';
+      if (badge) badge.style.backgroundImage = 'url("assets/icons/product-' + col + '-216.png?v=107")';
     } catch (e) {}
   }
   function applyChannel(i) {
@@ -2160,7 +2160,7 @@
       else gTip.style.display = "none";
     });
     body.addEventListener("mouseleave", function () { gTip.style.display = "none"; });
-    var names = Object.keys(DATA.guides || {});
+    var names = Object.keys(DATA.guides || {}).filter(function (n) { return n !== "Sources & Method"; });  // Sources & Method = backend provenance, hidden from users
     if (!names.length) { document.getElementById("guidesBtn").style.display = "none"; return; }
     names.forEach(function (nm, i) {
       var b = document.createElement("button"); b.textContent = nm; b.className = i === 0 ? "active" : "";
@@ -2491,7 +2491,7 @@
     aboutEl = document.createElement("div"); aboutEl.className = "overlay about"; aboutEl.id = "aboutOverlay"; aboutEl.setAttribute("role", "dialog");
     aboutEl.innerHTML = '<div class="aboutsheet"><div class="cmphead"><span>About Me</span><button class="x" id="aboutClose">✕ close</button></div>' +
       '<div class="aboutbody">' +
-      '<div class="aboutpic"><div class="apic-frame"><img src="assets/about-me.jpg?v=106" alt="DJ7 - Wilsonlicioussss" onerror="this.parentNode.classList.add(\'empty\');this.remove()"></div><span class="aname">DJ7 · Wilsonlicioussss</span></div>' +
+      '<div class="aboutpic"><div class="apic-frame"><img src="assets/about-me.jpg?v=107" alt="DJ7 - Wilsonlicioussss" onerror="this.parentNode.classList.add(\'empty\');this.remove()"></div><span class="aname">DJ7 · Wilsonlicioussss</span></div>' +
       '<div class="aboutsec"><h4>★ Things I Love</h4><p>Thoughtful spaces, quiet details, electronic music, new technology and ideas that feel slightly ahead of their time.</p></div>' +
       '<div class="aboutsec"><h4>Always Learning</h4><p>Everything begins with curiosity. I explore how design, data, people and culture connect.</p></div>' +
       '<div class="aboutsec"><h4>I DJ</h4><p>A personal journey through electronic music — from high-energy moments to deeper, melodic and atmospheric sounds.</p></div>' +
@@ -2942,5 +2942,5 @@
     if (mb) mb.addEventListener("click", function () { mb.classList.remove("attract"); });
     setTimeout(calmAll, 45000);
   })();
-  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, centerOn: centerOn, version: "V106" };
+  window.__GENOME = { nodes: nodes, links: links, byId: byId, select: select, centerOn: centerOn, version: "V107" };
 })();
