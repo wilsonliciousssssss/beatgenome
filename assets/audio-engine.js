@@ -1,5 +1,5 @@
 /* ============================================================
-   BeatGenome — audio-engine.js  (V15 / Stage 6: 16-bar arrangement — intro/build/drop/break + fills)
+   BeatGenome — audio-engine.js  (V16: genre-matched chord voices — Rhodes / organ-stab / supersaw / pad / saw)
    Procedural, in-browser genre audio on Tone.js.
    window.BeatGenomeAudio. App works fully if Tone.js is missing.
    ============================================================ */
@@ -216,11 +216,30 @@
       var subMix = (b === "wobble" || b === "reese") ? 0.55 : (b === "sub" || b === "logdrum") ? 0.14 : (b === "acid") ? 0.22 : 0.32;
       var bwiden = (b === "wobble" || b === "reese") ? 0.64 : 0.52;
       try { nodes.subGain.gain.rampTo(subMix, 0.2); nodes.bassWiden.width.rampTo(bwiden, 0.2); } catch (e) {}
-      var chOsc = p.chordVoice === "keys" ? "triangle" : p.chordVoice === "square" ? "square" : p.chordVoice === "supersaw" ? "fatsawtooth" : (p.chords === "stab") ? "square" : "fatsawtooth";
-      var chAtk = (p.chords === "pad") ? 0.6 : 0.02, chRel = p.chordVoice === "keys" ? 0.7 : (p.chords === "pad") ? 2.4 : (p.chords === "stab") ? 0.25 : 1.3;
-      var chOscOpt = (chOsc === "fatsawtooth") ? { type: "fatsawtooth", count: 7, spread: 36 } : { type: chOsc };
-      nodes.chords.set({ oscillator: chOscOpt, envelope: { attack: chAtk, decay: 0.3, sustain: p.chords === "stab" ? 0.2 : 0.6, release: chRel } });
-      var chWet = (p.chords === "pad" || p.chordVoice === "supersaw") ? 0.4 : (p.chordVoice === "keys") ? 0.15 : (p.chords === "stab") ? 0.06 : 0.25;
+      // ---- genre-matched chord voice (keys / organ-stab / supersaw / pad / saw) ----
+      var cv = p.chordVoice, chOscOpt, chEnv, chWet;
+      if (cv === "supersaw") {                                                     // trance / prog / big room / future
+        chOscOpt = { type: "fatsawtooth", count: 7, spread: 36 };
+        chEnv = { attack: (p.chords === "pad") ? 0.5 : 0.02, decay: 0.3, sustain: 0.65, release: (p.chords === "pad") ? 2.2 : 1.3 };
+        chWet = 0.42;
+      } else if (cv === "keys") {                                                  // house / disco / amapiano — FM Rhodes / e-piano
+        chOscOpt = { type: "fmsine", harmonicity: 1.5, modulationIndex: 2.2 };
+        chEnv = { attack: 0.005, decay: 0.5, sustain: 0.32, release: 0.8 };
+        chWet = 0.2;
+      } else if (cv === "square") {                                                // classic house / garage organ-stab
+        chOscOpt = { type: "square" };
+        chEnv = { attack: 0.004, decay: 0.22, sustain: 0.2, release: 0.28 };
+        chWet = 0.12;
+      } else if (cv === "pad") {                                                   // ambient / deep / melodic / dub techno — soft warm pad
+        chOscOpt = { type: "fatsawtooth", count: 3, spread: 18 };
+        chEnv = { attack: 0.7, decay: 0.4, sustain: 0.8, release: 2.6 };
+        chWet = 0.5;
+      } else {                                                                     // saw (default)
+        chOscOpt = { type: "sawtooth" };
+        chEnv = { attack: 0.02, decay: 0.3, sustain: 0.6, release: 1.2 };
+        chWet = 0.25;
+      }
+      nodes.chords.set({ oscillator: chOscOpt, envelope: chEnv });
       try { nodes.chorus.wet.rampTo(chWet, 0.3); } catch (e) {}
       // wobble movement (dubstep) vs static cutoff
       var cut = p.filterCutoff * 0.5;
