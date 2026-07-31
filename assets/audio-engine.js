@@ -1,5 +1,5 @@
 /* ============================================================
-   BeatGenome — audio-engine.js  (V12 / Stage 3: per-genre bass — clean sub sine + saturated/widened character)
+   BeatGenome — audio-engine.js  (V13 / Stage 4: supersaw chords count/spread + chorus + fat reese bass)
    Procedural, in-browser genre audio on Tone.js.
    window.BeatGenomeAudio. App works fully if Tone.js is missing.
    ============================================================ */
@@ -75,9 +75,10 @@
     nodes.musicBus = new T.Gain(1).connect(nodes.musicDuck);
     nodes.chordFilt = new T.Filter(1200, "lowpass");
     nodes.chordFilt.connect(nodes.musicBus); nodes.chordFilt.connect(nodes.reverb); nodes.chordFilt.connect(nodes.delay);
+    nodes.chorus = new T.Chorus({ frequency: 1.4, delayTime: 3.5, depth: 0.7, spread: 180, wet: 0 }); try { nodes.chorus.start(); } catch (e) {} nodes.chorus.connect(nodes.chordFilt);
     nodes.chords = new T.PolySynth(T.Synth); nodes.chords.maxPolyphony = state.lowPerf ? 4 : 8;
     nodes.chords.set({ oscillator: { type: "sawtooth" }, envelope: { attack: 0.02, decay: 0.3, sustain: 0.5, release: 1.4 } });
-    nodes.chordGain = new T.Gain(0.32); nodes.chords.connect(nodes.chordGain); nodes.chordGain.connect(nodes.chordFilt);
+    nodes.chordGain = new T.Gain(0.32); nodes.chords.connect(nodes.chordGain); nodes.chordGain.connect(nodes.chorus);
     nodes.lead = new T.FMSynth({ harmonicity: 2, modulationIndex: 6, envelope: { attack: 0.01, decay: 0.2, sustain: 0.2, release: 0.4 } });
     nodes.leadGain = new T.Gain(0.1); nodes.lead.connect(nodes.leadGain); nodes.leadGain.connect(nodes.musicBus); nodes.leadGain.connect(nodes.delay);
 
@@ -166,14 +167,18 @@
                : (b === "wobble" || b === "reese") ? { attack: 0.006, decay: 0.26, sustain: 0.7, release: 0.2 }
                : (b === "acid") ? { attack: 0.005, decay: 0.18, sustain: 0.2, release: 0.12 }
                : { attack: 0.008, decay: 0.3, sustain: 0.5, release: 0.2 };
-      nodes.bass.set({ oscillator: { type: bt }, envelope: benv, filter: { Q: b === "acid" ? 6 : 2 },
+      var bOsc = (bt === "fatsawtooth") ? { type: "fatsawtooth", count: 3, spread: 40 } : { type: bt };
+      nodes.bass.set({ oscillator: bOsc, envelope: benv, filter: { Q: b === "acid" ? 6 : 2 },
         filterEnvelope: { octaves: b === "acid" ? 4 : (b === "offbeat" || b === "funk") ? 3 : 2.5, baseFrequency: b === "sub" ? 55 : (b === "offbeat" || b === "funk") ? 90 : 120 } });
       var subMix = (b === "wobble" || b === "reese") ? 0.55 : (b === "sub" || b === "logdrum") ? 0.14 : (b === "acid") ? 0.22 : 0.32;
       var bwiden = (b === "wobble" || b === "reese") ? 0.64 : 0.52;
       try { nodes.subGain.gain.rampTo(subMix, 0.2); nodes.bassWiden.width.rampTo(bwiden, 0.2); } catch (e) {}
       var chOsc = p.chordVoice === "keys" ? "triangle" : p.chordVoice === "square" ? "square" : p.chordVoice === "supersaw" ? "fatsawtooth" : (p.chords === "stab") ? "square" : "fatsawtooth";
       var chAtk = (p.chords === "pad") ? 0.6 : 0.02, chRel = p.chordVoice === "keys" ? 0.7 : (p.chords === "pad") ? 2.4 : (p.chords === "stab") ? 0.25 : 1.3;
-      nodes.chords.set({ oscillator: { type: chOsc }, envelope: { attack: chAtk, decay: 0.3, sustain: p.chords === "stab" ? 0.2 : 0.6, release: chRel } });
+      var chOscOpt = (chOsc === "fatsawtooth") ? { type: "fatsawtooth", count: 7, spread: 36 } : { type: chOsc };
+      nodes.chords.set({ oscillator: chOscOpt, envelope: { attack: chAtk, decay: 0.3, sustain: p.chords === "stab" ? 0.2 : 0.6, release: chRel } });
+      var chWet = (p.chords === "pad" || p.chordVoice === "supersaw") ? 0.4 : (p.chordVoice === "keys") ? 0.15 : (p.chords === "stab") ? 0.06 : 0.25;
+      try { nodes.chorus.wet.rampTo(chWet, 0.3); } catch (e) {}
       // wobble movement (dubstep) vs static cutoff
       var cut = p.filterCutoff * 0.5;
       if (p.bass === "wobble") { nodes.wobble.min = 110; nodes.wobble.max = 1300; try { nodes.wobble.frequency.value = "8n"; } catch (e) {} }
