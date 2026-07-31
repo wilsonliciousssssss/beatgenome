@@ -1,5 +1,5 @@
 /* ============================================================
-   BeatGenome — audio-engine.js  (V13 / Stage 4: supersaw chords count/spread + chorus + fat reese bass)
+   BeatGenome — audio-engine.js  (V14 / Stage 5: FX layer — riser / crash / impact)
    Procedural, in-browser genre audio on Tone.js.
    window.BeatGenomeAudio. App works fully if Tone.js is missing.
    ============================================================ */
@@ -82,6 +82,17 @@
     nodes.lead = new T.FMSynth({ harmonicity: 2, modulationIndex: 6, envelope: { attack: 0.01, decay: 0.2, sustain: 0.2, release: 0.4 } });
     nodes.leadGain = new T.Gain(0.1); nodes.lead.connect(nodes.leadGain); nodes.leadGain.connect(nodes.musicBus); nodes.leadGain.connect(nodes.delay);
 
+    // ---- FX layer (Stage 5): risers, crash, low impact — routed post-duck (not pumped) ----
+    nodes.fxBus = new T.Gain(0.6).connect(nodes.master); nodes.fxBus.connect(nodes.reverb);
+    nodes.riser = new T.NoiseSynth({ noise: { type: "white" }, envelope: { attack: 1.2, decay: 0.02, sustain: 1, release: 0.15 } });
+    nodes.riserFilt = new T.Filter(500, "highpass").connect(nodes.fxBus);
+    nodes.riserGain = new T.Gain(0.2); nodes.riser.connect(nodes.riserGain); nodes.riserGain.connect(nodes.riserFilt);
+    nodes.crash = new T.NoiseSynth({ noise: { type: "white" }, envelope: { attack: 0.001, decay: 0.5, sustain: 0, release: 0.1 } });
+    nodes.crashFilt = new T.Filter(5000, "highpass").connect(nodes.fxBus);
+    nodes.crashGain = new T.Gain(0.18); nodes.crash.connect(nodes.crashGain); nodes.crashGain.connect(nodes.crashFilt);
+    nodes.impact = new T.MembraneSynth({ pitchDecay: 0.08, octaves: 8, envelope: { attack: 0.001, decay: 0.6, sustain: 0 } });
+    nodes.impactGain = new T.Gain(0.4).connect(nodes.master); nodes.impact.connect(nodes.impactGain);
+
     T.Transport.scheduleRepeat(onStep, "16n");
   }
 
@@ -149,6 +160,18 @@
       }
       if (!state.lowPerf && p.melody > 0.6 && (s === 2 || s === 7 || s === 12) && Math.random() < 0.55) {
         nodes.lead.triggerAttackRelease(noteFor(p, (bar * 2 + s) % 7, 4), "8n", when, 0.4);
+      }
+      // ---- Stage 5 FX: riser swells over the last bar into a crash + impact on the phrase downbeat ----
+      if (!state.lowPerf && p.energy > 0.5) {
+        if (bar === 3 && s === 0) {
+          var barDur = (60 / (p.bpm || 124)) * 4;
+          nodes.riser.envelope.attack = barDur * 0.92; nodes.riser.triggerAttackRelease(barDur, when, 0.5);
+          nodes.riserFilt.frequency.setValueAtTime(400, when); nodes.riserFilt.frequency.linearRampToValueAtTime(9000, when + barDur);
+        }
+        if (bar === 0 && s === 0) {
+          nodes.crash.triggerAttackRelease("2n", when, 0.6);
+          if (p.energy > 0.7) nodes.impact.triggerAttackRelease("C0", "4n", when, 0.85);
+        }
       }
     } catch (e) {}
     state.step++;
