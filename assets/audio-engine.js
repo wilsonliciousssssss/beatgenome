@@ -1,5 +1,5 @@
 /* ============================================================
-   BeatGenome — audio-engine.js  (V10 / Stage 1: bus mixer + sidechain pump)
+   BeatGenome — audio-engine.js  (V11 / Stage 2: better synth drums — kick click + layered clap + open hat)
    Procedural, in-browser genre audio on Tone.js.
    window.BeatGenomeAudio. App works fully if Tone.js is missing.
    ============================================================ */
@@ -50,6 +50,13 @@
     nodes.hatFilt = new T.Filter(8000, "highpass").connect(nodes.drumBus); nodes.hatGain = new T.Gain(0.32); nodes.hat.connect(nodes.hatGain); nodes.hatGain.connect(nodes.hatFilt);
     nodes.perc = new T.MetalSynth({ frequency: 250, envelope: { attack: 0.001, decay: 0.12, release: 0.01 }, harmonicity: 5.1, resonance: 4000, octaves: 1.4 });
     nodes.percGain = new T.Gain(0.1).connect(nodes.drumBus); nodes.perc.connect(nodes.percGain);
+    // kick click/punch transient — definition on top of the MembraneSynth sub tail
+    nodes.kickClick = new T.NoiseSynth({ noise: { type: "white" }, envelope: { attack: 0.001, decay: 0.012, sustain: 0 } });
+    nodes.kickClickFilt = new T.Filter(2600, "highpass").connect(nodes.drumBus);
+    nodes.kickClickGain = new T.Gain(0.14); nodes.kickClick.connect(nodes.kickClickGain); nodes.kickClickGain.connect(nodes.kickClickFilt);
+    // dedicated open hat — longer sizzle than the tight closed hat
+    nodes.openHat = new T.NoiseSynth({ noise: { type: "white" }, envelope: { attack: 0.001, decay: 0.28, sustain: 0 } });
+    nodes.openHatGain = new T.Gain(0.22); nodes.openHat.connect(nodes.openHatGain); nodes.openHatGain.connect(nodes.hatFilt);
 
     // ---- bass bus (ducked): filter -> EQ -> saturation -> musicDuck ----
     nodes.bassSat = new T.Distortion(0).connect(nodes.musicDuck);
@@ -110,10 +117,10 @@
     RS.step16 = s;
     var when = time + ((s % 2 === 1) ? (p.swing || 0) * 0.05 : 0);
     try {
-      if (p.kickPattern[s]) { nodes.kick.triggerAttackRelease("C1", "8n", when, 0.9 + (p.energy - 0.5) * 0.2); triggerSidechain(when, p); RS.kick = 1; RS.master = 0.9; }
-      if (p.clapPattern[s]) { nodes.snare.triggerAttackRelease("16n", when, 0.8); RS.snare = 1; }
+      if (p.kickPattern[s]) { nodes.kick.triggerAttackRelease("C1", "8n", when, 0.9 + (p.energy - 0.5) * 0.2); nodes.kickClick.triggerAttackRelease("64n", when, 0.9); triggerSidechain(when, p); RS.kick = 1; RS.master = 0.9; }
+      if (p.clapPattern[s]) { nodes.snare.triggerAttackRelease("16n", when, 0.55); nodes.snare.triggerAttackRelease("16n", when + 0.008, 0.72); nodes.snare.triggerAttackRelease("16n", when + 0.018, 0.5); RS.snare = 1; }
       if (p.closedHatPattern[s]) { nodes.hat.triggerAttackRelease("32n", when, 0.35 + Math.random() * 0.2); RS.hat = 1; }
-      if (p.openHatPattern[s]) { nodes.hat.triggerAttackRelease("16n", when, 0.5); RS.hat = 1; }
+      if (p.openHatPattern[s]) { nodes.openHat.triggerAttackRelease("8n", when, 0.5); RS.hat = 1; }
       if (!state.lowPerf && p.percPattern[s]) { nodes.perc.triggerAttackRelease("C4", "32n", when, 0.22); }
       if (p.bassPattern[s]) {
         var bn = noteFor(p, (s % 8 === 4 ? 4 : 0), p.bass === "sub" ? 1 : 1);
