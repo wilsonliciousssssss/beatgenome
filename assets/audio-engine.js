@@ -1,5 +1,5 @@
 /* ============================================================
-   BeatGenome — audio-engine.js  (V16: genre-matched chord voices — Rhodes / organ-stab / supersaw / pad / saw)
+   BeatGenome — audio-engine.js  (V17 / Stage 7: techno rumble kick + per-genre master tone + acid 303 glide)
    Procedural, in-browser genre audio on Tone.js.
    window.BeatGenomeAudio. App works fully if Tone.js is missing.
    ============================================================ */
@@ -28,7 +28,8 @@
     if (nodes.master) return;
     var dest = T.getDestination ? T.getDestination() : T.Destination;
     nodes.limiter = new T.Limiter(-1).connect(dest);
-    nodes.masterComp = new T.Compressor({ threshold: -14, ratio: 2.5, attack: 0.006, release: 0.16 }).connect(nodes.limiter);
+    nodes.masterEQ = new T.EQ3(0, 0, 0).connect(nodes.limiter);         // per-genre master tone
+    nodes.masterComp = new T.Compressor({ threshold: -14, ratio: 2.5, attack: 0.006, release: 0.16 }).connect(nodes.masterEQ);
     nodes.master = new T.Gain(0.0001).connect(nodes.masterComp);        // volume node
 
     // FX bus (reverb + delay) -> master
@@ -57,6 +58,11 @@
     // dedicated open hat — longer sizzle than the tight closed hat
     nodes.openHat = new T.NoiseSynth({ noise: { type: "white" }, envelope: { attack: 0.001, decay: 0.28, sustain: 0 } });
     nodes.openHatGain = new T.Gain(0.22); nodes.openHat.connect(nodes.openHatGain); nodes.openHatGain.connect(nodes.hatFilt);
+    if (!state.lowPerf) {   // techno rumble: kick tail fed into a short reverb + lowpass = rolling sub-rumble
+      nodes.rumbleFilt = new T.Filter(150, "lowpass").connect(nodes.drumBus);
+      nodes.rumbleVerb = new T.Reverb({ decay: 1.4, wet: 1 }).connect(nodes.rumbleFilt);
+      nodes.rumbleGain = new T.Gain(0); nodes.rumbleGain.connect(nodes.rumbleVerb); nodes.kick.connect(nodes.rumbleGain);
+    }
 
     // ---- bass bus: CHARACTER layer (ducked, saturated, stereo-widened) ----
     nodes.bassWiden = new T.StereoWidener(0.5).connect(nodes.musicDuck);
@@ -202,6 +208,10 @@
     try {
       // kick tone: harder & tighter for dark/high-energy genres
       nodes.kick.set({ octaves: 4 + p.darkness * 5, pitchDecay: 0.02 + (1 - p.energy) * 0.06 });
+      // per-genre master tone: bright for melodic/low-dark, warm & dark for high-dark
+      try { nodes.masterEQ.high.rampTo(2.5 - p.darkness * 5, 0.4); nodes.masterEQ.low.rampTo((p.warmth - 0.5) * 3, 0.4); } catch (e) {}
+      // techno rumble send: four-on-the-floor + dark genres get a rolling sub-rumble
+      try { if (nodes.rumbleGain) nodes.rumbleGain.gain.rampTo((p.kick === "four" && p.darkness > 0.55) ? Math.min(0.5, (p.darkness - 0.5) * 0.9) : 0, 0.3); } catch (e) {}
       // bass voice by style
       var b = p.bass;
       var bt = (b === "sub" || b === "logdrum") ? "sine" : (b === "wobble" || b === "reese") ? "fatsawtooth" : (b === "acid") ? "square" : "sawtooth";
@@ -211,7 +221,7 @@
                : (b === "acid") ? { attack: 0.005, decay: 0.18, sustain: 0.2, release: 0.12 }
                : { attack: 0.008, decay: 0.3, sustain: 0.5, release: 0.2 };
       var bOsc = (bt === "fatsawtooth") ? { type: "fatsawtooth", count: 3, spread: 40 } : { type: bt };
-      nodes.bass.set({ oscillator: bOsc, envelope: benv, filter: { Q: b === "acid" ? 6 : 2 },
+      nodes.bass.set({ oscillator: bOsc, envelope: benv, filter: { Q: b === "acid" ? 6 : 2 }, portamento: b === "acid" ? 0.05 : 0,
         filterEnvelope: { octaves: b === "acid" ? 4 : (b === "offbeat" || b === "funk") ? 3 : 2.5, baseFrequency: b === "sub" ? 55 : (b === "offbeat" || b === "funk") ? 90 : 120 } });
       var subMix = (b === "wobble" || b === "reese") ? 0.55 : (b === "sub" || b === "logdrum") ? 0.14 : (b === "acid") ? 0.22 : 0.32;
       var bwiden = (b === "wobble" || b === "reese") ? 0.64 : 0.52;
