@@ -1,5 +1,5 @@
 /* ============================================================
-   BeatGenome — audio-engine.js  (V17 / Stage 7: techno rumble kick + per-genre master tone + acid 303 glide)
+   BeatGenome — audio-engine.js  (V18 / mixing correction: 100% wet FX sends + send gains + bass HP crossover (mono sub) + bar-quantized genre switch)
    Procedural, in-browser genre audio on Tone.js.
    window.BeatGenomeAudio. App works fully if Tone.js is missing.
    ============================================================ */
@@ -32,9 +32,11 @@
     nodes.masterComp = new T.Compressor({ threshold: -14, ratio: 2.5, attack: 0.006, release: 0.16 }).connect(nodes.masterEQ);
     nodes.master = new T.Gain(0.0001).connect(nodes.masterComp);        // volume node
 
-    // FX bus (reverb + delay) -> master
-    nodes.reverb = new T.Reverb({ decay: state.lowPerf ? 1.0 : 2.4, wet: 0.3 }).connect(nodes.master);
-    nodes.delay = new T.FeedbackDelay("8n.", 0.22); nodes.delay.wet.value = 0.15; nodes.delay.connect(nodes.master);
+    // FX bus (reverb + delay) — 100% WET effects fed by dedicated parallel send gains (no dry doubling)
+    nodes.reverb = new T.Reverb({ decay: state.lowPerf ? 1.0 : 2.4, wet: 1 }).connect(nodes.master);
+    nodes.delay = new T.FeedbackDelay("8n.", 0.22); nodes.delay.wet.value = 1; nodes.delay.connect(nodes.master);
+    nodes.reverbSend = new T.Gain(0.3).connect(nodes.reverb);   // send amount = old reverbWet
+    nodes.delaySend = new T.Gain(0.15).connect(nodes.delay);    // send amount = old delayWet
 
     // sidechain node: bass + chords + lead route through here, ducked by the kick
     nodes.musicDuck = new T.Gain(1).connect(nodes.master);
@@ -65,10 +67,12 @@
     }
 
     // ---- bass bus: CHARACTER layer (ducked, saturated, stereo-widened) ----
+    // HP crossover at 120Hz: nothing below the crossover reaches the stereo widener → sub stays mono/centered.
     nodes.bassWiden = new T.StereoWidener(0.5).connect(nodes.musicDuck);
     nodes.bassSat = new T.Distortion(0).connect(nodes.bassWiden);
     nodes.bassEQ = new T.EQ3(0, -1, -2).connect(nodes.bassSat);
-    nodes.bassFilt = new T.Filter(600, "lowpass").connect(nodes.bassEQ);
+    nodes.bassHP = new T.Filter(120, "highpass").connect(nodes.bassEQ);   // keep sub band mono (below crossover) out of the widened layer
+    nodes.bassFilt = new T.Filter(600, "lowpass").connect(nodes.bassHP);
     nodes.bass = new T.MonoSynth({ oscillator: { type: "sawtooth" }, filter: { Q: 2 }, envelope: { attack: 0.005, decay: 0.2, sustain: 0.5, release: 0.2 }, filterEnvelope: { attack: 0.01, decay: 0.2, baseFrequency: 120, octaves: 2.5 } });
     nodes.bassGain = new T.Gain(0.5); nodes.bass.connect(nodes.bassGain); nodes.bassGain.connect(nodes.bassFilt);
     nodes.wobble = new T.LFO("8n", 300, 300).connect(nodes.bassFilt.frequency); nodes.wobble.start();  // static unless wobble genre
@@ -80,16 +84,16 @@
     // ---- chords + lead (ducked, dry) with parallel FX sends ----
     nodes.musicBus = new T.Gain(1).connect(nodes.musicDuck);
     nodes.chordFilt = new T.Filter(1200, "lowpass");
-    nodes.chordFilt.connect(nodes.musicBus); nodes.chordFilt.connect(nodes.reverb); nodes.chordFilt.connect(nodes.delay);
+    nodes.chordFilt.connect(nodes.musicBus); nodes.chordFilt.connect(nodes.reverbSend); nodes.chordFilt.connect(nodes.delaySend);
     nodes.chorus = new T.Chorus({ frequency: 1.4, delayTime: 3.5, depth: 0.7, spread: 180, wet: 0 }); try { nodes.chorus.start(); } catch (e) {} nodes.chorus.connect(nodes.chordFilt);
     nodes.chords = new T.PolySynth(T.Synth); nodes.chords.maxPolyphony = state.lowPerf ? 4 : 8;
     nodes.chords.set({ oscillator: { type: "sawtooth" }, envelope: { attack: 0.02, decay: 0.3, sustain: 0.5, release: 1.4 } });
     nodes.chordGain = new T.Gain(0.32); nodes.chords.connect(nodes.chordGain); nodes.chordGain.connect(nodes.chorus);
     nodes.lead = new T.FMSynth({ harmonicity: 2, modulationIndex: 6, envelope: { attack: 0.01, decay: 0.2, sustain: 0.2, release: 0.4 } });
-    nodes.leadGain = new T.Gain(0.1); nodes.lead.connect(nodes.leadGain); nodes.leadGain.connect(nodes.musicBus); nodes.leadGain.connect(nodes.delay);
+    nodes.leadGain = new T.Gain(0.1); nodes.lead.connect(nodes.leadGain); nodes.leadGain.connect(nodes.musicBus); nodes.leadGain.connect(nodes.delaySend);
 
     // ---- FX layer (Stage 5): risers, crash, low impact — routed post-duck (not pumped) ----
-    nodes.fxBus = new T.Gain(0.6).connect(nodes.master); nodes.fxBus.connect(nodes.reverb);
+    nodes.fxBus = new T.Gain(0.6).connect(nodes.master); nodes.fxBus.connect(nodes.reverbSend);
     nodes.riser = new T.NoiseSynth({ noise: { type: "white" }, envelope: { attack: 1.2, decay: 0.02, sustain: 1, release: 0.15 } });
     nodes.riserFilt = new T.Filter(500, "highpass").connect(nodes.fxBus);
     nodes.riserGain = new T.Gain(0.2); nodes.riser.connect(nodes.riserGain); nodes.riserGain.connect(nodes.riserFilt);
@@ -145,7 +149,11 @@
   }
   function onStep(time) {
     var p = state.active; if (!p) return;
-    if (state.pending && state.step % 16 === 0) { state.active = p = state.pending; state.pending = null; }
+    if (state.pending && state.step % 16 === 0) {   // apply the queued genre ON the bar boundary (sound design + BPM, not just patterns)
+      applyProfile(state.pending, true);            // reads OLD state.active for the BPM-jump test, then we swap
+      state.active = p = state.pending; state.pending = null;
+      RS.genreId = p.id; RS.progRomans = romansFor(p);
+    }
     var s = state.step % 16, bar = Math.floor(state.step / 16) % 4, arrBar = Math.floor(state.step / 16) % 16;
     RS.step16 = s;
     var sec = arrSection(arrBar);
@@ -256,8 +264,7 @@
       if (p.bass === "wobble") { nodes.wobble.min = 110; nodes.wobble.max = 1300; try { nodes.wobble.frequency.value = "8n"; } catch (e) {} }
       else { nodes.wobble.min = cut; nodes.wobble.max = cut; }
       nodes.chordFilt.frequency.rampTo(p.filterCutoff, 0.3);
-      nodes.reverb.wet.rampTo(p.reverbWet, 0.4);
-      nodes.delay.wet.value = p.delayWet;
+      try { nodes.reverbSend.gain.rampTo(p.reverbWet, 0.4); nodes.delaySend.gain.rampTo(p.delayWet, 0.3); } catch (e) {}
       try { nodes.bassSat.distortion = Math.min(0.4, p.distortion * 0.5); nodes.drumSat.distortion = Math.min(0.14, 0.04 + p.distortion * 0.12); } catch (e) {}
       var jump = state.active && Math.abs(state.active.bpm - p.bpm) > 24;
       if (jump || !ramp) T.Transport.bpm.value = p.bpm; else T.Transport.bpm.rampTo(p.bpm, 0.5);
@@ -274,8 +281,15 @@
     },
     playGenre: function (p) {
       if (!state.initialized || !p) return;
-      state.pending = p; if (!state.active) { state.active = p; state.step = 0; }
-      applyProfile(p, true); RS.genreId = p.id; RS.progRomans = romansFor(p);
+      if (!state.active) {                    // cold start — apply immediately so the first genre is ready
+        state.active = p; state.step = 0; state.pending = null;
+        applyProfile(p, false); RS.genreId = p.id; RS.progRomans = romansFor(p);
+      } else if (!state.playing) {            // switching while stopped — no onStep to swap, so apply now
+        state.active = p; state.pending = null;
+        applyProfile(p, true); RS.genreId = p.id; RS.progRomans = romansFor(p);
+      } else {                                // switching while playing — queue; onStep applies on the next bar boundary
+        state.pending = p;
+      }
       if (!state.playing) { try { T.Transport.start(); } catch (e) {} state.playing = true; RS.playing = true; try { nodes.master.gain.rampTo(state.volume * 0.85, 0.4); } catch (e) {} }
       emit("play");
     },
